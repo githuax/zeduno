@@ -2,41 +2,58 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* Restaurant Management System Design System
+All colors MUST be HSL. Restaurant-themed warm and professional palette.
 */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Restaurant-themed color palette */
+    --background: 35 15% 97%;
+    --foreground: 30 10% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 30 10% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 30 10% 15%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Deep restaurant orange - warm and inviting */
+    --primary: 18 80% 50%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Rich coffee brown */
+    --secondary: 25 35% 35%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Warm cream for subtle elements */
+    --muted: 35 25% 92%;
+    --muted-foreground: 30 10% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Premium gold accent */
+    --accent: 43 74% 49%;
+    --accent-foreground: 30 10% 15%;
 
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 30 15% 88%;
+    --input: 30 15% 92%;
+    --ring: 18 80% 50%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
+
+    /* Restaurant-specific design tokens */
+    --gradient-primary: linear-gradient(135deg, hsl(18 80% 50%), hsl(25 75% 45%));
+    --gradient-secondary: linear-gradient(180deg, hsl(35 15% 97%), hsl(30 20% 95%));
+    --gradient-hero: linear-gradient(135deg, hsl(18 80% 50%) 0%, hsl(25 75% 45%) 50%, hsl(43 74% 49%) 100%);
+    
+    --shadow-elegant: 0 10px 30px -10px hsl(18 80% 50% / 0.2);
+    --shadow-card: 0 4px 20px -4px hsl(30 10% 15% / 0.1);
+    --shadow-glow: 0 0 40px hsl(43 74% 49% / 0.3);
+
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-spring: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 
     --sidebar-background: 0 0% 98%;
 
