@@ -1,7 +1,10 @@
-import { Bell, Settings, User } from "lucide-react";
+import { Bell, Settings, User, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 const Header = () => {
+  const navigate = useNavigate();
+
   return (
     <header className="bg-card border-b border-border px-6 py-4">
       <div className="flex items-center justify-between">
@@ -11,6 +14,16 @@ const Header = () => {
         </div>
         
         <div className="flex items-center space-x-4">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => navigate('/superadmin/login')}
+            className="text-yellow-600 hover:text-yellow-700"
+            title="SuperAdmin Access"
+          >
+            <Shield className="h-4 w-4 mr-2" />
+            SuperAdmin
+          </Button>
           <Button variant="ghost" size="icon">
             <Bell className="h-5 w-5" />
           </Button>

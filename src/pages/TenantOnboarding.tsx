@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { useSubscriptionPlans, useCreateTenant } from "@/hooks/useTenant";
 import { SubscriptionPlan, Tenant } from "@/types/tenant.types";
+import AddressMapWorking from "@/components/AddressMapWorking";
 import { 
   ArrowRight,
   ArrowLeft,
@@ -48,6 +49,8 @@ interface OnboardingData {
   state: string;
   country: string;
   zipCode: string;
+  fullAddress: string;
+  coordinates?: { lat: number; lng: number };
   
   // Business Details
   expectedOrders: 'less-than-100' | '100-500' | '500-2000' | '2000-plus';
@@ -83,6 +86,8 @@ const TenantOnboarding = () => {
     state: '',
     country: 'United States',
     zipCode: '',
+    fullAddress: '',
+    coordinates: undefined,
     expectedOrders: '100-500',
     tableCount: 10,
     staffCount: 5,
@@ -94,6 +99,7 @@ const TenantOnboarding = () => {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [subdomainChecked, setSubdomainChecked] = useState(false);
+  const [formError, setFormError] = useState<string>('');
 
   const totalSteps = 5;
   const progress = (currentStep / totalSteps) * 100;
@@ -137,10 +143,31 @@ const TenantOnboarding = () => {
       .substring(0, 30);
   };
 
+  const validateSubdomain = (subdomain: string) => {
+    // Check basic subdomain requirements
+    if (!subdomain || subdomain.length < 3 || subdomain.length > 30) {
+      return false;
+    }
+    // Must start with letter or number
+    if (!/^[a-z0-9]/.test(subdomain.toLowerCase())) {
+      return false;
+    }
+    // Only letters, numbers, and hyphens
+    if (!/^[a-z0-9-]+$/i.test(subdomain)) {
+      return false;
+    }
+    return true;
+  };
+
   const checkSubdomain = async (subdomain: string) => {
+    // First validate format
+    if (!validateSubdomain(subdomain)) {
+      return false;
+    }
+    
     // Mock subdomain availability check
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    const unavailable = ['test', 'admin', 'api', 'www', 'app', 'demo'];
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const unavailable = ['test', 'admin', 'api', 'www', 'app', 'demo', 'support', 'help', 'blog'];
     return !unavailable.includes(subdomain.toLowerCase());
   };
 
@@ -155,28 +182,34 @@ const TenantOnboarding = () => {
   const canProceedToNextStep = () => {
     switch (currentStep) {
       case 1:
-        return data.businessName && data.businessType && data.firstName && data.lastName && data.email;
+        return !!(data.businessName && data.businessType && data.firstName && data.lastName && data.email);
       case 2:
-        return data.street && data.city && data.state && data.zipCode;
+        return !!(data.fullAddress && data.coordinates) || !!(data.street && data.city && data.state);
       case 3:
         return true; // Business details are optional
       case 4:
-        return data.selectedPlan;
+        return !!data.selectedPlan;
       case 5:
-        return data.subdomain && subdomainChecked;
+        return !!(data.subdomain && validateSubdomain(data.subdomain) && subdomainChecked);
       default:
         return false;
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep < totalSteps) {
       setCurrentStep(currentStep + 1);
       
-      // Auto-generate subdomain when moving to final step
+      // Auto-generate and check subdomain when moving to final step
       if (currentStep === 4 && !data.subdomain) {
         const generatedSubdomain = generateSubdomain(data.businessName);
         updateData({ subdomain: generatedSubdomain });
+        
+        // Auto-check the generated subdomain
+        setTimeout(async () => {
+          const isAvailable = await checkSubdomain(generatedSubdomain);
+          setSubdomainChecked(isAvailable);
+        }, 100);
       }
     }
   };
@@ -189,9 +222,27 @@ const TenantOnboarding = () => {
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
+    setFormError('');
     
     try {
+      // Validate all required fields before submission
+      if (!data.businessName || !data.firstName || !data.lastName || !data.email) {
+        throw new Error('Please fill in all required fields');
+      }
+      
+      if (!data.selectedPlan) {
+        throw new Error('Please select a subscription plan');
+      }
+      
+      if (!data.subdomain || !subdomainChecked) {
+        throw new Error('Please choose and verify an available subdomain');
+      }
+      
       const selectedPlan = plans?.find(p => p.name === data.selectedPlan);
+      
+      if (!selectedPlan) {
+        throw new Error('Invalid subscription plan selected');
+      }
       
       const tenantData: Partial<Tenant> = {
         name: data.businessName,
@@ -213,16 +264,16 @@ const TenantOnboarding = () => {
         },
         contact: {
           email: data.email,
-          phone: data.phone,
+          phone: data.phone || '',
           firstName: data.firstName,
           lastName: data.lastName,
           company: data.businessName,
           address: {
-            street: data.street,
-            city: data.city,
-            state: data.state,
-            country: data.country,
-            zipCode: data.zipCode
+            street: data.street || data.fullAddress || '',
+            city: data.city || '',
+            state: data.state || '',
+            country: data.country || 'United States',
+            zipCode: data.zipCode || ''
           }
         },
         billing: {
@@ -264,11 +315,12 @@ const TenantOnboarding = () => {
 
       await createTenant.mutateAsync(tenantData);
       
-      // Redirect to new tenant subdomain
-      window.location.href = `https://${data.subdomain}.hotelzed.com/dashboard`;
+      // Redirect to success page or dashboard instead of external subdomain
+      navigate('/dashboard?tenant=new&setup=complete');
       
     } catch (error) {
       console.error('Failed to create tenant:', error);
+      setFormError(error instanceof Error ? error.message : 'Something went wrong. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -421,71 +473,102 @@ const TenantOnboarding = () => {
           <div className="space-y-6">
             <div>
               <h2 className="text-2xl font-bold mb-2">Where is your restaurant located?</h2>
-              <p className="text-muted-foreground">We need your address for delivery settings and local features.</p>
+              <p className="text-muted-foreground">Search for your address or click on the map to set your location.</p>
             </div>
             
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="street">Street Address *</Label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                  <Input
-                    id="street"
-                    value={data.street}
-                    onChange={(e) => updateData({ street: e.target.value })}
-                    className="pl-10"
-                    placeholder="123 Main Street"
-                  />
-                </div>
+                <Label>Restaurant Location *</Label>
+                <AddressMapWorking
+                  value={data.fullAddress}
+                  onChange={(address, coords) => {
+                    updateData({ 
+                      fullAddress: address,
+                      coordinates: coords
+                    });
+                    // Try to parse the address components
+                    const parts = address.split(',').map(s => s.trim());
+                    if (parts.length >= 3) {
+                      // Basic parsing - can be improved based on geocoding API response
+                      updateData({
+                        street: parts[0] || '',
+                        city: parts[parts.length - 3] || '',
+                        state: parts[parts.length - 2] || '',
+                        country: parts[parts.length - 1] || ''
+                      });
+                    }
+                  }}
+                  placeholder="Search for your restaurant address..."
+                />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <Separator className="my-4" />
+              
+              <div className="space-y-4">
+                <h3 className="font-medium text-sm text-muted-foreground">Or enter address manually:</h3>
+                
                 <div className="space-y-2">
-                  <Label htmlFor="city">City *</Label>
-                  <Input
-                    id="city"
-                    value={data.city}
-                    onChange={(e) => updateData({ city: e.target.value })}
-                    placeholder="New York"
-                  />
+                  <Label htmlFor="street">Street Address</Label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                    <Input
+                      id="street"
+                      value={data.street}
+                      onChange={(e) => updateData({ street: e.target.value })}
+                      className="pl-10"
+                      placeholder="123 Main Street"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="state">State/Province *</Label>
-                  <Input
-                    id="state"
-                    value={data.state}
-                    onChange={(e) => updateData({ state: e.target.value })}
-                    placeholder="NY"
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="country">Country *</Label>
-                  <Select 
-                    value={data.country} 
-                    onValueChange={(value) => updateData({ country: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="United States">United States</SelectItem>
-                      <SelectItem value="Canada">Canada</SelectItem>
-                      <SelectItem value="United Kingdom">United Kingdom</SelectItem>
-                      <SelectItem value="Australia">Australia</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="city">City</Label>
+                    <Input
+                      id="city"
+                      value={data.city}
+                      onChange={(e) => updateData({ city: e.target.value })}
+                      placeholder="New York"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="state">State/Province</Label>
+                    <Input
+                      id="state"
+                      value={data.state}
+                      onChange={(e) => updateData({ state: e.target.value })}
+                      placeholder="NY"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="zip-code">ZIP/Postal Code *</Label>
-                  <Input
-                    id="zip-code"
-                    value={data.zipCode}
-                    onChange={(e) => updateData({ zipCode: e.target.value })}
-                    placeholder="10001"
-                  />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="country">Country</Label>
+                    <Select 
+                      value={data.country} 
+                      onValueChange={(value) => updateData({ country: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="United States">United States</SelectItem>
+                        <SelectItem value="Canada">Canada</SelectItem>
+                        <SelectItem value="United Kingdom">United Kingdom</SelectItem>
+                        <SelectItem value="Australia">Australia</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="zip-code">ZIP/Postal Code</Label>
+                    <Input
+                      id="zip-code"
+                      value={data.zipCode}
+                      onChange={(e) => updateData({ zipCode: e.target.value })}
+                      placeholder="10001"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -813,6 +896,13 @@ const TenantOnboarding = () => {
         <Card>
           <CardContent className="p-8">
             {renderStep()}
+
+            {/* Error Display */}
+            {formError && (
+              <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-red-800 text-sm">{formError}</p>
+              </div>
+            )}
 
             {/* Navigation */}
             <div className="flex justify-between mt-8 pt-6 border-t">

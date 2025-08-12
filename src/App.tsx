@@ -20,6 +20,8 @@ import RestaurantSettings from "./pages/RestaurantSettings";
 import UserManagement from "./pages/UserManagement";
 import BackupManagement from "./pages/BackupManagement";
 import TenantOnboarding from "./pages/TenantOnboarding";
+import SuperAdminLogin from "./pages/SuperAdminLogin";
+import SuperAdminDashboard from "./pages/SuperAdminDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -48,6 +50,11 @@ const App = () => (
             <Route path="/settings/restaurant" element={<RestaurantSettings />} />
             <Route path="/settings/users" element={<UserManagement />} />
             <Route path="/settings/backup" element={<BackupManagement />} />
+            
+            {/* SuperAdmin Routes */}
+            <Route path="/superadmin/login" element={<SuperAdminLogin />} />
+            <Route path="/superadmin/dashboard" element={<SuperAdminDashboard />} />
+            
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
