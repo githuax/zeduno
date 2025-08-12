@@ -1,0 +1,725 @@
+paths:
+  /orders:
+    get:
+      tags:
+        - Orders
+      summary: Get all orders
+      description: Retrieve a list of orders based on user role
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+          description: Page number
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+          description: Number of items per page
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [pending, confirmed, preparing, ready, completed, cancelled]
+          description: Filter by order status
+        - in: query
+          name: type
+          schema:
+            type: string
+            enum: [dine-in, takeaway, delivery]
+          description: Filter by order type
+        - in: query
+          name: tableId
+          schema:
+            type: string
+          description: Filter by table ID
+        - in: query
+          name: fromDate
+          schema:
+            type: string
+            format: date
+          description: Filter orders from this date
+        - in: query
+          name: toDate
+          schema:
+            type: string
+            format: date
+          description: Filter orders to this date
+      responses:
+        200:
+          description: Orders retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      orders:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Order'
+                      pagination:
+                        type: object
+                        properties:
+                          total:
+                            type: integer
+                            example: 50
+                          page:
+                            type: integer
+                            example: 1
+                          pages:
+                            type: integer
+                            example: 5
+                          limit:
+                            type: integer
+                            example: 10
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags:
+        - Orders
+      summary: Create a new order
+      description: Create a new order (Admin/Staff only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - items
+                - type
+              properties:
+                tableId:
+                  type: string
+                  example: 507f1f77bcf86cd799439014
+                items:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required:
+                      - menuItemId
+                      - quantity
+                    properties:
+                      menuItemId:
+                        type: string
+                        example: 507f1f77bcf86cd799439015
+                      quantity:
+                        type: integer
+                        minimum: 1
+                        example: 2
+                      notes:
+                        type: string
+                        example: No salt
+                type:
+                  type: string
+                  enum: [dine-in, takeaway, delivery]
+                  example: dine-in
+                notes:
+                  type: string
+                  example: Birthday celebration
+                customerInfo:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      example: John Doe
+                    phone:
+                      type: string
+                      example: +1234567890
+                    email:
+                      type: string
+                      format: email
+                      example: john@example.com
+                deliveryAddress:
+                  type: object
+                  properties:
+                    street:
+                      type: string
+                      example: 123 Main St
+                    city:
+                      type: string
+                      example: New York
+                    zipCode:
+                      type: string
+                      example: '10001'
+      responses:
+        201:
+          description: Order created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Order created successfully
+                  data:
+                    $ref: '#/components/schemas/Order'
+        400:
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: Forbidden - Admin/Staff access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /orders/{id}:
+    get:
+      tags:
+        - Orders
+      summary: Get order by ID
+      description: Retrieve a specific order by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Order ID
+          example: 507f1f77bcf86cd799439011
+      responses:
+        200:
+          description: Order retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Order'
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: Forbidden - Not authorized to view this order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      tags:
+        - Orders
+      summary: Update order
+      description: Update a specific order by ID (Admin/Staff only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Order ID
+          example: 507f1f77bcf86cd799439011
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      menuItemId:
+                        type: string
+                      quantity:
+                        type: integer
+                        minimum: 1
+                      notes:
+                        type: string
+                notes:
+                  type: string
+                discount:
+                  type: number
+                  minimum: 0
+      responses:
+        200:
+          description: Order updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Order updated successfully
+                  data:
+                    $ref: '#/components/schemas/Order'
+        400:
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: Forbidden - Admin/Staff access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags:
+        - Orders
+      summary: Delete order
+      description: Delete a specific order by ID (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Order ID
+          example: 507f1f77bcf86cd799439011
+      responses:
+        200:
+          description: Order deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Order deleted successfully
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: Forbidden - Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /orders/{id}/status:
+    patch:
+      tags:
+        - Orders
+      summary: Update order status
+      description: Update the status of an order (Admin/Staff only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Order ID
+          example: 507f1f77bcf86cd799439011
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [pending, confirmed, preparing, ready, completed, cancelled]
+                  example: preparing
+      responses:
+        200:
+          description: Order status updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Order status updated successfully
+                  data:
+                    $ref: '#/components/schemas/Order'
+        400:
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: Forbidden - Admin/Staff access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /orders/{id}/items/{itemId}/status:
+    patch:
+      tags:
+        - Orders
+      summary: Update order item status
+      description: Update the status of a specific item in an order (Admin/Staff only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Order ID
+          example: 507f1f77bcf86cd799439011
+        - in: path
+          name: itemId
+          required: true
+          schema:
+            type: string
+          description: Order item ID
+          example: 507f1f77bcf86cd799439012
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [pending, preparing, ready, served, cancelled]
+                  example: ready
+      responses:
+        200:
+          description: Order item status updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Order item status updated successfully
+                  data:
+                    $ref: '#/components/schemas/Order'
+        400:
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: Forbidden - Admin/Staff access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: Order or item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /orders/{id}/split:
+    post:
+      tags:
+        - Orders
+      summary: Split order
+      description: Split an order into multiple orders (Admin/Staff only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Order ID
+          example: 507f1f77bcf86cd799439011
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - splits
+              properties:
+                splits:
+                  type: array
+                  minItems: 2
+                  items:
+                    type: object
+                    required:
+                      - items
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          type: string
+                          description: Order item IDs
+                      tableId:
+                        type: string
+                        description: Optional new table ID for split
+      responses:
+        200:
+          description: Order split successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Order split successfully
+                  data:
+                    type: object
+                    properties:
+                      originalOrder:
+                        $ref: '#/components/schemas/Order'
+                      newOrders:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Order'
+        400:
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: Forbidden - Admin/Staff access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /orders/merge:
+    post:
+      tags:
+        - Orders
+      summary: Merge orders
+      description: Merge multiple orders into one (Admin/Staff only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - orderIds
+              properties:
+                orderIds:
+                  type: array
+                  minItems: 2
+                  items:
+                    type: string
+                  example: [507f1f77bcf86cd799439011, 507f1f77bcf86cd799439012]
+                targetTableId:
+                  type: string
+                  description: Table ID for merged order
+                  example: 507f1f77bcf86cd799439014
+      responses:
+        200:
+          description: Orders merged successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Orders merged successfully
+                  data:
+                    $ref: '#/components/schemas/Order'
+        400:
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: Forbidden - Admin/Staff access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: One or more orders not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /orders/{id}/print-kitchen:
+    post:
+      tags:
+        - Orders
+      summary: Print kitchen order
+      description: Send order to kitchen printer (Admin/Staff only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Order ID
+          example: 507f1f77bcf86cd799439011
+      responses:
+        200:
+          description: Order sent to kitchen successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Order sent to kitchen printer
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: Forbidden - Admin/Staff access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

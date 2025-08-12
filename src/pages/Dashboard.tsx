@@ -2,6 +2,9 @@ import Header from "@/components/layout/Header";
 import HeroSection from "@/components/dashboard/HeroSection";
 import QuickStats from "@/components/dashboard/QuickStats";
 import ModuleCard from "@/components/dashboard/ModuleCard";
+import { useNavigate } from "react-router-dom";
+import { useTenant, TenantSelector, FeatureGate } from "@/contexts/TenantContext";
+import { Badge } from "@/components/ui/badge";
 import { 
   ShoppingCart, 
   Users, 
@@ -10,10 +13,15 @@ import {
   BarChart3, 
   CreditCard, 
   Settings, 
-  UserCheck 
+  UserCheck,
+  Crown,
+  Building
 } from "lucide-react";
 
 const Dashboard = () => {
+  const navigate = useNavigate();
+  const { context } = useTenant();
+  
   const modules = [
     {
       title: "Order Management",
@@ -21,7 +29,7 @@ const Dashboard = () => {
       icon: ShoppingCart,
       status: "active" as const,
       stats: "23 Active",
-      onClick: () => console.log("Order Management clicked")
+      onClick: () => navigate("/orders")
     },
     {
       title: "Dine-In Service",
@@ -29,7 +37,7 @@ const Dashboard = () => {
       icon: Users,
       status: "active" as const,
       stats: "18/24 Tables",
-      onClick: () => console.log("Dine-In clicked")
+      onClick: () => navigate("/dine-in")
     },
     {
       title: "Takeaway Orders",
@@ -37,7 +45,7 @@ const Dashboard = () => {
       icon: Package,
       status: "active" as const,
       stats: "12 Pending",
-      onClick: () => console.log("Takeaway clicked")
+      onClick: () => navigate("/takeaway")
     },
     {
       title: "Delivery Service",
@@ -45,7 +53,7 @@ const Dashboard = () => {
       icon: Truck,
       status: "active" as const,
       stats: "8 En Route",
-      onClick: () => console.log("Delivery clicked")
+      onClick: () => navigate("/delivery")
     },
     {
       title: "Staff Management",
@@ -53,7 +61,7 @@ const Dashboard = () => {
       icon: UserCheck,
       status: "active" as const,
       stats: "15 On Shift",
-      onClick: () => console.log("Staff clicked")
+      onClick: () => navigate("/staff")
     },
     {
       title: "Analytics & Reports",
@@ -61,7 +69,7 @@ const Dashboard = () => {
       icon: BarChart3,
       status: "active" as const,
       stats: "View Reports",
-      onClick: () => console.log("Analytics clicked")
+      onClick: () => navigate("/analytics")
     },
     {
       title: "Payment Processing",
@@ -69,14 +77,14 @@ const Dashboard = () => {
       icon: CreditCard,
       status: "active" as const,
       stats: "$2,847 Today",
-      onClick: () => console.log("Payments clicked")
+      onClick: () => navigate("/payments")
     },
     {
       title: "System Settings",
       description: "Configure restaurant and system preferences",
       icon: Settings,
       status: "active" as const,
-      onClick: () => console.log("Settings clicked")
+      onClick: () => navigate("/settings")
     }
   ];
 
@@ -85,6 +93,37 @@ const Dashboard = () => {
       <Header />
       
       <main className="p-6">
+        {/* Tenant Information Header */}
+        {context && (
+          <div className="mb-6 p-4 bg-card rounded-lg border">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Building className="h-6 w-6 text-primary" />
+                <div>
+                  <h2 className="text-xl font-bold">{context.tenant.name}</h2>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge variant="secondary" className="text-xs">
+                      {context.subscription.plan.displayName}
+                    </Badge>
+                    <Badge 
+                      variant={context.tenant.status === 'active' ? 'default' : 'secondary'}
+                      className="text-xs"
+                    >
+                      {context.tenant.status}
+                    </Badge>
+                    {context.tenant.trialEndsAt && (
+                      <Badge variant="outline" className="text-xs">
+                        Trial ends {new Date(context.tenant.trialEndsAt).toLocaleDateString()}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <TenantSelector />
+            </div>
+          </div>
+        )}
+        
         <HeroSection />
         <QuickStats />
         
@@ -96,17 +135,47 @@ const Dashboard = () => {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {modules.map((module, index) => (
-            <ModuleCard
-              key={index}
-              title={module.title}
-              description={module.description}
-              icon={module.icon}
-              status={module.status}
-              stats={module.stats}
-              onClick={module.onClick}
-            />
-          ))}
+          {modules.map((module, index) => {
+            // Check if advanced analytics is available for premium features
+            if (module.title === "Analytics & Reports") {
+              return (
+                <FeatureGate 
+                  key={index}
+                  feature="advancedReporting"
+                  fallback={
+                    <ModuleCard
+                      title={module.title}
+                      description="Upgrade for advanced analytics"
+                      icon={module.icon}
+                      status="disabled"
+                      onClick={() => navigate("/settings")}
+                    />
+                  }
+                >
+                  <ModuleCard
+                    title={module.title}
+                    description={module.description}
+                    icon={module.icon}
+                    status={module.status}
+                    stats={module.stats}
+                    onClick={module.onClick}
+                  />
+                </FeatureGate>
+              );
+            }
+            
+            return (
+              <ModuleCard
+                key={index}
+                title={module.title}
+                description={module.description}
+                icon={module.icon}
+                status={module.status}
+                stats={module.stats}
+                onClick={module.onClick}
+              />
+            );
+          })}
         </div>
       </main>
     </div>

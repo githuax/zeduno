@@ -1,0 +1,439 @@
+paths:
+  /tables:
+    get:
+      tags:
+        - Tables
+      summary: Get all tables
+      description: Retrieve a list of all tables
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+          description: Page number
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+          description: Number of items per page
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [available, occupied, reserved, cleaning]
+          description: Filter by table status
+        - in: query
+          name: location
+          schema:
+            type: string
+            enum: [indoor, outdoor, terrace, private]
+          description: Filter by location
+        - in: query
+          name: floor
+          schema:
+            type: integer
+          description: Filter by floor number
+        - in: query
+          name: section
+          schema:
+            type: string
+          description: Filter by section
+        - in: query
+          name: minCapacity
+          schema:
+            type: integer
+          description: Minimum capacity filter
+        - in: query
+          name: isActive
+          schema:
+            type: boolean
+          description: Filter by active status
+      responses:
+        200:
+          description: Tables retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      tables:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Table'
+                      pagination:
+                        type: object
+                        properties:
+                          total:
+                            type: integer
+                            example: 30
+                          page:
+                            type: integer
+                            example: 1
+                          pages:
+                            type: integer
+                            example: 3
+                          limit:
+                            type: integer
+                            example: 10
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags:
+        - Tables
+      summary: Create a new table
+      description: Add a new table to the system (Admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tableNumber
+                - capacity
+              properties:
+                tableNumber:
+                  type: string
+                  example: T01
+                capacity:
+                  type: integer
+                  minimum: 1
+                  example: 4
+                location:
+                  type: string
+                  enum: [indoor, outdoor, terrace, private]
+                  default: indoor
+                  example: indoor
+                floor:
+                  type: integer
+                  default: 1
+                  example: 1
+                section:
+                  type: string
+                  example: Main Hall
+                status:
+                  type: string
+                  enum: [available, occupied, reserved, cleaning]
+                  default: available
+                  example: available
+                isActive:
+                  type: boolean
+                  default: true
+                  example: true
+      responses:
+        201:
+          description: Table created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Table created successfully
+                  data:
+                    $ref: '#/components/schemas/Table'
+        400:
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: Forbidden - Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        409:
+          description: Table number already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /tables/{id}:
+    get:
+      tags:
+        - Tables
+      summary: Get table by ID
+      description: Retrieve a specific table by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Table ID
+          example: 507f1f77bcf86cd799439011
+      responses:
+        200:
+          description: Table retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      table:
+                        $ref: '#/components/schemas/Table'
+                      currentOrder:
+                        $ref: '#/components/schemas/Order'
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: Table not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      tags:
+        - Tables
+      summary: Update table
+      description: Update a specific table by ID (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Table ID
+          example: 507f1f77bcf86cd799439011
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tableNumber:
+                  type: string
+                  example: T01
+                capacity:
+                  type: integer
+                  minimum: 1
+                  example: 4
+                location:
+                  type: string
+                  enum: [indoor, outdoor, terrace, private]
+                  example: indoor
+                floor:
+                  type: integer
+                  example: 1
+                section:
+                  type: string
+                  example: Main Hall
+                isActive:
+                  type: boolean
+                  example: true
+      responses:
+        200:
+          description: Table updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Table updated successfully
+                  data:
+                    $ref: '#/components/schemas/Table'
+        400:
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: Forbidden - Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: Table not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        409:
+          description: Table number already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags:
+        - Tables
+      summary: Delete table
+      description: Delete a specific table by ID (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Table ID
+          example: 507f1f77bcf86cd799439011
+      responses:
+        200:
+          description: Table deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Table deleted successfully
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: Forbidden - Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: Table not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        409:
+          description: Cannot delete table with active orders
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /tables/{id}/status:
+    patch:
+      tags:
+        - Tables
+      summary: Update table status
+      description: Update the status of a table (Admin/Staff only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Table ID
+          example: 507f1f77bcf86cd799439011
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [available, occupied, reserved, cleaning]
+                  example: occupied
+      responses:
+        200:
+          description: Table status updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Table status updated successfully
+                  data:
+                    $ref: '#/components/schemas/Table'
+        400:
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: Forbidden - Admin/Staff access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: Table not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

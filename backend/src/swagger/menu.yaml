@@ -1,0 +1,454 @@
+paths:
+  /menu:
+    get:
+      tags:
+        - Menu
+      summary: Get all menu items
+      description: Retrieve a list of all menu items
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+          description: Page number
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+          description: Number of items per page
+        - in: query
+          name: category
+          schema:
+            type: string
+            enum: [appetizer, main, dessert, beverage, sides]
+          description: Filter by category
+        - in: query
+          name: available
+          schema:
+            type: boolean
+          description: Filter by availability
+        - in: query
+          name: vegetarian
+          schema:
+            type: boolean
+          description: Filter vegetarian items
+        - in: query
+          name: vegan
+          schema:
+            type: boolean
+          description: Filter vegan items
+        - in: query
+          name: glutenFree
+          schema:
+            type: boolean
+          description: Filter gluten-free items
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Search by name or description
+      responses:
+        200:
+          description: Menu items retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/MenuItem'
+                      pagination:
+                        type: object
+                        properties:
+                          total:
+                            type: integer
+                            example: 50
+                          page:
+                            type: integer
+                            example: 1
+                          pages:
+                            type: integer
+                            example: 5
+                          limit:
+                            type: integer
+                            example: 10
+
+    post:
+      tags:
+        - Menu
+      summary: Create a new menu item
+      description: Add a new item to the menu (Admin/Staff only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - category
+                - price
+              properties:
+                name:
+                  type: string
+                  example: Grilled Salmon
+                category:
+                  type: string
+                  enum: [appetizer, main, dessert, beverage, sides]
+                  example: main
+                description:
+                  type: string
+                  example: Fresh Atlantic salmon with herbs
+                price:
+                  type: number
+                  minimum: 0
+                  example: 24.99
+                available:
+                  type: boolean
+                  default: true
+                  example: true
+                preparationTime:
+                  type: integer
+                  description: Time in minutes
+                  example: 20
+                ingredients:
+                  type: array
+                  items:
+                    type: string
+                  example: [Salmon, Herbs, Lemon]
+                allergens:
+                  type: array
+                  items:
+                    type: string
+                  example: [Fish]
+                nutritionalInfo:
+                  type: object
+                  properties:
+                    calories:
+                      type: number
+                      example: 350
+                    protein:
+                      type: number
+                      example: 35
+                    carbs:
+                      type: number
+                      example: 10
+                    fat:
+                      type: number
+                      example: 20
+                image:
+                  type: string
+                  example: salmon.jpg
+                spicyLevel:
+                  type: integer
+                  minimum: 0
+                  maximum: 5
+                  example: 0
+                vegetarian:
+                  type: boolean
+                  default: false
+                  example: false
+                vegan:
+                  type: boolean
+                  default: false
+                  example: false
+                glutenFree:
+                  type: boolean
+                  default: false
+                  example: true
+      responses:
+        201:
+          description: Menu item created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Menu item created successfully
+                  data:
+                    $ref: '#/components/schemas/MenuItem'
+        400:
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: Forbidden - Admin/Staff access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /menu/{id}:
+    get:
+      tags:
+        - Menu
+      summary: Get menu item by ID
+      description: Retrieve a specific menu item by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Menu item ID
+          example: 507f1f77bcf86cd799439011
+      responses:
+        200:
+          description: Menu item retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/MenuItem'
+        404:
+          description: Menu item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      tags:
+        - Menu
+      summary: Update menu item
+      description: Update a specific menu item by ID (Admin/Staff only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Menu item ID
+          example: 507f1f77bcf86cd799439011
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: Grilled Salmon
+                category:
+                  type: string
+                  enum: [appetizer, main, dessert, beverage, sides]
+                  example: main
+                description:
+                  type: string
+                  example: Fresh Atlantic salmon with herbs
+                price:
+                  type: number
+                  minimum: 0
+                  example: 24.99
+                available:
+                  type: boolean
+                  example: true
+                preparationTime:
+                  type: integer
+                  example: 20
+                ingredients:
+                  type: array
+                  items:
+                    type: string
+                  example: [Salmon, Herbs, Lemon]
+                allergens:
+                  type: array
+                  items:
+                    type: string
+                  example: [Fish]
+                nutritionalInfo:
+                  type: object
+                  properties:
+                    calories:
+                      type: number
+                    protein:
+                      type: number
+                    carbs:
+                      type: number
+                    fat:
+                      type: number
+                image:
+                  type: string
+                  example: salmon.jpg
+                spicyLevel:
+                  type: integer
+                  minimum: 0
+                  maximum: 5
+                vegetarian:
+                  type: boolean
+                vegan:
+                  type: boolean
+                glutenFree:
+                  type: boolean
+      responses:
+        200:
+          description: Menu item updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Menu item updated successfully
+                  data:
+                    $ref: '#/components/schemas/MenuItem'
+        400:
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: Forbidden - Admin/Staff access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: Menu item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags:
+        - Menu
+      summary: Delete menu item
+      description: Delete a specific menu item by ID (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Menu item ID
+          example: 507f1f77bcf86cd799439011
+      responses:
+        200:
+          description: Menu item deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Menu item deleted successfully
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: Forbidden - Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: Menu item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /menu/{id}/toggle-availability:
+    patch:
+      tags:
+        - Menu
+      summary: Toggle menu item availability
+      description: Toggle the availability status of a menu item (Admin/Staff only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Menu item ID
+          example: 507f1f77bcf86cd799439011
+      responses:
+        200:
+          description: Availability toggled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Menu item availability updated
+                  data:
+                    $ref: '#/components/schemas/MenuItem'
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: Forbidden - Admin/Staff access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: Menu item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

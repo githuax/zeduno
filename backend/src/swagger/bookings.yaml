@@ -1,0 +1,440 @@
+paths:
+  /bookings:
+    get:
+      tags:
+        - Bookings
+      summary: Get all bookings
+      description: Retrieve a list of all bookings (Admin/Staff only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+          description: Page number
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+          description: Number of items per page
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [pending, confirmed, cancelled, completed]
+          description: Filter by booking status
+        - in: query
+          name: userId
+          schema:
+            type: string
+          description: Filter by user ID
+        - in: query
+          name: roomId
+          schema:
+            type: string
+          description: Filter by room ID
+        - in: query
+          name: fromDate
+          schema:
+            type: string
+            format: date
+          description: Filter bookings from this date
+        - in: query
+          name: toDate
+          schema:
+            type: string
+            format: date
+          description: Filter bookings to this date
+      responses:
+        200:
+          description: Bookings retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      bookings:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Booking'
+                      pagination:
+                        type: object
+                        properties:
+                          total:
+                            type: integer
+                            example: 50
+                          page:
+                            type: integer
+                            example: 1
+                          pages:
+                            type: integer
+                            example: 5
+                          limit:
+                            type: integer
+                            example: 10
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: Forbidden - Admin/Staff access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags:
+        - Bookings
+      summary: Create a new booking
+      description: Create a new room booking
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - roomId
+                - checkIn
+                - checkOut
+                - guests
+              properties:
+                roomId:
+                  type: string
+                  example: 507f1f77bcf86cd799439013
+                checkIn:
+                  type: string
+                  format: date
+                  example: '2024-12-20'
+                checkOut:
+                  type: string
+                  format: date
+                  example: '2024-12-25'
+                guests:
+                  type: integer
+                  minimum: 1
+                  example: 2
+                specialRequests:
+                  type: string
+                  example: Late check-in requested
+                guestDetails:
+                  type: object
+                  properties:
+                    firstName:
+                      type: string
+                      example: John
+                    lastName:
+                      type: string
+                      example: Doe
+                    email:
+                      type: string
+                      format: email
+                      example: john@example.com
+                    phone:
+                      type: string
+                      example: +1234567890
+      responses:
+        201:
+          description: Booking created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Booking created successfully
+                  data:
+                    $ref: '#/components/schemas/Booking'
+        400:
+          description: Bad request - Invalid data or room not available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /bookings/my-bookings:
+    get:
+      tags:
+        - Bookings
+      summary: Get current user's bookings
+      description: Retrieve all bookings for the authenticated user
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+          description: Page number
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+          description: Number of items per page
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [pending, confirmed, cancelled, completed]
+          description: Filter by booking status
+      responses:
+        200:
+          description: User bookings retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      bookings:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Booking'
+                      pagination:
+                        type: object
+                        properties:
+                          total:
+                            type: integer
+                            example: 10
+                          page:
+                            type: integer
+                            example: 1
+                          pages:
+                            type: integer
+                            example: 1
+                          limit:
+                            type: integer
+                            example: 10
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /bookings/{id}:
+    get:
+      tags:
+        - Bookings
+      summary: Get booking by ID
+      description: Retrieve a specific booking by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Booking ID
+          example: 507f1f77bcf86cd799439011
+      responses:
+        200:
+          description: Booking retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Booking'
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: Forbidden - Not authorized to view this booking
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: Booking not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      tags:
+        - Bookings
+      summary: Update booking
+      description: Update a specific booking by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Booking ID
+          example: 507f1f77bcf86cd799439011
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                checkIn:
+                  type: string
+                  format: date
+                  example: '2024-12-20'
+                checkOut:
+                  type: string
+                  format: date
+                  example: '2024-12-25'
+                guests:
+                  type: integer
+                  minimum: 1
+                  example: 2
+                specialRequests:
+                  type: string
+                  example: Late check-in requested
+                status:
+                  type: string
+                  enum: [pending, confirmed, cancelled, completed]
+                  example: confirmed
+      responses:
+        200:
+          description: Booking updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Booking updated successfully
+                  data:
+                    $ref: '#/components/schemas/Booking'
+        400:
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: Forbidden - Not authorized to update this booking
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: Booking not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /bookings/{id}/cancel:
+    patch:
+      tags:
+        - Bookings
+      summary: Cancel booking
+      description: Cancel a specific booking by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Booking ID
+          example: 507f1f77bcf86cd799439011
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  example: Change of plans
+      responses:
+        200:
+          description: Booking cancelled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Booking cancelled successfully
+                  data:
+                    $ref: '#/components/schemas/Booking'
+        400:
+          description: Bad request - Booking cannot be cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        403:
+          description: Forbidden - Not authorized to cancel this booking
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        404:
+          description: Booking not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
