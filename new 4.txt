@@ -1,0 +1,9 @@
+Please note that in Smart Hospital there are two login panels -
+
+
+http://localhost/smart_hospital_src/site/login Admin Panel : this panel is used for staff like superadmin, admin, doctor, pharmacist, pathologist, radiologist, 
+
+accountant, receptionist, nurse login.
+
+
+http://localhost/smart_hospital_src/site/userlogin User Panel : this panel is used for patient login.
