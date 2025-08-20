@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { TenantContext as TenantContextType, Tenant, TenantUser } from '@/types/tenant.types';
 import { useTenantContext } from '@/hooks/useTenant';
 
@@ -17,14 +18,22 @@ interface TenantContextState {
 const TenantContextProvider = createContext<TenantContextState | undefined>(undefined);
 
 export const TenantProvider: React.FC<TenantProviderProps> = ({ children }) => {
+  const queryClient = useQueryClient();
   const [currentTenantId, setCurrentTenantId] = useState<string>(() => {
-    // Initialize from URL subdomain, localStorage, or default
+    // Initialize from URL query parameter, subdomain, localStorage, or default
     if (typeof window !== 'undefined') {
+      // Check URL query parameter first (e.g., /dashboard?tenant=bella-vista)
+      const urlParams = new URLSearchParams(window.location.search);
+      const tenantParam = urlParams.get('tenant');
+      if (tenantParam) {
+        return tenantParam;
+      }
+      
       // Check subdomain routing (e.g., tenant1.hotelzed.com)
       const hostname = window.location.hostname;
       const subdomain = hostname.split('.')[0];
       
-      if (subdomain && subdomain !== 'www' && subdomain !== 'app') {
+      if (subdomain && subdomain !== 'www' && subdomain !== 'app' && subdomain !== 'localhost') {
         return subdomain;
       }
       
@@ -48,6 +57,9 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({ children }) => {
   const switchTenant = (tenantId: string) => {
     setCurrentTenantId(tenantId);
     setCurrentLocationId(undefined); // Reset location when switching tenants
+    
+    // Invalidate tenant context cache when switching tenants
+    queryClient.invalidateQueries({ queryKey: ['tenant-context'] });
     
     // In a real app, you might want to redirect to the new tenant's subdomain
     if (typeof window !== 'undefined') {

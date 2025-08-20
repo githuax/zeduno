@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { getApiUrl } from '../config/api';
 
 interface User {
@@ -35,6 +36,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     checkAuth();
@@ -136,6 +138,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem('superadmin_user', JSON.stringify(mappedUser));
       }
       
+      // Clear existing React Query cache to prevent stale tenant data
+      queryClient.clear();
+      
       setUser(mappedUser);
 
       // Redirect based on role and tenant
@@ -173,6 +178,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('user');
     localStorage.removeItem('superadmin_token');
     localStorage.removeItem('superadmin_user');
+    localStorage.removeItem('currentTenantId'); // Clear tenant ID cache
+    
+    // Clear all React Query cache to prevent stale data on next login
+    queryClient.clear();
+    
     setUser(null);
     navigate('/login');
   };

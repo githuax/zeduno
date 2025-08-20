@@ -315,40 +315,39 @@ const mapSlugToTenantId = (slug: string): string => {
 // Tenant Context Hook
 export const useTenantContext = () => {
   // Get actual user data from localStorage (set during login)
+  // Use try-catch to handle potential JSON parse errors
   const userData = localStorage.getItem('user');
-  const user = userData ? JSON.parse(userData) : null;
+  let user = null;
+  try {
+    user = userData ? JSON.parse(userData) : null;
+  } catch (error) {
+    console.error('Failed to parse user data from localStorage:', error);
+    localStorage.removeItem('user'); // Remove corrupted data
+    user = null;
+  }
   
   // Check URL query parameter first
-  let currentTenantId = 'tenant_001';
+  let currentTenantId = user?.tenantId || 'no-tenant';
   if (typeof window !== 'undefined') {
     const urlParams = new URLSearchParams(window.location.search);
     const tenantParam = urlParams.get('tenant');
     if (tenantParam) {
       currentTenantId = mapSlugToTenantId(tenantParam);
     } else {
-      currentTenantId = user?.tenantId || user?.tenantName || 'tenant_001';
+      currentTenantId = user?.tenantId || user?.tenantName || user?.tenant?._id || 'no-tenant';
     }
   } else {
-    currentTenantId = user?.tenantId || user?.tenantName || 'tenant_001';
+    currentTenantId = user?.tenantId || user?.tenantName || user?.tenant?._id || 'no-tenant';
   }
   
   // Use tenantName from user data, with proper fallback chain
   const tenantName = user?.tenantName || user?.tenant?.name || "Default Restaurant";
   
-  // Debug log to verify tenant data is being loaded correctly
-  if (user) {
-    console.log('User tenant data:', {
-      tenantName: user.tenantName,
-      tenantFromObject: user.tenant?.name,
-      extractedTenantName: tenantName
-    });
-  }
-  
   return useQuery({
-    queryKey: ['tenant-context', currentTenantId],
+    queryKey: ['tenant-context', currentTenantId, user?.email], // Include user email to ensure cache invalidation on user change
     queryFn: () => {
       // If we have real user data, create context from it
-      if (user && user.tenantId) {
+      if (user && (user.tenantId || user.tenant)) {
         // Use real tenant data if available, otherwise create from basic info
         const realTenant = user.tenant;
         const tenant: Tenant = {
@@ -479,7 +478,7 @@ export const useTenantContext = () => {
       
       return context;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 30 * 1000, // 30 seconds - shorter stale time to ensure fresh data after login
     retry: false
   });
 };
