@@ -287,25 +287,189 @@ const generateMockSubscriptionPlans = (): SubscriptionPlan[] => [
   }
 ];
 
+// Helper function to map tenant slug to tenant ID
+const mapSlugToTenantId = (slug: string): string => {
+  // For MongoDB ObjectIds, they start with alphanumeric characters
+  // If the slug looks like a MongoDB ObjectId, return it as is
+  if (/^[a-f\d]{24}$/i.test(slug)) {
+    return slug;
+  }
+  
+  // Map known mock tenant slugs to their IDs
+  const slugMap: Record<string, string> = {
+    'joes-pizza': 'tenant_001',
+    'bella-vista': 'tenant_002',
+  };
+  
+  // If it's a known slug, return the mapped ID
+  if (slugMap[slug]) {
+    return slugMap[slug];
+  }
+  
+  // Otherwise, it might be a new tenant slug from the database
+  // In this case, we'll need to fetch the tenant by slug
+  // For now, return the slug itself and let the backend handle it
+  return slug;
+};
+
 // Tenant Context Hook
 export const useTenantContext = () => {
-  // In a real app, this would come from authentication context
-  const currentTenantId = 'tenant_001'; // This would be dynamic
+  // Get actual user data from localStorage (set during login)
+  const userData = localStorage.getItem('user');
+  const user = userData ? JSON.parse(userData) : null;
+  
+  // Check URL query parameter first
+  let currentTenantId = 'tenant_001';
+  if (typeof window !== 'undefined') {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tenantParam = urlParams.get('tenant');
+    if (tenantParam) {
+      currentTenantId = mapSlugToTenantId(tenantParam);
+    } else {
+      currentTenantId = user?.tenantId || user?.tenantName || 'tenant_001';
+    }
+  } else {
+    currentTenantId = user?.tenantId || user?.tenantName || 'tenant_001';
+  }
+  
+  // Use tenantName from user data, with proper fallback chain
+  const tenantName = user?.tenantName || user?.tenant?.name || "Default Restaurant";
+  
+  // Debug log to verify tenant data is being loaded correctly
+  if (user) {
+    console.log('User tenant data:', {
+      tenantName: user.tenantName,
+      tenantFromObject: user.tenant?.name,
+      extractedTenantName: tenantName
+    });
+  }
   
   return useQuery({
     queryKey: ['tenant-context', currentTenantId],
     queryFn: () => {
+      // If we have real user data, create context from it
+      if (user && user.tenantId) {
+        // Use real tenant data if available, otherwise create from basic info
+        const realTenant = user.tenant;
+        const tenant: Tenant = {
+          id: realTenant?._id || realTenant?.id || user.tenantId,
+          name: tenantName, // Use the properly extracted tenantName
+          slug: realTenant?.slug || tenantName.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          domain: realTenant?.domain || `${tenantName.toLowerCase().replace(/[^a-z0-9]+/g, '')}.com`,
+          status: realTenant?.status || 'active',
+          settings: realTenant?.settings ? {
+            ...realTenant.settings,
+            currency: realTenant.settings.currency || 'KES',
+          } : {
+            timezone: 'America/New_York',
+            currency: 'KES', // Default currency
+            language: 'en',
+            dateFormat: 'MM/DD/YYYY',
+            timeFormat: '12h',
+            defaultTaxRate: 8.5,
+            serviceChargeRate: 0,
+            allowGuestCheckout: true,
+            requireEmailVerification: true,
+            enableNotifications: true,
+            maintenanceMode: false
+          },
+          plan: {
+            id: 'plan_pro',
+            name: 'professional',
+            displayName: 'Professional',
+            price: 79,
+            currency: realTenant?.settings?.currency || 'USD',
+            billingCycle: 'monthly',
+            features: ['online_ordering', 'analytics', 'inventory'],
+            limits: {
+              maxUsers: realTenant?.maxUsers || 10,
+              maxTables: 50,
+              maxOrders: 2000,
+              maxMenuItems: 200,
+              storageGB: 5,
+              supportLevel: 'priority',
+              customBranding: true,
+              apiAccess: true,
+              advancedAnalytics: true
+            }
+          },
+          contact: {
+            email: realTenant?.email || user.email,
+            phone: realTenant?.phone || '+1-555-123-4567',
+            firstName: user.firstName || 'Admin',
+            lastName: user.lastName || 'User',
+            company: realTenant?.name || tenantName,
+            address: {
+              street: realTenant?.address || '123 Main St',
+              city: 'New York',
+              state: 'NY',
+              country: 'USA',
+              zipCode: '10001'
+            }
+          },
+          billing: {
+            billingEmail: realTenant?.email || user.email,
+            invoiceHistory: []
+          },
+          limits: {
+            currentUsers: realTenant?.currentUsers || 5,
+            currentTables: 24,
+            currentOrders: 150,
+            currentMenuItems: 85,
+            storageUsedGB: 2.3
+          },
+          features: {
+            multiLocation: false,
+            customDomain: true,
+            whiteLabel: false,
+            apiAccess: true,
+            customIntegrations: true,
+            advancedReporting: true,
+            prioritySupport: true,
+            sso: false,
+            auditLogs: true,
+            dataExport: true
+          },
+          createdAt: new Date(realTenant?.createdAt || '2024-01-15'),
+          updatedAt: new Date(),
+          trialEndsAt: undefined
+        };
+        
+        const tenantUser = {
+          ...generateMockCurrentUser(user.tenantId),
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName || 'Admin',
+          lastName: user.lastName || 'User',
+          username: user.email.split('@')[0]
+        };
+        
+        const context: TenantContext = {
+          tenant,
+          user: tenantUser,
+          permissions: tenantUser.permissions,
+          subscription: {
+            plan: tenant.plan,
+            usage: tenant.limits,
+            features: tenant.features
+          }
+        };
+        
+        return context;
+      }
+      
+      // Fallback to mock data if no real user
       const tenants = generateMockTenants();
       const tenant = tenants.find(t => t.id === currentTenantId);
       
       if (!tenant) throw new Error('Tenant not found');
       
-      const user = generateMockCurrentUser(currentTenantId);
+      const mockUser = generateMockCurrentUser(currentTenantId);
       
       const context: TenantContext = {
         tenant,
-        user,
-        permissions: user.permissions,
+        user: mockUser,
+        permissions: mockUser.permissions,
         subscription: {
           plan: tenant.plan,
           usage: tenant.limits,
