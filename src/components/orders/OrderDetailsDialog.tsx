@@ -19,6 +19,7 @@ import { Order, OrderStatus, PaymentStatus, PaymentMethod, OrderItem } from '@/t
 import { PaymentDialog } from '@/components/payment/PaymentDialog';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface OrderDetailsDialogProps {
   order: Order;
@@ -42,6 +43,7 @@ export function OrderDetailsDialog({ order, open, onOpenChange, onUpdate }: Orde
   const [selectedItemsForSplit, setSelectedItemsForSplit] = useState<string[]>([]);
   const [splitGroups, setSplitGroups] = useState<string[][]>([]);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const { format: formatPrice } = useCurrency();
 
   const handleStatusUpdate = async (newStatus: OrderStatus) => {
     setIsUpdating(true);
@@ -354,7 +356,7 @@ export function OrderDetailsDialog({ order, open, onOpenChange, onUpdate }: Orde
                               </Badge>
                             )}
                           </div>
-                          <span className="font-medium">${(item.price * item.quantity).toFixed(2)}</span>
+                          <span className="font-medium">{formatPrice((item.price * item.quantity))}</span>
                         </div>
                       );
                     })}
@@ -396,7 +398,7 @@ export function OrderDetailsDialog({ order, open, onOpenChange, onUpdate }: Orde
                           </p>
                           {item.customizations && item.customizations.length > 0 && (
                             <p className="text-sm text-muted-foreground">
-                              {item.customizations.map(c => `${c.option} (+$${c.price})`).join(', ')}
+                              {item.customizations.map(c => `${c.option} (+${formatPrice(c.price)})`).join(', ')}
                             </p>
                           )}
                           {item.specialInstructions && (
@@ -408,7 +410,7 @@ export function OrderDetailsDialog({ order, open, onOpenChange, onUpdate }: Orde
                             {item.status}
                           </Badge>
                         </div>
-                        <span className="font-medium">${(item.price * item.quantity).toFixed(2)}</span>
+                        <span className="font-medium">{formatPrice((item.price * item.quantity))}</span>
                       </div>
                     ))}
                   </div>
@@ -420,7 +422,7 @@ export function OrderDetailsDialog({ order, open, onOpenChange, onUpdate }: Orde
                     {order.splitBills.map((split, index) => (
                       <div key={index} className="flex justify-between items-center">
                         <span>Bill {split.billNumber}</span>
-                        <span className="font-medium">${split.total.toFixed(2)}</span>
+                        <span className="font-medium">{formatPrice(split.total)}</span>
                         <Badge variant={split.paymentStatus === 'paid' ? 'default' : 'secondary'}>
                           {split.paymentStatus}
                         </Badge>
@@ -434,28 +436,28 @@ export function OrderDetailsDialog({ order, open, onOpenChange, onUpdate }: Orde
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span>Subtotal:</span>
-                    <span>${order.subtotal.toFixed(2)}</span>
+                    <span>{formatPrice(order.subtotal)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Tax:</span>
-                    <span>${order.tax.toFixed(2)}</span>
+                    <span>{formatPrice(order.tax)}</span>
                   </div>
                   {order.serviceCharge && order.serviceCharge > 0 && (
                     <div className="flex justify-between">
                       <span>Service Charge:</span>
-                      <span>${order.serviceCharge.toFixed(2)}</span>
+                      <span>{formatPrice(order.serviceCharge)}</span>
                     </div>
                   )}
                   {order.discount && order.discount > 0 && (
                     <div className="flex justify-between text-green-600">
                       <span>Discount:</span>
-                      <span>-${order.discount.toFixed(2)}</span>
+                      <span>-{formatPrice(order.discount)}</span>
                     </div>
                   )}
                   <Separator />
                   <div className="flex justify-between text-lg font-semibold">
                     <span>Total:</span>
-                    <span>${order.total.toFixed(2)}</span>
+                    <span>{formatPrice(order.total)}</span>
                   </div>
                 </div>
               </CardContent>

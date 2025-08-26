@@ -4,6 +4,8 @@ import QuickStats from "@/components/dashboard/QuickStats";
 import ModuleCard from "@/components/dashboard/ModuleCard";
 import { useNavigate } from "react-router-dom";
 import { useTenant, TenantSelector, FeatureGate } from "@/contexts/TenantContext";
+import { useCurrency } from '@/hooks/useCurrency';
+import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { Badge } from "@/components/ui/badge";
 import { 
   ShoppingCart, 
@@ -15,12 +17,15 @@ import {
   Settings, 
   UserCheck,
   Crown,
-  Building
+  Building,
+  Menu
 } from "lucide-react";
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { context } = useTenant();
+  const { format: formatPrice } = useCurrency();
+  const { data: stats, isLoading: statsLoading, error: statsError } = useDashboardStats();
   
   const modules = [
     {
@@ -28,15 +33,23 @@ const Dashboard = () => {
       description: "Create, track, and manage all customer orders",
       icon: ShoppingCart,
       status: "active" as const,
-      stats: "23 Active",
+      stats: statsLoading ? "Loading..." : `${stats?.orders?.active || 0} Active`,
       onClick: () => navigate("/orders")
+    },
+    {
+      title: "Menu Management",
+      description: "Manage menu items, categories and pricing",
+      icon: Menu,
+      status: "active" as const,
+      stats: statsLoading ? "Loading..." : `${stats?.menu?.available || 0} Items`,
+      onClick: () => navigate("/menu")
     },
     {
       title: "Dine-In Service",
       description: "Table management and in-restaurant service",
       icon: Users,
       status: "active" as const,
-      stats: "18/24 Tables",
+      stats: statsLoading ? "Loading..." : `${stats?.tables?.occupied || 0}/${stats?.tables?.total || 0} Tables`,
       onClick: () => navigate("/dine-in")
     },
     {
@@ -44,7 +57,7 @@ const Dashboard = () => {
       description: "Quick service and pickup management",
       icon: Package,
       status: "active" as const,
-      stats: "12 Pending",
+      stats: statsLoading ? "Loading..." : `${stats?.orders?.takeaway || 0} Pending`,
       onClick: () => navigate("/takeaway")
     },
     {
@@ -52,7 +65,7 @@ const Dashboard = () => {
       description: "Delivery tracking and logistics",
       icon: Truck,
       status: "active" as const,
-      stats: "8 En Route",
+      stats: statsLoading ? "Loading..." : `${stats?.orders?.delivery || 0} En Route`,
       onClick: () => navigate("/delivery")
     },
     {
@@ -60,7 +73,7 @@ const Dashboard = () => {
       description: "Employee scheduling and role management",
       icon: UserCheck,
       status: "active" as const,
-      stats: "15 On Shift",
+      stats: statsLoading ? "Loading..." : `${stats?.staff?.onShift || 0} On Shift`,
       onClick: () => navigate("/staff")
     },
     {
@@ -76,7 +89,7 @@ const Dashboard = () => {
       description: "Handle transactions and financial operations",
       icon: CreditCard,
       status: "active" as const,
-      stats: "$2,847 Today",
+      stats: statsLoading ? "Loading..." : `${formatPrice(stats?.revenue?.today || 0)} Today`,
       onClick: () => navigate("/payments")
     },
     {
@@ -89,20 +102,22 @@ const Dashboard = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gray-50">
       <Header />
       
       <main className="p-6">
         {/* Tenant Information Header */}
         {context && (
-          <div className="mb-6 p-4 bg-card rounded-lg border">
+          <div className="mb-6 p-5 bg-white rounded-2xl border-0 shadow-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Building className="h-6 w-6 text-primary" />
+                <div className="p-2 rounded-lg bg-blue-50">
+                  <Building className="h-6 w-6 text-primary" />
+                </div>
                 <div>
-                  <h2 className="text-xl font-bold">{context.tenant.name}</h2>
+                  <h2 className="text-xl font-semibold text-foreground">{context.tenant.name}</h2>
                   <div className="flex items-center gap-2 mt-1">
-                    <Badge variant="secondary" className="text-xs">
+                    <Badge variant="secondary" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
                       {context.subscription.plan.displayName}
                     </Badge>
                     <Badge 
@@ -128,13 +143,13 @@ const Dashboard = () => {
         <QuickStats />
         
         <div className="mb-6">
-          <h3 className="text-2xl font-bold text-foreground mb-2">Restaurant Modules</h3>
+          <h3 className="text-2xl font-semibold text-foreground mb-2">Restaurant Modules</h3>
           <p className="text-muted-foreground">
-            Access all restaurant management features from your central dashboard
+            Access all restaurant management features from your clean, organized dashboard
           </p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {modules.map((module, index) => {
             // Check if advanced analytics is available for premium features
             if (module.title === "Analytics & Reports") {

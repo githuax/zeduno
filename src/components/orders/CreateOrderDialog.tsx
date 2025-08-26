@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Minus, X, ChefHat } from 'lucide-react';
 import {
   Dialog,
@@ -19,6 +19,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useMenuItems } from '@/hooks/useMenuItems';
 import { useTables } from '@/hooks/useTables';
+import { useCurrency } from '@/hooks/useCurrency';
+import { useEmployees } from '@/hooks/useEmployees';
 import { CreateOrderInput, MenuItem, OrderItemCustomization, OrderType } from '@/types/order.types';
 import { toast } from '@/hooks/use-toast';
 
@@ -40,6 +42,7 @@ interface CartItem {
 
 export function CreateOrderDialog({ open, onOpenChange, onSuccess, preselectedTableId, preselectedOrderType }: CreateOrderDialogProps) {
   const [orderType, setOrderType] = useState<OrderType>('dine-in');
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [tableId, setTableId] = useState('');
@@ -56,6 +59,8 @@ export function CreateOrderDialog({ open, onOpenChange, onSuccess, preselectedTa
 
   const { data: menuItems = [], isLoading: menuLoading } = useMenuItems();
   const { data: tables = [], isLoading: tablesLoading } = useTables();
+  const { data: employees = [], isLoading: employeesLoading } = useEmployees({ status: 'active' });
+  const { format: formatPrice } = useCurrency();
 
   const availableTables = tables.filter(t => t.status === 'available');
   
@@ -71,11 +76,39 @@ export function CreateOrderDialog({ open, onOpenChange, onSuccess, preselectedTa
       }
     }
   }, [preselectedTableId, preselectedOrderType, open]);
-  const categories = ['all', ...new Set(menuItems.map(item => item.category))];
+
+  const categories = ['all', ...new Set((menuItems || []).map(item => typeof item.category === 'string' ? item.category : item.category?.name || 'Unknown'))];
 
   const filteredMenuItems = selectedCategory === 'all' 
-    ? menuItems 
-    : menuItems.filter(item => item.category === selectedCategory);
+    ? (menuItems || [])
+    : (menuItems || []).filter(item => {
+        const itemCategory = typeof item.category === 'string' ? item.category : item.category?.name || 'Unknown';
+        return itemCategory === selectedCategory;
+      });
+
+  // Debug logging
+  React.useEffect(() => {
+    if (open) {
+      console.log('CreateOrderDialog opened - Debug info:');
+      console.log('Menu items:', menuItems);
+      console.log('Menu items length:', menuItems?.length);
+      console.log('Menu loading:', menuLoading);
+      console.log('Filtered menu items:', filteredMenuItems);
+      console.log('Categories:', categories);
+      console.log('Current user token exists:', !!localStorage.getItem('token'));
+      console.log('Selected category:', selectedCategory);
+      
+      // Check for Jack Daniels specifically
+      const jackDaniels = menuItems?.find(item => 
+        item.name.toLowerCase().includes('jack daniels') || 
+        item.name.toLowerCase().includes('tennessee')
+      );
+      console.log('Jack Daniels found:', jackDaniels);
+      
+      // Log first few menu items for reference
+      console.log('First 3 menu items:', menuItems?.slice(0, 3));
+    }
+  }, [open, menuItems, menuLoading, filteredMenuItems, categories, selectedCategory]);
 
   const addToCart = (menuItem: MenuItem) => {
     const existingItem = cart.find(item => item.menuItem._id === menuItem._id);
@@ -141,10 +174,10 @@ export function CreateOrderDialog({ open, onOpenChange, onSuccess, preselectedTa
   };
 
   const handleSubmit = async () => {
-    if (!customerName) {
+    if (!selectedEmployeeId) {
       toast({
         title: 'Error',
-        description: 'Customer name is required',
+        description: 'Please select an employee placing the order',
         variant: 'destructive',
       });
       return;
@@ -174,6 +207,7 @@ export function CreateOrderDialog({ open, onOpenChange, onSuccess, preselectedTa
       orderType,
       customerName,
       customerPhone,
+      staffId: selectedEmployeeId, // Link the employee who placed the order (backend expects staffId)
       tableId: orderType === 'dine-in' ? tableId : undefined,
       deliveryAddress: orderType === 'delivery' ? deliveryAddress : undefined,
       items: cart.map(item => ({
@@ -217,6 +251,7 @@ export function CreateOrderDialog({ open, onOpenChange, onSuccess, preselectedTa
   };
 
   const resetForm = () => {
+    setSelectedEmployeeId('');
     setCustomerName('');
     setCustomerPhone('');
     setTableId('');
@@ -255,13 +290,26 @@ export function CreateOrderDialog({ open, onOpenChange, onSuccess, preselectedTa
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="customerName">Customer Name *</Label>
-                <Input
-                  id="customerName"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="Enter name"
-                />
+                <Label htmlFor="employee">Employee (Placing Order) *</Label>
+                <Select value={selectedEmployeeId} onValueChange={(value) => {
+                  setSelectedEmployeeId(value);
+                  const employee = employees.find(e => e._id === value);
+                  if (employee) {
+                    setCustomerName(`${employee.firstName} ${employee.lastName}`);
+                    setCustomerPhone(employee.phone || '');
+                  }
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select employee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {employees.map(employee => (
+                      <SelectItem key={employee._id} value={employee._id}>
+                        {employee.firstName} {employee.lastName} - {employee.position}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label htmlFor="customerPhone">Phone</Label>
@@ -269,7 +317,8 @@ export function CreateOrderDialog({ open, onOpenChange, onSuccess, preselectedTa
                   id="customerPhone"
                   value={customerPhone}
                   onChange={(e) => setCustomerPhone(e.target.value)}
-                  placeholder="Enter phone"
+                  placeholder="Employee phone"
+                  disabled={true}
                 />
               </div>
             </div>
@@ -390,7 +439,7 @@ export function CreateOrderDialog({ open, onOpenChange, onSuccess, preselectedTa
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="font-medium">${item.totalPrice.toFixed(2)}</p>
+                            <p className="font-medium">{formatPrice(item.totalPrice)}</p>
                             <Button
                               size="sm"
                               variant="ghost"
@@ -408,7 +457,7 @@ export function CreateOrderDialog({ open, onOpenChange, onSuccess, preselectedTa
                 <div className="border-t pt-3 mt-3">
                   <div className="flex justify-between text-lg font-semibold">
                     <span>Total:</span>
-                    <span>${calculateTotal().toFixed(2)}</span>
+                    <span>{formatPrice(calculateTotal())}</span>
                   </div>
                 </div>
               </CardContent>
@@ -434,7 +483,15 @@ export function CreateOrderDialog({ open, onOpenChange, onSuccess, preselectedTa
 
           <div className="space-y-4">
             <div>
-              <Label>Menu Items</Label>
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-lg font-semibold">Menu Items</Label>
+                {orderType === 'dine-in' && (
+                  <Badge variant="secondary" className="bg-restaurant-primary/10 text-restaurant-primary">
+                    <ChefHat className="h-3 w-3 mr-1" />
+                    Dine-In Menu
+                  </Badge>
+                )}
+              </div>
               <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
                 <TabsList className="w-full flex-wrap h-auto">
                   {categories.map(cat => (
@@ -448,7 +505,28 @@ export function CreateOrderDialog({ open, onOpenChange, onSuccess, preselectedTa
 
             <ScrollArea className="h-[500px] pr-4">
               <div className="grid grid-cols-1 gap-3">
-                {filteredMenuItems.map((item) => (
+                {menuLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="text-center">
+                      <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
+                      <p className="text-muted-foreground">Loading menu items...</p>
+                    </div>
+                  </div>
+                ) : filteredMenuItems.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <ChefHat className="h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">No menu items available</h3>
+                    <p className="text-muted-foreground text-sm mb-4">
+                      {selectedCategory === 'all' 
+                        ? 'No menu items have been created yet, or they may be marked as unavailable.'
+                        : `No items found in the "${selectedCategory}" category.`
+                      }
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Please check Menu Management to add items or make them available.
+                    </p>
+                  </div>
+                ) : filteredMenuItems.map((item) => (
                   <Card key={item._id} className="cursor-pointer hover:shadow-md transition-shadow">
                     <CardContent className="p-4">
                       <div className="flex justify-between items-start">
@@ -456,7 +534,7 @@ export function CreateOrderDialog({ open, onOpenChange, onSuccess, preselectedTa
                           <h4 className="font-semibold">{item.name}</h4>
                           <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
                           <div className="flex items-center gap-2 mt-2">
-                            <span className="font-semibold text-lg">${item.price.toFixed(2)}</span>
+                            <span className="font-semibold text-lg">{formatPrice(item.price)}</span>
                             {!item.isAvailable && (
                               <Badge variant="secondary">Unavailable</Badge>
                             )}
@@ -504,7 +582,7 @@ export function CreateOrderDialog({ open, onOpenChange, onSuccess, preselectedTa
                                         updateCustomizations(item._id, newCustomizations);
                                       }}
                                     >
-                                      {option.name} {option.price > 0 && `+$${option.price}`}
+                                      {option.name} {option.price > 0 && `+${formatPrice(option.price)}`}
                                     </Button>
                                   );
                                 })}

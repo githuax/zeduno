@@ -1,8 +1,8 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: hotelzed-ingress
-  namespace: hotelzed
+  name: zeduno-ingress
+  namespace: zeduno
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
@@ -10,7 +10,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: hotelzed.local
+  - host: zeduno.local
     http:
       paths:
       - path: /api

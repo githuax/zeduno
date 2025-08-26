@@ -3,7 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Clock, Clock8, Phone, Mail, MapPin, Users } from 'lucide-react';
+import { Clock, Clock8, Phone, Mail, MapPin, Users, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Employee } from '@/types/staff.types';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -12,6 +12,7 @@ interface EmployeeListProps {
   onEmployeeClick: (employee: Employee) => void;
   onClockIn: (employeeId: string) => Promise<void>;
   onClockOut: (employeeId: string) => Promise<void>;
+  onStatusToggle: (employeeId: string, currentStatus: string) => Promise<void>;
   isLoading: boolean;
   roleColors: Record<string, string>;
 }
@@ -21,10 +22,12 @@ export function EmployeeList({
   onEmployeeClick, 
   onClockIn, 
   onClockOut, 
+  onStatusToggle,
   isLoading,
   roleColors 
 }: EmployeeListProps) {
   const [clockingEmployees, setClockingEmployees] = useState<Set<string>>(new Set());
+  const [statusToggling, setStatusToggling] = useState<Set<string>>(new Set());
 
   const handleClockAction = async (employeeId: string, action: 'in' | 'out') => {
     setClockingEmployees(prev => new Set([...prev, employeeId]));
@@ -36,6 +39,19 @@ export function EmployeeList({
       }
     } finally {
       setClockingEmployees(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(employeeId);
+        return newSet;
+      });
+    }
+  };
+
+  const handleStatusToggle = async (employeeId: string, currentStatus: string) => {
+    setStatusToggling(prev => new Set([...prev, employeeId]));
+    try {
+      await onStatusToggle(employeeId, currentStatus);
+    } finally {
+      setStatusToggling(prev => {
         const newSet = new Set(prev);
         newSet.delete(employeeId);
         return newSet;
@@ -185,6 +201,22 @@ export function EmployeeList({
                 >
                   <Clock className="h-3 w-3 mr-1" />
                   Out
+                </Button>
+                <Button
+                  size="sm"
+                  variant={employee.status === 'active' ? 'default' : 'secondary'}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleStatusToggle(employee._id, employee.status);
+                  }}
+                  disabled={statusToggling.has(employee._id)}
+                  className="h-7 px-2 text-xs"
+                  title={`Toggle status (currently ${employee.status})`}
+                >
+                  {employee.status === 'active' ? 
+                    <ToggleRight className="h-3 w-3" /> : 
+                    <ToggleLeft className="h-3 w-3" />
+                  }
                 </Button>
               </div>
             </div>

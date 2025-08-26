@@ -13,7 +13,7 @@ import {
 // Mock data generators
 const generateMockRestaurantSettings = (): RestaurantSettings => ({
   id: 'rest_001',
-  name: 'HotelZed Restaurant',
+  name: 'ZedUno Restaurant',
   address: {
     street: '123 Main Street',
     city: 'New York',
@@ -27,11 +27,11 @@ const generateMockRestaurantSettings = (): RestaurantSettings => ({
   },
   contact: {
     phone: '+1 (555) 123-4567',
-    email: 'info@hotelzed.com',
-    website: 'https://hotelzed.com',
+    email: 'info@zeduno.com',
+    website: 'https://zeduno.com',
     socialMedia: {
-      facebook: 'https://facebook.com/hotelzed',
-      instagram: 'https://instagram.com/hotelzed'
+      facebook: 'https://facebook.com/zeduno',
+      instagram: 'https://instagram.com/zeduno'
     }
   },
   businessHours: [

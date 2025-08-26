@@ -65,6 +65,172 @@ export class PaymentGatewayController {
     }
   }
 
+  // Get payment configuration for tenant admin (current tenant only)
+  async getTenantPaymentConfig(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const tenantId = req.user?.tenantId;
+      
+      if (!tenantId) {
+        res.status(403).json({ error: 'Access denied - no tenant associated' });
+        return;
+      }
+
+      const tenant = await Tenant.findById(tenantId).select('paymentConfig');
+      if (!tenant) {
+        res.status(404).json({ error: 'Tenant not found' });
+        return;
+      }
+
+      // Send back config including field states but not sensitive data
+      const config = {
+        mpesa: {
+          enabled: tenant.paymentConfig?.mpesa?.enabled || false,
+          environment: tenant.paymentConfig?.mpesa?.environment || 'sandbox',
+          accountType: tenant.paymentConfig?.mpesa?.accountType || 'till',
+          tillNumber: tenant.paymentConfig?.mpesa?.tillNumber || '',
+          paybillNumber: tenant.paymentConfig?.mpesa?.paybillNumber || '',
+          businessShortCode: tenant.paymentConfig?.mpesa?.businessShortCode || '',
+          passkey: tenant.paymentConfig?.mpesa?.passkey ? '••••••••' : '',
+          consumerKey: tenant.paymentConfig?.mpesa?.consumerKey || '',
+          consumerSecret: tenant.paymentConfig?.mpesa?.consumerSecret ? '••••••••' : '',
+        },
+        stripe: {
+          enabled: tenant.paymentConfig?.stripe?.enabled || false,
+          publicKey: tenant.paymentConfig?.stripe?.publicKey || '',
+          secretKey: tenant.paymentConfig?.stripe?.secretKey ? '••••••••' : '',
+          webhookSecret: tenant.paymentConfig?.stripe?.webhookSecret ? '••••••••' : '',
+        },
+        square: {
+          enabled: tenant.paymentConfig?.square?.enabled || false,
+          applicationId: tenant.paymentConfig?.square?.applicationId || '',
+          accessToken: tenant.paymentConfig?.square?.accessToken ? '••••••••' : '',
+        },
+        cash: {
+          enabled: tenant.paymentConfig?.cash?.enabled !== false, // Default to true
+        },
+      };
+
+      res.json({ success: true, config });
+    } catch (error) {
+      console.error('Error getting tenant payment config:', error);
+      res.status(500).json({ error: 'Failed to get payment configuration' });
+    }
+  }
+
+  // Update payment configuration for tenant admin (current tenant only)
+  async updateTenantPaymentConfig(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const tenantId = req.user?.tenantId;
+      
+      if (!tenantId || (req.user?.role !== 'admin' && req.user?.role !== 'superadmin')) {
+        res.status(403).json({ error: 'Only tenant administrators can update payment configuration' });
+        return;
+      }
+
+      const { config } = req.body;
+      if (!config) {
+        res.status(400).json({ error: 'Payment configuration is required' });
+        return;
+      }
+
+      const tenant = await Tenant.findById(tenantId);
+      if (!tenant) {
+        res.status(404).json({ error: 'Tenant not found' });
+        return;
+      }
+
+      // Initialize payment config if it doesn't exist
+      if (!tenant.paymentConfig) {
+        tenant.paymentConfig = {
+          mpesa: { 
+            enabled: false,
+            businessShortCode: '',
+            passkey: '',
+            environment: 'sandbox',
+            accountType: 'till',
+            consumerKey: '',
+            consumerSecret: '',
+            tillNumber: '',
+            paybillNumber: ''
+          },
+          stripe: { 
+            enabled: false,
+            publicKey: '',
+            secretKey: '',
+            webhookSecret: ''
+          },
+          square: { 
+            enabled: false,
+            applicationId: '',
+            accessToken: ''
+          },
+          cash: { enabled: true },
+        };
+      }
+
+      // Update configuration, preserving existing secret values if new ones aren't provided
+      if (config.mpesa) {
+        tenant.paymentConfig.mpesa = {
+          ...tenant.paymentConfig.mpesa,
+          enabled: config.mpesa.enabled,
+          environment: config.mpesa.environment,
+          accountType: config.mpesa.accountType,
+          tillNumber: config.mpesa.tillNumber,
+          paybillNumber: config.mpesa.paybillNumber,
+          businessShortCode: config.mpesa.businessShortCode,
+          consumerKey: config.mpesa.consumerKey,
+          // Only update secrets if they're not masked
+          passkey: config.mpesa.passkey && !config.mpesa.passkey.includes('•') 
+            ? config.mpesa.passkey 
+            : tenant.paymentConfig.mpesa.passkey,
+          consumerSecret: config.mpesa.consumerSecret && !config.mpesa.consumerSecret.includes('•')
+            ? config.mpesa.consumerSecret
+            : tenant.paymentConfig.mpesa.consumerSecret,
+        };
+      }
+
+      if (config.stripe) {
+        tenant.paymentConfig.stripe = {
+          ...tenant.paymentConfig.stripe,
+          enabled: config.stripe.enabled,
+          publicKey: config.stripe.publicKey,
+          // Only update secrets if they're not masked
+          secretKey: config.stripe.secretKey && !config.stripe.secretKey.includes('•')
+            ? config.stripe.secretKey
+            : tenant.paymentConfig.stripe.secretKey,
+          webhookSecret: config.stripe.webhookSecret && !config.stripe.webhookSecret.includes('•')
+            ? config.stripe.webhookSecret
+            : tenant.paymentConfig.stripe.webhookSecret,
+        };
+      }
+
+      if (config.square) {
+        tenant.paymentConfig.square = {
+          ...tenant.paymentConfig.square,
+          enabled: config.square.enabled,
+          applicationId: config.square.applicationId,
+          // Only update secrets if they're not masked
+          accessToken: config.square.accessToken && !config.square.accessToken.includes('•')
+            ? config.square.accessToken
+            : tenant.paymentConfig.square.accessToken,
+        };
+      }
+
+      if (config.cash) {
+        tenant.paymentConfig.cash = {
+          enabled: config.cash.enabled,
+        };
+      }
+
+      await tenant.save();
+
+      res.json({ success: true, message: 'Payment configuration updated successfully' });
+    } catch (error) {
+      console.error('Error updating tenant payment config:', error);
+      res.status(500).json({ error: 'Failed to update payment configuration' });
+    }
+  }
+
   // Update payment configuration (Superadmin only)
   async updatePaymentConfig(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {

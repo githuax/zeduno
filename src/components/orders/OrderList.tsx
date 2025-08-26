@@ -1,15 +1,18 @@
-import { Clock, DollarSign, MapPin, Printer, Users, ChefHat } from 'lucide-react';
+import { Clock, DollarSign, MapPin, Printer, Users, ChefHat, Edit2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Order, OrderStatus, OrderType } from '@/types/order.types';
 import { cn } from '@/lib/utils';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface OrderListProps {
   orders: Order[];
   onOrderClick: (order: Order) => void;
   onPrintKitchen: (orderId: string) => void;
+  onPrintReceipt?: (order: Order) => void;
+  onEditOrder?: (order: Order) => void;
   isLoading?: boolean;
 }
 
@@ -28,7 +31,9 @@ const orderTypeIcons: Record<OrderType, React.ReactNode> = {
   'delivery': <MapPin className="h-4 w-4" />,
 };
 
-export function OrderList({ orders, onOrderClick, onPrintKitchen, isLoading }: OrderListProps) {
+export function OrderList({ orders, onOrderClick, onPrintKitchen, onPrintReceipt, onEditOrder, isLoading }: OrderListProps) {
+  const { format: formatPrice } = useCurrency();
+  
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -92,7 +97,7 @@ export function OrderList({ orders, onOrderClick, onPrintKitchen, isLoading }: O
               
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Total:</span>
-                <span className="font-semibold text-lg">${order.total.toFixed(2)}</span>
+                <span className="font-semibold text-lg">{formatPrice(order.total)}</span>
               </div>
 
               <div className="flex items-center justify-between text-sm">
@@ -108,15 +113,35 @@ export function OrderList({ orders, onOrderClick, onPrintKitchen, isLoading }: O
               </div>
 
               <div className="flex gap-2 pt-2" onClick={(e) => e.stopPropagation()}>
+                {onEditOrder && ['pending', 'confirmed', 'preparing'].includes(order.status) && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onEditOrder(order)}
+                    title="Edit Order"
+                  >
+                    <Edit2 className="h-3 w-3" />
+                  </Button>
+                )}
                 <Button
                   size="sm"
                   variant="outline"
-                  className="flex-1"
                   onClick={() => onPrintKitchen(order._id)}
+                  title="Print Kitchen Order"
                 >
-                  <Printer className="h-3 w-3 mr-1" />
-                  Kitchen
+                  <Printer className="h-3 w-3" />
                 </Button>
+                {onPrintReceipt && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onPrintReceipt(order)}
+                    title="Print Customer Receipt"
+                  >
+                    <Printer className="h-3 w-3 mr-1" />
+                    Receipt
+                  </Button>
+                )}
                 {order.status === 'pending' && (
                   <Button size="sm" className="flex-1 bg-restaurant-primary hover:bg-restaurant-primary/90">
                     Confirm

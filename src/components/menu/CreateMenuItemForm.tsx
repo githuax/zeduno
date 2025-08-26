@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { X, Plus } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
 import { getApiUrl } from '@/config/api';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface Category {
   _id: string;
@@ -57,6 +58,7 @@ const CreateMenuItemForm: React.FC<CreateMenuItemFormProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const { toast } = useToast();
+  const { currencyCode, symbol } = useCurrency();
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -210,7 +212,7 @@ const CreateMenuItemForm: React.FC<CreateMenuItemFormProps> = ({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="price">Price ($) *</Label>
+                <Label htmlFor="price">Price ({symbol}) *</Label>
                 <Input
                   id="price"
                   type="number"
@@ -391,7 +393,7 @@ const CreateMenuItemForm: React.FC<CreateMenuItemFormProps> = ({
               <div className="space-y-2">
                 {customizationOptions.map((option, index) => (
                   <div key={index} className="flex items-center justify-between p-2 border rounded">
-                    <span>{option.name} (+${option.price.toFixed(2)})</span>
+                    <span>{option.name} (+{symbol}{option.price.toFixed(currencyCode === 'KES' ? 0 : 2)})</span>
                     <div className="flex items-center space-x-2">
                       <Badge variant={option.isAvailable ? "default" : "secondary"}>
                         {option.isAvailable ? "Available" : "Unavailable"}

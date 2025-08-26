@@ -21,7 +21,7 @@ const fetchEmployees = async (options: UseEmployeesOptions = {}): Promise<Employ
   if (options.status) params.append('status', options.status);
   if (options.department) params.append('department', options.department);
 
-  const response = await fetch(`${API_BASE}/employees?${params.toString()}`, {
+  const response = await fetch(`${API_BASE}/users?${params.toString()}`, {
     headers: {
       'Authorization': `Bearer ${localStorage.getItem('token')}`,
     },
@@ -31,12 +31,96 @@ const fetchEmployees = async (options: UseEmployeesOptions = {}): Promise<Employ
     throw new Error('Failed to fetch employees');
   }
 
-  const data: EmployeesResponse = await response.json();
-  return data.employees || data as any; // Handle both array and object responses
+  const data = await response.json();
+  const users = data.data || data.employees || data;
+  
+  // Transform User data to Employee format
+  return users.map((user: any) => ({
+    _id: user._id,
+    employeeId: user._id.slice(-6).toUpperCase(), // Generate employee ID from _id
+    firstName: user.firstName,
+    lastName: user.lastName,
+    email: user.email,
+    phone: user.phone || 'Not provided',
+    role: mapUserRoleToEmployeeRole(user.role),
+    department: getDepartmentFromRole(user.role),
+    position: getPositionFromRole(user.role),
+    status: user.isActive ? 'active' : 'inactive',
+    hireDate: user.createdAt,
+    hourlyRate: getDefaultHourlyRate(user.role),
+    weeklyHours: getDefaultWeeklyHours(user.role),
+    address: {
+      street: 'Not provided',
+      city: 'Not provided',
+      state: 'Not provided',
+      zipCode: 'Not provided'
+    },
+    emergencyContact: {
+      name: 'Not provided',
+      relationship: 'Not provided',
+      phone: 'Not provided'
+    },
+    permissions: user.permissions || [],
+    avatar: user.avatar,
+    dateOfBirth: user.dateOfBirth,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt
+  }));
+};
+
+// Helper functions to map User roles to Employee roles and provide default values
+const mapUserRoleToEmployeeRole = (userRole: string): EmployeeRole => {
+  const roleMap: Record<string, EmployeeRole> = {
+    'admin': 'admin',
+    'manager': 'manager',
+    'staff': 'server',
+    'customer': 'server'
+  };
+  return roleMap[userRole] || 'server';
+};
+
+const getDepartmentFromRole = (role: string): string => {
+  const deptMap: Record<string, string> = {
+    'admin': 'Administration',
+    'manager': 'Management',
+    'staff': 'Service',
+    'customer': 'Service'
+  };
+  return deptMap[role] || 'Service';
+};
+
+const getPositionFromRole = (role: string): string => {
+  const posMap: Record<string, string> = {
+    'admin': 'Administrator',
+    'manager': 'Manager',
+    'staff': 'Server',
+    'customer': 'Customer Service'
+  };
+  return posMap[role] || 'Server';
+};
+
+const getDefaultHourlyRate = (role: string): number => {
+  const rateMap: Record<string, number> = {
+    'admin': 25,
+    'manager': 20,
+    'staff': 15,
+    'customer': 15
+  };
+  return rateMap[role] || 15;
+};
+
+const getDefaultWeeklyHours = (role: string): number => {
+  const hoursMap: Record<string, number> = {
+    'admin': 40,
+    'manager': 40,
+    'staff': 35,
+    'customer': 20
+  };
+  return hoursMap[role] || 35;
 };
 
 const fetchEmployee = async (id: string): Promise<Employee> => {
-  const response = await fetch(`${API_BASE}/employees/${id}`, {
+  const response = await fetch(`${API_BASE}/users/${id}`, {
     headers: {
       'Authorization': `Bearer ${localStorage.getItem('token')}`,
     },
@@ -46,11 +130,45 @@ const fetchEmployee = async (id: string): Promise<Employee> => {
     throw new Error('Failed to fetch employee');
   }
 
-  return response.json();
+  const data = await response.json();
+  const user = data.data || data;
+  
+  // Transform User data to Employee format
+  return {
+    _id: user._id,
+    employeeId: user._id.slice(-6).toUpperCase(),
+    firstName: user.firstName,
+    lastName: user.lastName,
+    email: user.email,
+    phone: user.phone || 'Not provided',
+    role: mapUserRoleToEmployeeRole(user.role),
+    department: getDepartmentFromRole(user.role),
+    position: getPositionFromRole(user.role),
+    status: user.isActive ? 'active' : 'inactive',
+    hireDate: user.createdAt,
+    hourlyRate: getDefaultHourlyRate(user.role),
+    weeklyHours: getDefaultWeeklyHours(user.role),
+    address: {
+      street: 'Not provided',
+      city: 'Not provided',
+      state: 'Not provided',
+      zipCode: 'Not provided'
+    },
+    emergencyContact: {
+      name: 'Not provided',
+      relationship: 'Not provided',
+      phone: 'Not provided'
+    },
+    permissions: user.permissions || [],
+    avatar: user.avatar,
+    dateOfBirth: user.dateOfBirth,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt
+  };
 };
 
 const createEmployee = async (employeeData: CreateEmployeeInput): Promise<Employee> => {
-  const response = await fetch(`${API_BASE}/employees`, {
+  const response = await fetch(`${API_BASE}/users`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -68,7 +186,7 @@ const createEmployee = async (employeeData: CreateEmployeeInput): Promise<Employ
 };
 
 const updateEmployee = async ({ id, data }: { id: string; data: Partial<Employee> }): Promise<Employee> => {
-  const response = await fetch(`${API_BASE}/employees/${id}`, {
+  const response = await fetch(`${API_BASE}/users/${id}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -86,7 +204,7 @@ const updateEmployee = async ({ id, data }: { id: string; data: Partial<Employee
 };
 
 const deleteEmployee = async (id: string): Promise<void> => {
-  const response = await fetch(`${API_BASE}/employees/${id}`, {
+  const response = await fetch(`${API_BASE}/users/${id}`, {
     method: 'DELETE',
     headers: {
       'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -155,7 +273,7 @@ export const useEmployeeStats = () => {
   return useQuery({
     queryKey: ['employee-stats'],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE}/employees/stats`, {
+      const response = await fetch(`${API_BASE}/users/stats`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },

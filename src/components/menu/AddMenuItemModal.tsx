@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { getApiUrl } from '@/config/api';
 import { Plus, X } from 'lucide-react';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface Category {
   _id: string;
@@ -49,6 +50,7 @@ const AddMenuItemModal: React.FC<AddMenuItemModalProps> = ({ onItemAdded }) => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [newTag, setNewTag] = useState('');
   const { toast } = useToast();
+  const { symbol } = useCurrency();
 
   const [formData, setFormData] = useState<MenuItemFormData>({
     name: '',
@@ -213,7 +215,7 @@ const AddMenuItemModal: React.FC<AddMenuItemModalProps> = ({ onItemAdded }) => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="price">Price (KES) *</Label>
+                  <Label htmlFor="price">Price ({symbol}) *</Label>
                   <Input
                     id="price"
                     type="number"

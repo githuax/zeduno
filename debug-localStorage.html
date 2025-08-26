@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug localStorage</title>
+</head>
+<body>
+    <h1>localStorage Debug</h1>
+    <button onclick="showLocalStorage()">Show localStorage</button>
+    <button onclick="clearLocalStorage()">Clear localStorage</button>
+    <button onclick="testLogin()">Test Login</button>
+    <div id="output"></div>
+    
+    <script>
+        function showLocalStorage() {
+            const output = document.getElementById('output');
+            const user = localStorage.getItem('user');
+            const token = localStorage.getItem('token');
+            
+            output.innerHTML = `
+                <h3>Current localStorage:</h3>
+                <p><strong>Token:</strong> ${token ? 'Exists' : 'None'}</p>
+                <p><strong>User data:</strong></p>
+                <pre>${user || 'None'}</pre>
+                <p><strong>Parsed user:</strong></p>
+                <pre>${user ? JSON.stringify(JSON.parse(user), null, 2) : 'None'}</pre>
+            `;
+        }
+        
+        function clearLocalStorage() {
+            localStorage.clear();
+            document.getElementById('output').innerHTML = '<p>localStorage cleared!</p>';
+        }
+        
+        async function testLogin() {
+            try {
+                const response = await fetch('http://localhost:5000/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'irungumill@mail.com',
+                        password: 'Pass@12345'
+                    })
+                });
+                
+                const data = await response.json();
+                document.getElementById('output').innerHTML = `
+                    <h3>Login Response:</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                document.getElementById('output').innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

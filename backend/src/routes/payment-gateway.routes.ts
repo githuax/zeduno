@@ -14,6 +14,10 @@ router.use(protect);
 router.get('/config/:tenantId', paymentGatewayController.getPaymentConfig);
 router.put('/config/:tenantId', validatePaymentConfig, paymentGatewayController.updatePaymentConfig);
 
+// Tenant-specific payment gateway configuration (Admin only)
+router.get('/gateway-config', paymentGatewayController.getTenantPaymentConfig);
+router.post('/gateway-config', paymentGatewayController.updateTenantPaymentConfig);
+
 // Available payment methods for a tenant
 router.get('/methods/:tenantId?', paymentGatewayController.getAvailablePaymentMethods);
 

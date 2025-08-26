@@ -30,7 +30,8 @@ export function useOrders(params?: OrdersQueryParams) {
         throw new Error('Failed to fetch orders');
       }
       
-      return response.json() as Promise<Order[]>;
+      const data = await response.json();
+      return data.orders || data as Order[];
     },
   });
 }
@@ -49,7 +50,8 @@ export function useOrder(orderId: string) {
         throw new Error('Failed to fetch order');
       }
       
-      return response.json() as Promise<Order>;
+      const data = await response.json();
+      return data.order || data as Order;
     },
     enabled: !!orderId,
   });
@@ -73,7 +75,8 @@ export function useCreateOrder() {
         throw new Error('Failed to create order');
       }
       
-      return response.json() as Promise<Order>;
+      const data = await response.json();
+      return data.order || data as Order;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
@@ -100,7 +103,8 @@ export function useUpdateOrder() {
         throw new Error('Failed to update order');
       }
       
-      return response.json() as Promise<Order>;
+      const result = await response.json();
+      return result.order || result as Order;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
@@ -128,7 +132,8 @@ export function useUpdateOrderStatus() {
         throw new Error('Failed to update order status');
       }
       
-      return response.json() as Promise<Order>;
+      const data = await response.json();
+      return data.order || data as Order;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
@@ -156,7 +161,8 @@ export function useSplitOrder() {
         throw new Error('Failed to split order');
       }
       
-      return response.json() as Promise<Order>;
+      const data = await response.json();
+      return data.order || data as Order;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
@@ -183,7 +189,8 @@ export function useMergeOrders() {
         throw new Error('Failed to merge orders');
       }
       
-      return response.json() as Promise<Order>;
+      const data = await response.json();
+      return data.order || data as Order;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });

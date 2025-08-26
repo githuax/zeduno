@@ -4,12 +4,12 @@ const options: swaggerJsdoc.Options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'HotelZed Restaurant Management API',
+      title: 'ZedUno Restaurant Management API',
       version: '1.0.0',
-      description: 'Complete API documentation for HotelZed Restaurant Management System',
+      description: 'Complete API documentation for ZedUno Restaurant Management System',
       contact: {
         name: 'API Support',
-        email: 'support@hotelzed.com'
+        email: 'support@zeduno.com'
       },
       license: {
         name: 'MIT',
@@ -26,7 +26,7 @@ const options: swaggerJsdoc.Options = {
         description: 'Docker server'
       },
       {
-        url: 'https://api.hotelzed.com/api',
+        url: 'https://api.zeduno.com/api',
         description: 'Production server'
       }
     ],

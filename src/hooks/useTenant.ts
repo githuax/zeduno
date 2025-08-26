@@ -326,6 +326,7 @@ export const useTenantContext = () => {
     user = null;
   }
   
+  
   // Check URL query parameter first
   let currentTenantId = user?.tenantId || 'no-tenant';
   if (typeof window !== 'undefined') {

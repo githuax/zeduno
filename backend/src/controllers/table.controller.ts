@@ -1,7 +1,18 @@
 import { Request, Response } from 'express';
 import Table from '../models/Table';
+import Order from '../models/Order';
+import mongoose from 'mongoose';
 
-export const getTables = async (req: Request, res: Response) => {
+interface AuthRequest extends Request {
+  user?: {
+    id?: string;
+    _id?: string;
+    tenantId: string;
+    role: string;
+  };
+}
+
+export const getTables = async (req: AuthRequest, res: Response) => {
   try {
     const { status, floor, section } = req.query;
     
@@ -20,7 +31,7 @@ export const getTables = async (req: Request, res: Response) => {
   }
 };
 
-export const getTable = async (req: Request, res: Response) => {
+export const getTable = async (req: AuthRequest, res: Response) => {
   try {
     const table = await Table.findById(req.params.id)
       .populate('currentOrderId');
@@ -34,17 +45,36 @@ export const getTable = async (req: Request, res: Response) => {
   }
 };
 
-export const createTable = async (req: Request, res: Response) => {
+export const createTable = async (req: AuthRequest, res: Response) => {
   try {
-    const table = new Table(req.body);
+    const tableData = req.body;
+    
+    // Set tenantId from authenticated user
+    const tenantId = req.user?.tenantId;
+    if (typeof tenantId === 'string') {
+      tableData.tenantId = new mongoose.Types.ObjectId(tenantId);
+    } else {
+      tableData.tenantId = tenantId;
+    }
+    
+    // Set default section if not provided
+    if (!tableData.section) {
+      tableData.section = 'Main';
+    }
+    
+    console.log('Creating table with data:', JSON.stringify(tableData, null, 2));
+    console.log('User info:', JSON.stringify(req.user, null, 2));
+    
+    const table = new Table(tableData);
     await table.save();
     res.status(201).json(table);
   } catch (error) {
+    console.error('Create table error:', error);
     res.status(400).json({ message: 'Error creating table', error });
   }
 };
 
-export const updateTable = async (req: Request, res: Response) => {
+export const updateTable = async (req: AuthRequest, res: Response) => {
   try {
     const table = await Table.findByIdAndUpdate(
       req.params.id,
@@ -61,27 +91,52 @@ export const updateTable = async (req: Request, res: Response) => {
   }
 };
 
-export const updateTableStatus = async (req: Request, res: Response) => {
+export const updateTableStatus = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
     
-    const table = await Table.findByIdAndUpdate(
-      id,
-      { status },
-      { new: true }
-    );
-    
+    // Find the current table
+    const table = await Table.findById(id);
     if (!table) {
       return res.status(404).json({ message: 'Table not found' });
     }
+    
+    // If trying to change status to 'available' (release table), check for incomplete orders
+    if (status === 'available' && table.status === 'occupied') {
+      // Find any incomplete orders for this table
+      const incompleteOrder = await Order.findOne({
+        tableId: id,
+        status: { $nin: ['completed', 'cancelled', 'refunded'] }
+      });
+      
+      if (incompleteOrder) {
+        return res.status(400).json({
+          message: 'Cannot release table. There are incomplete orders for this table.',
+          details: {
+            orderNumber: incompleteOrder.orderNumber,
+            customerName: incompleteOrder.customerName,
+            status: incompleteOrder.status,
+            orderId: incompleteOrder._id
+          }
+        });
+      }
+      
+      // Clear currentOrderId when releasing table
+      table.currentOrderId = undefined;
+    }
+    
+    // Update the table status
+    table.status = status;
+    await table.save();
+    
     res.json(table);
   } catch (error) {
     res.status(400).json({ message: 'Error updating table status', error });
   }
 };
 
-export const deleteTable = async (req: Request, res: Response) => {
+export const deleteTable = async (req: AuthRequest, res: Response) => {
   try {
     const table = await Table.findByIdAndDelete(req.params.id);
     if (!table) {

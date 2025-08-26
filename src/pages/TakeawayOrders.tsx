@@ -14,8 +14,10 @@ import { PrepTimeEstimator } from '@/components/takeaway/PrepTimeEstimator';
 import { useOrders } from '@/hooks/useOrders';
 import { Order, OrderStatus } from '@/types/order.types';
 import { toast } from '@/hooks/use-toast';
+import { useCurrency } from '@/hooks/useCurrency';
 
 export default function TakeawayOrders() {
+  const { format: formatPrice } = useCurrency();
   const [selectedStatus, setSelectedStatus] = useState<OrderStatus | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isQuickOrderOpen, setIsQuickOrderOpen] = useState(false);
@@ -151,16 +153,16 @@ export default function TakeawayOrders() {
             <h2>ITEMS:</h2>
             ${order.items.map(item => `
               <div class="item">
-                ${item.quantity}x ${typeof item.menuItem === 'object' ? item.menuItem.name : 'Item'} - $${(item.price * item.quantity).toFixed(2)}
+                ${item.quantity}x ${typeof item.menuItem === 'object' ? item.menuItem.name : 'Item'} - ${formatPrice(item.price * item.quantity)}
                 ${item.customizations?.map(c => `<br>&nbsp;&nbsp;+ ${c.option}`).join('') || ''}
                 ${item.specialInstructions ? `<br>&nbsp;&nbsp;Note: ${item.specialInstructions}` : ''}
               </div>
             `).join('')}
             <div class="total">
-              <p>Subtotal: $${order.subtotal.toFixed(2)}</p>
-              <p>Tax: $${order.tax.toFixed(2)}</p>
-              ${order.discount ? `<p>Discount: -$${order.discount.toFixed(2)}</p>` : ''}
-              <p>TOTAL: $${order.total.toFixed(2)}</p>
+              <p>Subtotal: KES ${order.subtotal.toFixed(2)}</p>
+              <p>Tax: KES ${order.tax.toFixed(2)}</p>
+              ${order.discount ? `<p>Discount: -KES ${order.discount.toFixed(2)}</p>` : ''}
+              <p>TOTAL: KES ${order.total.toFixed(2)}</p>
             </div>
             <div class="footer">
               <p>Thank you for your order!</p>
@@ -276,7 +278,7 @@ export default function TakeawayOrders() {
             <CardTitle className="text-sm font-medium">Today's Revenue</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-restaurant-primary">${stats.totalRevenue.toFixed(2)}</div>
+            <div className="text-2xl font-bold text-restaurant-primary">KES {stats.totalRevenue.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground mt-1">Total sales</p>
           </CardContent>
         </Card>

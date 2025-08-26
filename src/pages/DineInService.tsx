@@ -7,13 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { TableGrid } from '@/components/tables/TableGrid';
-import { TableManagementDialog } from '@/components/tables/TableManagementDialog';
+import { SimpleTableDialog } from '@/components/tables/SimpleTableDialog';
 import { ReservationDialog } from '@/components/tables/ReservationDialog';
 import { CreateOrderDialog } from '@/components/orders/CreateOrderDialog';
 import { useTables } from '@/hooks/useTables';
 import { useOrders } from '@/hooks/useOrders';
 import { Table } from '@/types/order.types';
 import { toast } from '@/hooks/use-toast';
+import { RESTAURANT_FLOORS, getFloorOptions, getSectionOptions } from '@/config/restaurant';
 
 export default function DineInService() {
   const [selectedFloor, setSelectedFloor] = useState<number>(1);
@@ -74,11 +75,22 @@ export default function DineInService() {
           description: 'Table status updated',
         });
         refetchTables();
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        const details = errorData.details;
+        
+        toast({
+          title: 'Error',
+          description: details 
+            ? `${errorData.message}\nOrder: ${details.orderNumber} (Customer: ${details.customerName}) is still ${details.status}`
+            : errorData.message || 'Failed to update table status',
+          variant: 'destructive',
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: 'Error',
-        description: 'Failed to update table status',
+        description: error.message || 'Failed to update table status',
         variant: 'destructive',
       });
     }
@@ -93,7 +105,8 @@ export default function DineInService() {
   };
 
   const sections = ['all', ...new Set(tables.map(t => t.section))];
-  const floors = [1, 2, 3]; // Configure based on your restaurant
+  const floorOptions = getFloorOptions();
+  const sectionOptions = getSectionOptions();
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -111,6 +124,13 @@ export default function DineInService() {
           >
             <RefreshCw className="mr-2 h-4 w-4" />
             Refresh
+          </Button>
+          <Button 
+            variant="outline"
+            onClick={() => setIsTableManagementOpen(true)}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Manage Tables
           </Button>
           <Button 
             variant="outline"
@@ -206,9 +226,9 @@ export default function DineInService() {
                   <SelectValue placeholder="Floor" />
                 </SelectTrigger>
                 <SelectContent>
-                  {floors.map(floor => (
-                    <SelectItem key={floor} value={floor.toString()}>
-                      Floor {floor}
+                  {floorOptions.map(floor => (
+                    <SelectItem key={floor.value} value={floor.value}>
+                      {floor.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -223,10 +243,11 @@ export default function DineInService() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Sections</SelectItem>
-                  <SelectItem value="main">Main Hall</SelectItem>
-                  <SelectItem value="patio">Patio</SelectItem>
-                  <SelectItem value="private">Private</SelectItem>
-                  <SelectItem value="bar">Bar Area</SelectItem>
+                  {sectionOptions.map(section => (
+                    <SelectItem key={section.value} value={section.value}>
+                      {section.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -262,15 +283,12 @@ export default function DineInService() {
         </CardContent>
       </Card>
 
-      {selectedTable && (
-        <TableManagementDialog
-          table={selectedTable}
-          open={isTableManagementOpen}
-          onOpenChange={setIsTableManagementOpen}
-          onUpdateStatus={handleUpdateTableStatus}
-          onRefresh={refetchTables}
-        />
-      )}
+      <SimpleTableDialog
+        table={selectedTable}
+        open={isTableManagementOpen}
+        onOpenChange={setIsTableManagementOpen}
+        onRefresh={refetchTables}
+      />
 
       <ReservationDialog
         open={isReservationOpen}

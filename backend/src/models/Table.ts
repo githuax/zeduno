@@ -1,6 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface ITable extends Document {
+  tenantId: mongoose.Types.ObjectId;
   tableNumber: string;
   capacity: number;
   status: 'available' | 'occupied' | 'reserved' | 'maintenance';
@@ -17,10 +18,15 @@ export interface ITable extends Document {
 
 const TableSchema: Schema = new Schema(
   {
+    tenantId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Tenant',
+      required: true,
+      index: true,
+    },
     tableNumber: {
       type: String,
       required: true,
-      unique: true,
     },
     capacity: {
       type: Number,
@@ -53,5 +59,8 @@ const TableSchema: Schema = new Schema(
     timestamps: true,
   }
 );
+
+// Ensure table numbers are unique per tenant
+TableSchema.index({ tenantId: 1, tableNumber: 1 }, { unique: true });
 
 export default mongoose.model<ITable>('Table', TableSchema);

@@ -763,3 +763,5 @@ export const PaymentGatewaySettings = () => {
     </div>
   );
 };
+
+export default PaymentGatewaySettings;

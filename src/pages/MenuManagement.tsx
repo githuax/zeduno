@@ -9,7 +9,9 @@ import { useToast } from "@/components/ui/use-toast";
 import { getApiUrl } from '@/config/api';
 import AddMenuItemModal from '@/components/menu/AddMenuItemModal';
 import AddCategoryModal from '@/components/menu/AddCategoryModal';
-import { formatCurrency } from '@/utils/currency';
+import EditMenuItemModal from '@/components/menu/EditMenuItemModal';
+import EditCategoryModal from '@/components/menu/EditCategoryModal';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface MenuOverview {
   totalItems: number;
@@ -65,7 +67,12 @@ const MenuManagement = () => {
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('items');
+  const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [isEditItemModalOpen, setIsEditItemModalOpen] = useState(false);
+  const [isEditCategoryModalOpen, setIsEditCategoryModalOpen] = useState(false);
   const { toast } = useToast();
+  const { format: formatPrice } = useCurrency();
 
   // Fetch menu overview
   const fetchOverview = async () => {
@@ -118,10 +125,13 @@ const MenuManagement = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setMenuItems(data.data || []);
+        console.log('Menu items response:', data);
+        setMenuItems(data.data || data || []);
+      } else {
+        console.error('Failed to fetch menu items:', response.status, response.statusText);
       }
     } catch (error) {
-      console.log('Failed to fetch menu items');
+      console.error('Failed to fetch menu items:', error);
     } finally {
       setItemsLoading(false);
     }
@@ -141,7 +151,10 @@ const MenuManagement = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setCategories(data.data || []);
+        console.log('Categories response:', data);
+        setCategories(data.data || data || []);
+      } else {
+        console.error('Failed to fetch categories:', response.status, response.statusText);
       }
     } catch (error) {
       console.log('Failed to fetch categories');
@@ -155,6 +168,94 @@ const MenuManagement = () => {
     fetchMenuItems();
     fetchCategories();
     fetchOverview();
+  };
+
+  // Handle editing menu item
+  const handleEditItem = (item: MenuItem) => {
+    setEditingItem(item);
+    setIsEditItemModalOpen(true);
+  };
+
+  // Handle deleting menu item
+  const handleDeleteItem = async (itemId: string, itemName: string) => {
+    if (!confirm(`Are you sure you want to delete "${itemName}"?`)) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(getApiUrl(`menu/items/${itemId}`), {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: `"${itemName}" has been deleted`,
+        });
+        refreshData();
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to delete menu item",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete menu item",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle editing category
+  const handleEditCategory = (category: Category) => {
+    setEditingCategory(category);
+    setIsEditCategoryModalOpen(true);
+  };
+
+  // Handle deleting category
+  const handleDeleteCategory = async (categoryId: string, categoryName: string) => {
+    if (!confirm(`Are you sure you want to delete "${categoryName}"?`)) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(getApiUrl(`menu/categories/${categoryId}`), {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: `"${categoryName}" has been deleted`,
+        });
+        refreshData();
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to delete category",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete category",
+        variant: "destructive",
+      });
+    }
   };
 
   useEffect(() => {
@@ -290,7 +391,7 @@ const MenuManagement = () => {
                               <Badge variant={item.isAvailable ? "default" : "secondary"}>
                                 {item.isAvailable ? "Available" : "Unavailable"}
                               </Badge>
-                              <span className="text-lg font-bold text-green-600">{formatCurrency(item.price)}</span>
+                              <span className="text-lg font-bold text-green-600">{formatPrice(item.price)}</span>
                             </div>
                             {item.description && (
                               <p className="text-gray-600 mb-2">{item.description}</p>
@@ -318,10 +419,20 @@ const MenuManagement = () => {
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            <Button variant="outline" size="sm">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleEditItem(item)}
+                              title="Edit menu item"
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="outline" size="sm">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleDeleteItem(item._id, item.name)}
+                              title="Delete menu item"
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
@@ -372,10 +483,20 @@ const MenuManagement = () => {
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            <Button variant="outline" size="sm">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleEditCategory(category)}
+                              title="Edit category"
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="outline" size="sm">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleDeleteCategory(category._id, category.name)}
+                              title="Delete category"
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
@@ -404,6 +525,28 @@ const MenuManagement = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Modals */}
+      <EditMenuItemModal
+        isOpen={isEditItemModalOpen}
+        onClose={() => {
+          setIsEditItemModalOpen(false);
+          setEditingItem(null);
+        }}
+        item={editingItem}
+        categories={categories}
+        onSuccess={refreshData}
+      />
+
+      <EditCategoryModal
+        isOpen={isEditCategoryModalOpen}
+        onClose={() => {
+          setIsEditCategoryModalOpen(false);
+          setEditingCategory(null);
+        }}
+        category={editingCategory}
+        onSuccess={refreshData}
+      />
     </div>
   );
 };

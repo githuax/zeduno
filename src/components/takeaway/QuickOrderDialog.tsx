@@ -16,6 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useMenuItems } from '@/hooks/useMenuItems';
 import { CreateOrderInput, MenuItem, OrderItemCustomization } from '@/types/order.types';
 import { toast } from '@/hooks/use-toast';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface QuickOrderDialogProps {
   open: boolean;
@@ -48,6 +49,7 @@ export function QuickOrderDialog({ open, onOpenChange, onSuccess }: QuickOrderDi
   const { data: menuItems = [] } = useMenuItems({
     available: true
   });
+  const { format: formatPrice } = useCurrency();
 
   // Filter items for quick ordering (fast prep items and popular choices)
   const quickMenuItems = menuItems.filter(item => 
@@ -324,7 +326,7 @@ export function QuickOrderDialog({ open, onOpenChange, onSuccess }: QuickOrderDi
                             {item.description}
                           </p>
                           <div className="flex items-center justify-between mt-2">
-                            <span className="font-semibold text-lg">${item.price.toFixed(2)}</span>
+                            <span className="font-semibold text-lg">{formatPrice(item.price)}</span>
                             <div className="flex items-center gap-1 text-xs text-muted-foreground">
                               <Clock className="h-3 w-3" />
                               <span>{item.preparationTime}min</span>

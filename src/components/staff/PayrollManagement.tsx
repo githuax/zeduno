@@ -14,6 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DollarSign, Download, Calendar, TrendingUp, Users, Clock, Plus, FileText, CheckCircle, AlertCircle } from 'lucide-react';
 import { Employee, PayrollPeriod } from '@/types/staff.types';
 import { toast } from '@/hooks/use-toast';
+import { useCurrency } from '@/hooks/useCurrency';
 import { format, startOfWeek, endOfWeek, subWeeks, addWeeks, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
 
 interface PayrollManagementProps {
@@ -27,6 +28,8 @@ export function PayrollManagement({ employees, onRefresh }: PayrollManagementPro
   const [isCreatePayrollOpen, setIsCreatePayrollOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [periodType, setPeriodType] = useState<'weekly' | 'biweekly' | 'monthly'>('weekly');
+  
+  const { format: formatCurrency } = useCurrency();
 
   const [newPayroll, setNewPayroll] = useState({
     startDate: format(startOfWeek(new Date()), 'yyyy-MM-dd'),
@@ -376,7 +379,7 @@ export function PayrollManagement({ employees, onRefresh }: PayrollManagementPro
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              ${payrollStats.totalPayroll.toFixed(0)}
+              {formatCurrency(payrollStats.totalPayroll)}
             </div>
           </CardContent>
         </Card>
@@ -389,7 +392,7 @@ export function PayrollManagement({ employees, onRefresh }: PayrollManagementPro
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              ${payrollStats.avgPayroll.toFixed(0)}
+              {formatCurrency(payrollStats.avgPayroll)}
             </div>
           </CardContent>
         </Card>
@@ -441,7 +444,7 @@ export function PayrollManagement({ employees, onRefresh }: PayrollManagementPro
                         <CardDescription className="flex items-center space-x-4 mt-2">
                           <span>{period.employees.length} employees</span>
                           <span>•</span>
-                          <span>${period.totalPayroll.toFixed(2)} total</span>
+                          <span>{formatCurrency(period.totalPayroll)} total</span>
                         </CardDescription>
                       </div>
                       <div className="flex items-center space-x-2">
@@ -502,10 +505,10 @@ export function PayrollManagement({ employees, onRefresh }: PayrollManagementPro
                               </TableCell>
                               <TableCell>{emp.regularHours.toFixed(1)}h</TableCell>
                               <TableCell>{emp.overtimeHours.toFixed(1)}h</TableCell>
-                              <TableCell>${emp.regularPay.toFixed(2)}</TableCell>
-                              <TableCell>${emp.overtimePay.toFixed(2)}</TableCell>
-                              <TableCell>${(emp.deductions || 0).toFixed(2)}</TableCell>
-                              <TableCell className="font-medium">${emp.netPay.toFixed(2)}</TableCell>
+                              <TableCell>{formatCurrency(emp.regularPay)}</TableCell>
+                              <TableCell>{formatCurrency(emp.overtimePay)}</TableCell>
+                              <TableCell>{formatCurrency(emp.deductions || 0)}</TableCell>
+                              <TableCell className="font-medium">{formatCurrency(emp.netPay)}</TableCell>
                             </TableRow>
                           );
                         })}
@@ -579,7 +582,7 @@ export function PayrollManagement({ employees, onRefresh }: PayrollManagementPro
                                 <AlertDialogDescription>
                                   Confirm that all employees have been paid for the period 
                                   {format(new Date(period.startDate), 'MMM d')} - {format(new Date(period.endDate), 'MMM d, yyyy')}.
-                                  Total payroll: ${period.totalPayroll.toFixed(2)}
+                                  Total payroll: {formatCurrency(period.totalPayroll)}
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
@@ -653,14 +656,14 @@ export function PayrollManagement({ employees, onRefresh }: PayrollManagementPro
                         </div>
                       </TableCell>
                       <TableCell className="font-medium">
-                        ${employee.hourlyRate.toFixed(2)}/hr
+                        {formatCurrency(employee.hourlyRate)}/hr
                       </TableCell>
                       <TableCell>{employee.weeklyHours}h</TableCell>
                       <TableCell className="font-medium text-green-600">
-                        ${(employee.hourlyRate * employee.weeklyHours).toFixed(2)}
+                        {formatCurrency(employee.hourlyRate * employee.weeklyHours)}
                       </TableCell>
                       <TableCell className="font-medium text-blue-600">
-                        ${(employee.hourlyRate * employee.weeklyHours * 4.33).toFixed(2)}
+                        {formatCurrency(employee.hourlyRate * employee.weeklyHours * 4.33)}
                       </TableCell>
                     </TableRow>
                   ))}

@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MenuItem } from '@/types/order.types';
+import { getApiUrl } from '@/config/api';
 
-const API_URL = '/api/menu';
+const API_URL = getApiUrl('menu/items');
 
 interface MenuQueryParams {
   category?: string;
@@ -28,7 +29,8 @@ export function useMenuItems(params?: MenuQueryParams) {
         throw new Error('Failed to fetch menu items');
       }
       
-      return response.json() as Promise<MenuItem[]>;
+      const data = await response.json();
+      return data.data || data as MenuItem[];
     },
   });
 }
@@ -47,7 +49,8 @@ export function useMenuItem(id: string) {
         throw new Error('Failed to fetch menu item');
       }
       
-      return response.json() as Promise<MenuItem>;
+      const data = await response.json();
+      return data.data || data as MenuItem;
     },
     enabled: !!id,
   });

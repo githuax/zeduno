@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test SuperAdmin Users</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            cursor: pointer;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f4f4f4;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .error {
+            color: red;
+        }
+        .success {
+            color: green;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test SuperAdmin User Management</h1>
+    
+    <div>
+        <button onclick="loginSuperAdmin()">1. Login as SuperAdmin</button>
+        <button onclick="fetchUsers()">2. Fetch Users</button>
+        <button onclick="clearStorage()">Clear Storage</button>
+    </div>
+    
+    <div id="result"></div>
+    
+    <script>
+        const API_URL = 'http://localhost:8080/api';
+        
+        async function loginSuperAdmin() {
+            const resultDiv = document.getElementById('result');
+            try {
+                resultDiv.innerHTML = 'Logging in as SuperAdmin...';
+                
+                const response = await fetch(`${API_URL}/superadmin/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'superadmin@hotelzed.com',
+                        password: 'SuperAdmin@123'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    // Store tokens
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('superadmin_token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    localStorage.setItem('superadmin_user', JSON.stringify(data.user));
+                    
+                    resultDiv.innerHTML = `<span class="success">✓ Login successful!</span>\n\n` +
+                        `Token stored in localStorage\n` +
+                        `User: ${data.user.email}\n` +
+                        `Role: ${data.user.role}\n\n` +
+                        `Token: ${data.token.substring(0, 50)}...`;
+                } else {
+                    resultDiv.innerHTML = `<span class="error">✗ Login failed: ${data.message || 'Unknown error'}</span>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">✗ Error: ${error.message}</span>`;
+            }
+        }
+        
+        async function fetchUsers() {
+            const resultDiv = document.getElementById('result');
+            try {
+                resultDiv.innerHTML = 'Fetching users...';
+                
+                const token = localStorage.getItem('superadmin_token') || localStorage.getItem('token');
+                
+                if (!token) {
+                    resultDiv.innerHTML = '<span class="error">✗ No token found. Please login first.</span>';
+                    return;
+                }
+                
+                const response = await fetch(`${API_URL}/superadmin/users`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    let html = `<span class="success">✓ Successfully fetched ${data.users.length} users</span>\n\n`;
+                    
+                    if (data.users.length > 0) {
+                        html += '<table>';
+                        html += '<tr><th>Email</th><th>Name</th><th>Role</th><th>Tenant</th><th>Status</th></tr>';
+                        
+                        data.users.forEach(user => {
+                            html += `<tr>`;
+                            html += `<td>${user.email}</td>`;
+                            html += `<td>${user.firstName} ${user.lastName}</td>`;
+                            html += `<td>${user.role}</td>`;
+                            html += `<td>${user.tenantName || 'N/A'}</td>`;
+                            html += `<td>${user.isActive ? '✓ Active' : '✗ Inactive'}</td>`;
+                            html += `</tr>`;
+                        });
+                        
+                        html += '</table>';
+                    }
+                    
+                    resultDiv.innerHTML = html;
+                } else {
+                    resultDiv.innerHTML = `<span class="error">✗ Failed to fetch users: ${data.message || response.status}</span>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">✗ Error: ${error.message}</span>`;
+            }
+        }
+        
+        function clearStorage() {
+            localStorage.clear();
+            document.getElementById('result').innerHTML = '<span class="success">✓ Storage cleared</span>';
+        }
+    </script>
+</body>
+</html>

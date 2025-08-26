@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { OrderList } from '@/components/orders/OrderList';
 import { CreateOrderDialog } from '@/components/orders/CreateOrderDialog';
 import { OrderDetailsDialog } from '@/components/orders/OrderDetailsDialog';
+import { EditOrderDialog } from '@/components/orders/EditOrderDialog';
+import { printOrderReceipt } from '@/utils/printUtils';
 import { useOrders } from '@/hooks/useOrders';
 import { Order, OrderType, OrderStatus } from '@/types/order.types';
 import { toast } from '@/hooks/use-toast';
@@ -20,6 +22,8 @@ export default function OrderManagement() {
   const [isCreateOrderOpen, setIsCreateOrderOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isEditOrderOpen, setIsEditOrderOpen] = useState(false);
+  const [orderToEdit, setOrderToEdit] = useState<Order | null>(null);
 
   const { data: orders = [], isLoading, refetch } = useOrders({
     orderType: selectedOrderType !== 'all' ? selectedOrderType : undefined,
@@ -54,6 +58,11 @@ export default function OrderManagement() {
     setIsDetailsOpen(true);
   };
 
+  const handleEditOrder = (order: Order) => {
+    setOrderToEdit(order);
+    setIsEditOrderOpen(true);
+  };
+
   const handlePrintKitchen = async (orderId: string) => {
     try {
       const response = await fetch(`/api/orders/${orderId}/print-kitchen`, {
@@ -79,6 +88,14 @@ export default function OrderManagement() {
         variant: 'destructive',
       });
     }
+  };
+
+  const handlePrintReceipt = (order: Order) => {
+    printOrderReceipt(order);
+    toast({
+      title: 'Success',
+      description: 'Receipt sent to printer',
+    });
   };
 
   return (
@@ -130,7 +147,7 @@ export default function OrderManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              ${stats.totalRevenue.toFixed(2)}
+              KES {stats.totalRevenue.toFixed(2)}
             </div>
           </CardContent>
         </Card>
@@ -197,6 +214,8 @@ export default function OrderManagement() {
                 )}
                 onOrderClick={handleOrderClick}
                 onPrintKitchen={handlePrintKitchen}
+                onPrintReceipt={handlePrintReceipt}
+                onEditOrder={handleEditOrder}
                 isLoading={isLoading}
               />
             </TabsContent>
@@ -205,6 +224,8 @@ export default function OrderManagement() {
                 orders={filteredOrders.filter(o => o.status === 'completed')}
                 onOrderClick={handleOrderClick}
                 onPrintKitchen={handlePrintKitchen}
+                onPrintReceipt={handlePrintReceipt}
+                onEditOrder={handleEditOrder}
                 isLoading={isLoading}
               />
             </TabsContent>
@@ -213,6 +234,8 @@ export default function OrderManagement() {
                 orders={filteredOrders.filter(o => o.status === 'cancelled')}
                 onOrderClick={handleOrderClick}
                 onPrintKitchen={handlePrintKitchen}
+                onPrintReceipt={handlePrintReceipt}
+                onEditOrder={handleEditOrder}
                 isLoading={isLoading}
               />
             </TabsContent>
@@ -237,6 +260,16 @@ export default function OrderManagement() {
           onUpdate={() => refetch()}
         />
       )}
+
+      <EditOrderDialog
+        order={orderToEdit}
+        open={isEditOrderOpen}
+        onOpenChange={setIsEditOrderOpen}
+        onSuccess={() => {
+          refetch();
+          setIsEditOrderOpen(false);
+        }}
+      />
     </div>
   );
 }

@@ -11,8 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useSystemUsers, useCreateUser, useUpdateUser } from "@/hooks/useSettings";
-import { SystemUser, UserPermissions, PermissionLevel } from "@/types/settings.types";
+import { useUsers, useCreateUser, useUpdateUser } from "@/hooks/useUsers";
 import { 
   ArrowLeft,
   Users,
@@ -33,34 +32,23 @@ import {
 
 const UserManagement = () => {
   const navigate = useNavigate();
-  const { data: users, isLoading } = useSystemUsers();
+  const { data: users, isLoading } = useUsers();
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<string>('all');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<SystemUser | null>(null);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
 
   const [newUser, setNewUser] = useState({
-    username: '',
     email: '',
     firstName: '',
     lastName: '',
-    department: '',
-    role: 'staff' as any,
-    permissions: {
-      role: 'staff' as any,
-      modules: {
-        orders: 'read' as PermissionLevel,
-        inventory: 'none' as PermissionLevel,
-        payments: 'none' as PermissionLevel,
-        reports: 'none' as PermissionLevel,
-        staff: 'none' as PermissionLevel,
-        settings: 'none' as PermissionLevel
-      }
-    } as UserPermissions
+    role: 'staff',
+    password: '',
+    mustChangePassword: true
   });
 
   const roles = [
@@ -70,22 +58,13 @@ const UserManagement = () => {
     { value: 'cashier', label: 'Cashier', color: 'text-purple-600 bg-purple-100' }
   ];
 
-  const departments = ['Management', 'Kitchen', 'Service', 'Delivery', 'Support'];
-
-  const permissionLevels: { value: PermissionLevel; label: string; color: string }[] = [
-    { value: 'none', label: 'None', color: 'text-gray-600 bg-gray-100' },
-    { value: 'read', label: 'Read', color: 'text-blue-600 bg-blue-100' },
-    { value: 'write', label: 'Write', color: 'text-green-600 bg-green-100' },
-    { value: 'admin', label: 'Admin', color: 'text-red-600 bg-red-100' }
-  ];
 
   const filteredUsers = users?.filter(user => {
     const matchesSearch = 
-      user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesRole = selectedRole === 'all' || user.role.name.toLowerCase() === selectedRole;
+    const matchesRole = selectedRole === 'all' || user.role.toLowerCase() === selectedRole;
     
     return matchesSearch && matchesRole;
   });
@@ -95,23 +74,12 @@ const UserManagement = () => {
       await createUser.mutateAsync(newUser);
       setShowCreateDialog(false);
       setNewUser({
-        username: '',
         email: '',
         firstName: '',
         lastName: '',
-        department: '',
         role: 'staff',
-        permissions: {
-          role: 'staff',
-          modules: {
-            orders: 'read',
-            inventory: 'none',
-            payments: 'none',
-            reports: 'none',
-            staff: 'none',
-            settings: 'none'
-          }
-        }
+        password: '',
+        mustChangePassword: true
       });
     } catch (error) {
       console.error('Failed to create user:', error);
@@ -123,8 +91,14 @@ const UserManagement = () => {
     
     try {
       await updateUser.mutateAsync({
-        userId: selectedUser.id,
-        userData: selectedUser
+        userId: selectedUser._id,
+        userData: {
+          email: selectedUser.email,
+          firstName: selectedUser.firstName,
+          lastName: selectedUser.lastName,
+          role: selectedUser.role,
+          isActive: selectedUser.isActive
+        }
       });
       setShowEditDialog(false);
       setSelectedUser(null);
@@ -133,36 +107,18 @@ const UserManagement = () => {
     }
   };
 
-  const updatePermission = (module: keyof UserPermissions['modules'], level: PermissionLevel) => {
-    if (selectedUser) {
-      setSelectedUser({
-        ...selectedUser,
-        permissions: {
-          ...selectedUser.permissions,
-          modules: {
-            ...selectedUser.permissions.modules,
-            [module]: level
-          }
-        }
-      });
-    }
-  };
 
   const getRoleColor = (roleName: string) => {
-    const role = roles.find(r => r.label.toLowerCase() === roleName.toLowerCase());
+    const role = roles.find(r => r.value === roleName.toLowerCase() || r.label.toLowerCase() === roleName.toLowerCase());
     return role?.color || 'text-gray-600 bg-gray-100';
   };
 
-  const getPermissionColor = (level: PermissionLevel) => {
-    const permission = permissionLevels.find(p => p.value === level);
-    return permission?.color || 'text-gray-600 bg-gray-100';
-  };
-
   const formatDate = (date: Date) => date.toLocaleDateString();
-  const formatLastLogin = (date?: Date) => {
+  const formatLastLogin = (date?: Date | string) => {
     if (!date) return 'Never';
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
     const now = new Date();
-    const diff = now.getTime() - date.getTime();
+    const diff = now.getTime() - dateObj.getTime();
     const minutes = Math.floor(diff / (1000 * 60));
     
     if (minutes < 60) return `${minutes}m ago`;
@@ -243,16 +199,6 @@ const UserManagement = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="username">Username</Label>
-                  <Input
-                    id="username"
-                    value={newUser.username}
-                    onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
-                    placeholder="johnsmith"
-                  />
-                </div>
-
-                <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
@@ -263,44 +209,34 @@ const UserManagement = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="role">Role</Label>
-                    <Select 
-                      value={newUser.role}
-                      onValueChange={(value: any) => setNewUser({ ...newUser, role: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {roles.map(role => (
-                          <SelectItem key={role.value} value={role.value}>
-                            {role.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={newUser.password}
+                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                    placeholder="Enter password"
+                  />
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="department">Department</Label>
-                    <Select 
-                      value={newUser.department}
-                      onValueChange={(value) => setNewUser({ ...newUser, department: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select department" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {departments.map(dept => (
-                          <SelectItem key={dept} value={dept}>
-                            {dept}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role</Label>
+                  <Select 
+                    value={newUser.role}
+                    onValueChange={(value: any) => setNewUser({ ...newUser, role: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {roles.map(role => (
+                        <SelectItem key={role.value} value={role.value}>
+                          {role.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="flex justify-end gap-2 pt-4">
@@ -312,9 +248,9 @@ const UserManagement = () => {
                   </Button>
                   <Button 
                     onClick={handleCreateUser}
-                    disabled={createUser.isPending || !newUser.username || !newUser.email}
+                    disabled={createUser.isPending || !newUser.email || !newUser.firstName || !newUser.lastName || !newUser.password}
                   >
-                    Create User
+                    {createUser.isPending ? 'Creating...' : 'Create User'}
                   </Button>
                 </div>
               </div>
@@ -365,7 +301,6 @@ const UserManagement = () => {
                 <TableRow>
                   <TableHead>User</TableHead>
                   <TableHead>Role</TableHead>
-                  <TableHead>Department</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Last Login</TableHead>
                   <TableHead>Actions</TableHead>
@@ -373,7 +308,7 @@ const UserManagement = () => {
               </TableHeader>
               <TableBody>
                 {filteredUsers?.map((user) => (
-                  <TableRow key={user.id}>
+                  <TableRow key={user._id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
@@ -383,18 +318,14 @@ const UserManagement = () => {
                         </div>
                         <div>
                           <p className="font-medium">{user.firstName} {user.lastName}</p>
-                          <p className="text-sm text-muted-foreground">@{user.username}</p>
                           <p className="text-xs text-muted-foreground">{user.email}</p>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge className={getRoleColor(user.role.name)}>
-                        {user.role.name}
+                      <Badge className={getRoleColor(user.role)}>
+                        {user.role}
                       </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">{user.department}</span>
                     </TableCell>
                     <TableCell>
                       <Badge variant={user.isActive ? 'default' : 'secondary'}>
@@ -407,7 +338,7 @@ const UserManagement = () => {
                     <TableCell>
                       <div className="flex gap-2">
                         <Dialog 
-                          open={showEditDialog && selectedUser?.id === user.id} 
+                          open={showEditDialog && selectedUser?._id === user._id} 
                           onOpenChange={(open) => {
                             setShowEditDialog(open);
                             if (open) setSelectedUser(user);
@@ -419,20 +350,14 @@ const UserManagement = () => {
                               <Edit className="h-4 w-4" />
                             </Button>
                           </DialogTrigger>
-                          <DialogContent className="max-w-2xl">
+                          <DialogContent className="max-w-md">
                             <DialogHeader>
                               <DialogTitle>Edit User - {selectedUser?.firstName} {selectedUser?.lastName}</DialogTitle>
-                              <DialogDescription>Update user information and permissions</DialogDescription>
+                              <DialogDescription>Update user information</DialogDescription>
                             </DialogHeader>
                             
                             {selectedUser && (
-                              <Tabs defaultValue="info" className="w-full">
-                                <TabsList className="grid w-full grid-cols-2">
-                                  <TabsTrigger value="info">User Info</TabsTrigger>
-                                  <TabsTrigger value="permissions">Permissions</TabsTrigger>
-                                </TabsList>
-
-                                <TabsContent value="info" className="space-y-4">
+                              <div className="space-y-4">
                                   <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                       <Label htmlFor="edit-firstName">First Name</Label>
@@ -458,98 +383,59 @@ const UserManagement = () => {
                                     </div>
                                   </div>
 
+                                <div className="space-y-2">
+                                  <Label htmlFor="edit-email">Email</Label>
+                                  <Input
+                                    id="edit-email"
+                                    type="email"
+                                    value={selectedUser.email}
+                                    onChange={(e) => setSelectedUser({
+                                      ...selectedUser,
+                                      email: e.target.value
+                                    })}
+                                  />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
                                   <div className="space-y-2">
-                                    <Label htmlFor="edit-email">Email</Label>
-                                    <Input
-                                      id="edit-email"
-                                      type="email"
-                                      value={selectedUser.email}
-                                      onChange={(e) => setSelectedUser({
+                                    <Label htmlFor="edit-role">Role</Label>
+                                    <Select 
+                                      value={selectedUser.role}
+                                      onValueChange={(value) => setSelectedUser({
                                         ...selectedUser,
-                                        email: e.target.value
+                                        role: value
                                       })}
-                                    />
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {roles.map(role => (
+                                          <SelectItem key={role.value} value={role.value}>
+                                            {role.label}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
                                   </div>
 
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                      <Label htmlFor="edit-department">Department</Label>
-                                      <Select 
-                                        value={selectedUser.department}
-                                        onValueChange={(value) => setSelectedUser({
+                                  <div className="space-y-2">
+                                    <Label htmlFor="edit-status">Status</Label>
+                                    <div className="flex items-center gap-2">
+                                      <Switch
+                                        checked={selectedUser.isActive}
+                                        onCheckedChange={(checked) => setSelectedUser({
                                           ...selectedUser,
-                                          department: value
+                                          isActive: checked
                                         })}
-                                      >
-                                        <SelectTrigger>
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {departments.map(dept => (
-                                            <SelectItem key={dept} value={dept}>
-                                              {dept}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                      <Label htmlFor="edit-status">Status</Label>
-                                      <div className="flex items-center gap-2">
-                                        <Switch
-                                          checked={selectedUser.isActive}
-                                          onCheckedChange={(checked) => setSelectedUser({
-                                            ...selectedUser,
-                                            isActive: checked
-                                          })}
-                                        />
-                                        <span className="text-sm">
-                                          {selectedUser.isActive ? 'Active' : 'Inactive'}
-                                        </span>
-                                      </div>
+                                      />
+                                      <span className="text-sm">
+                                        {selectedUser.isActive ? 'Active' : 'Inactive'}
+                                      </span>
                                     </div>
                                   </div>
-                                </TabsContent>
-
-                                <TabsContent value="permissions" className="space-y-4">
-                                  <div className="space-y-4">
-                                    <h3 className="text-lg font-medium">Module Permissions</h3>
-                                    
-                                    {Object.entries(selectedUser.permissions.modules).map(([module, level]) => (
-                                      <div key={module} className="flex items-center justify-between p-3 border rounded-lg">
-                                        <div>
-                                          <p className="font-medium capitalize">{module.replace('_', ' ')}</p>
-                                          <p className="text-sm text-muted-foreground">
-                                            {module === 'orders' && 'View and manage customer orders'}
-                                            {module === 'inventory' && 'Manage inventory and stock'}
-                                            {module === 'payments' && 'Process payments and transactions'}
-                                            {module === 'reports' && 'View reports and analytics'}
-                                            {module === 'staff' && 'Manage staff and schedules'}
-                                            {module === 'settings' && 'System configuration and settings'}
-                                          </p>
-                                        </div>
-                                        
-                                        <Select
-                                          value={level}
-                                          onValueChange={(value: PermissionLevel) => updatePermission(module as any, value)}
-                                        >
-                                          <SelectTrigger className="w-32">
-                                            <SelectValue />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            {permissionLevels.map(perm => (
-                                              <SelectItem key={perm.value} value={perm.value}>
-                                                {perm.label}
-                                              </SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </TabsContent>
-                              </Tabs>
+                                </div>
+                              </div>
                             )}
 
                             <div className="flex justify-end gap-2 pt-4">
@@ -563,7 +449,7 @@ const UserManagement = () => {
                                 onClick={handleUpdateUser}
                                 disabled={updateUser.isPending}
                               >
-                                Save Changes
+                                {updateUser.isPending ? 'Saving...' : 'Save Changes'}
                               </Button>
                             </div>
                           </DialogContent>

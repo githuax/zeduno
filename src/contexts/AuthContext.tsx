@@ -96,7 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     try {
       // Determine endpoint based on email domain
-      const endpoint = email === 'superadmin@hotelzed.com' 
+      const endpoint = email === 'superadmin@zeduno.com' 
         ? getApiUrl('superadmin/login')
         : getApiUrl('auth/login');
       
@@ -138,10 +138,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem('superadmin_user', JSON.stringify(mappedUser));
       }
       
-      // Clear existing React Query cache to prevent stale tenant data
-      queryClient.clear();
-      
       setUser(mappedUser);
+      
+      // Invalidate tenant context queries to force refresh with new user data
+      queryClient.invalidateQueries({ queryKey: ['tenant-context'] });
 
       // Redirect based on role and tenant
       redirectBasedOnRole(mappedUser);
@@ -180,8 +180,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('superadmin_user');
     localStorage.removeItem('currentTenantId'); // Clear tenant ID cache
     
-    // Clear all React Query cache to prevent stale data on next login
-    queryClient.clear();
+    // Invalidate tenant queries to ensure fresh data on next login
+    queryClient.invalidateQueries({ queryKey: ['tenant-context'] });
+    queryClient.removeQueries({ queryKey: ['tenant-context'] });
     
     setUser(null);
     navigate('/login');

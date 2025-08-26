@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Currency Fix Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+        .test-result { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>HotelZed Currency Fix Test</h1>
+    
+    <div id="testResults"></div>
+    
+    <script>
+        const testResults = document.getElementById('testResults');
+        
+        function addResult(type, title, message) {
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = `<h3>${title}</h3><p>${message}</p>`;
+            testResults.appendChild(div);
+        }
+        
+        function testCurrencyFix() {
+            addResult('info', 'Testing Currency Fix', 'Checking localStorage and tenant data...');
+            
+            // Test 1: Check if user data in localStorage has tenant info
+            const userData = localStorage.getItem('user');
+            if (userData) {
+                try {
+                    const user = JSON.parse(userData);
+                    addResult('info', 'User Data Found', `<pre>${JSON.stringify(user, null, 2)}</pre>`);
+                    
+                    if (user.tenant && user.tenant.settings && user.tenant.settings.currency) {
+                        addResult('success', 'Tenant Currency Found', `Currency: ${user.tenant.settings.currency}`);
+                    } else {
+                        addResult('error', 'Tenant Currency Missing', 'The tenant currency is not properly set in user data');
+                    }
+                } catch (e) {
+                    addResult('error', 'Invalid User Data', 'Failed to parse user data from localStorage');
+                }
+            } else {
+                addResult('error', 'No User Data', 'No user data found in localStorage. Please log in first.');
+            }
+            
+            // Test 2: Check if KES currency is defined
+            const testCurrencies = {
+                USD: { symbol: '$', name: 'US Dollar' },
+                KES: { symbol: 'KES', name: 'Kenyan Shilling' }
+            };
+            
+            if (testCurrencies.KES) {
+                addResult('success', 'KES Currency Definition', `Symbol: ${testCurrencies.KES.symbol}, Name: ${testCurrencies.KES.name}`);
+            }
+        }
+        
+        // Run tests when page loads
+        document.addEventListener('DOMContentLoaded', testCurrencyFix);
+    </script>
+</body>
+</html>

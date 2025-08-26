@@ -16,6 +16,8 @@ import { EmployeeDetailsDialog } from '@/components/staff/EmployeeDetailsDialog'
 import { useEmployees } from '@/hooks/useEmployees';
 import { useShifts } from '@/hooks/useShifts';
 import { useAttendance } from '@/hooks/useAttendance';
+import { useCurrency } from '@/hooks/useCurrency';
+import { getApiUrl } from '@/config/api';
 import { Employee, EmployeeRole, EmploymentStatus } from '@/types/staff.types';
 import { toast } from '@/hooks/use-toast';
 
@@ -26,10 +28,12 @@ export default function StaffManagement() {
   const [isAddEmployeeOpen, setIsAddEmployeeOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  
+  const { format: formatCurrency } = useCurrency();
 
   const { data: employees = [], isLoading: employeesLoading, refetch: refetchEmployees } = useEmployees({
     role: selectedRole !== 'all' ? selectedRole : undefined,
-    status: selectedStatus !== 'all' ? selectedStatus : undefined,
+    // Don't pass status to the hook since backend doesn't support it - we'll filter client-side
   });
 
   const { data: todayShifts = [] } = useShifts({
@@ -41,6 +45,15 @@ export default function StaffManagement() {
   });
 
   const filteredEmployees = employees.filter(employee => {
+    // Filter by status
+    if (selectedStatus !== 'all') {
+      if (selectedStatus === 'active' && employee.status !== 'active') return false;
+      if (selectedStatus === 'inactive' && employee.status !== 'inactive') return false;
+      // For now, on_leave and terminated are treated as inactive since backend only has active/inactive
+      if ((selectedStatus === 'on_leave' || selectedStatus === 'terminated') && employee.status === 'active') return false;
+    }
+
+    // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       return (
@@ -151,6 +164,44 @@ export default function StaffManagement() {
     }
   };
 
+  const handleStatusToggle = async (employeeId: string, currentStatus: string) => {
+    try {
+      const newStatus = currentStatus === 'active' ? false : true; // Toggle isActive boolean
+      
+      const response = await fetch(getApiUrl(`users/${employeeId}`), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({
+          isActive: newStatus,
+        }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: 'Status Updated',
+          description: `Employee status changed to ${newStatus ? 'active' : 'inactive'}`,
+        });
+        refetchEmployees();
+      } else {
+        const error = await response.json();
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to update employee status',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Network error occurred',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -217,7 +268,7 @@ export default function StaffManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-restaurant-primary">
-              ${stats.avgHourlyRate.toFixed(2)}
+              {formatCurrency(stats.avgHourlyRate)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">Per hour</p>
           </CardContent>
@@ -229,7 +280,7 @@ export default function StaffManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              ${stats.estimatedWeeklyPayroll.toFixed(0)}
+              {formatCurrency(stats.estimatedWeeklyPayroll)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               {stats.totalWeeklyHours}h total
@@ -304,6 +355,7 @@ export default function StaffManagement() {
                 onEmployeeClick={handleEmployeeClick}
                 onClockIn={handleClockIn}
                 onClockOut={handleClockOut}
+                onStatusToggle={handleStatusToggle}
                 isLoading={employeesLoading}
                 roleColors={roleColors}
               />

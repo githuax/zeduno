@@ -2,65 +2,72 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Google Fonts configuration */
+:root {
+  font-family: 'Poppins', 'Inter', sans-serif;
+  font-feature-settings: 'liga' 1, 'calt' 1;
+}
+
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
 All colors MUST be HSL.
 */
 
 @layer base {
   :root {
-    --background: 45 10% 97%;
-    --foreground: 25 20% 15%;
+    /* Clean, minimal background - pure white with subtle grays */
+    --background: 0 0% 100%;
+    --foreground: 220 15% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 25 20% 15%;
+    --card-foreground: 220 15% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 25 20% 15%;
+    --popover-foreground: 220 15% 15%;
 
-    --primary: 25 85% 45%;
-    --primary-foreground: 45 10% 97%;
+    /* Clean blue primary - modern and professional */
+    --primary: 208 95% 16%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 30 40% 95%;
-    --secondary-foreground: 25 20% 15%;
+    /* Subtle gray secondary */
+    --secondary: 220 10% 97%;
+    --secondary-foreground: 220 15% 25%;
 
-    --muted: 30 40% 95%;
-    --muted-foreground: 25 15% 45%;
+    /* Very light muted tones */
+    --muted: 220 8% 98%;
+    --muted-foreground: 220 10% 50%;
 
-    --accent: 35 65% 55%;
-    --accent-foreground: 45 10% 97%;
+    /* Soft accent color */
+    --accent: 210 40% 96%;
+    --accent-foreground: 220 15% 25%;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 45 10% 97%;
+    /* Clean red for destructive actions */
+    --destructive: 0 85% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 30 20% 88%;
-    --input: 30 20% 88%;
-    --ring: 25 85% 45%;
+    /* Minimal borders */
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 208 95% 16%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
     
-    /* Restaurant theme colors */
-    --restaurant-primary: 25 85% 45%;
-    --restaurant-secondary: 35 65% 55%;
-    --restaurant-warm: 45 80% 88%;
-    --restaurant-dark: 20 25% 20%;
-    --restaurant-success: 120 60% 50%;
-    --restaurant-warning: 40 90% 60%;
+    /* Clean restaurant theme colors */
+    --restaurant-primary: 208 95% 16%;
+    --restaurant-secondary: 210 40% 96%;
+    --restaurant-warm: 50 100% 97%;
+    --restaurant-dark: 220 15% 15%;
+    --restaurant-success: 140 70% 45%;
+    --restaurant-warning: 25 95% 55%;
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
+    /* Clean sidebar colors */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 15% 15%;
+    --sidebar-primary: 208 95% 16%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 8% 98%;
+    --sidebar-accent-foreground: 220 15% 25%;
     --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 208 95% 16%;
   }
 
   .dark {

@@ -17,7 +17,7 @@ import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 
 interface TableManagementDialogProps {
-  table: Table;
+  table?: Table | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUpdateStatus: (tableId: string, status: string) => void;
@@ -35,10 +35,11 @@ export function TableManagementDialog({
   const [isUpdating, setIsUpdating] = useState(false);
   
   const { data: currentOrder } = useOrder(
-    table.currentOrderId || ''
+    table?.currentOrderId || ''
   );
 
   const handleStatusChange = async (newStatus: string) => {
+    if (!table) return;
     setIsUpdating(true);
     try {
       await onUpdateStatus(table._id, newStatus);
@@ -63,10 +64,15 @@ export function TableManagementDialog({
         title: 'Success',
         description: `Table ${table.tableNumber} status updated to ${newStatus}`,
       });
-    } catch (error) {
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to update table status';
+      const details = error?.response?.data?.details;
+      
       toast({
         title: 'Error',
-        description: 'Failed to update table status',
+        description: details 
+          ? `${errorMessage}\nOrder: ${details.orderNumber} (Customer: ${details.customerName}) is still ${details.status}`
+          : errorMessage,
         variant: 'destructive',
       });
     } finally {
@@ -82,6 +88,7 @@ export function TableManagementDialog({
   };
 
   const handleAddOrder = () => {
+    if (!table) return;
     navigate(`/orders?table=${table._id}`);
     onOpenChange(false);
   };

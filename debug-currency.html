@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Currency Issue</title>
+</head>
+<body>
+    <h1>Debug Currency Issue</h1>
+    <button onclick="checkLocalStorage()">Check localStorage</button>
+    <button onclick="testLogin()">Test Fresh Login</button>
+    <div id="output"></div>
+    
+    <script>
+        function checkLocalStorage() {
+            const output = document.getElementById('output');
+            const user = localStorage.getItem('user');
+            const token = localStorage.getItem('token');
+            
+            output.innerHTML = `
+                <h3>Current localStorage:</h3>
+                <p><strong>Token exists:</strong> ${token ? 'Yes' : 'No'}</p>
+                <p><strong>User data:</strong></p>
+                <pre>${user ? JSON.stringify(JSON.parse(user), null, 2) : 'None'}</pre>
+            `;
+            
+            if (user) {
+                const userData = JSON.parse(user);
+                output.innerHTML += `
+                    <h3>Currency Analysis:</h3>
+                    <p><strong>User tenantName:</strong> ${userData.tenantName || 'Not found'}</p>
+                    <p><strong>User tenant object exists:</strong> ${userData.tenant ? 'Yes' : 'No'}</p>
+                    <p><strong>Tenant settings:</strong> ${userData.tenant?.settings ? JSON.stringify(userData.tenant.settings) : 'Not found'}</p>
+                    <p><strong>Currency from tenant.settings:</strong> ${userData.tenant?.settings?.currency || 'Not found'}</p>
+                `;
+            }
+        }
+        
+        async function testLogin() {
+            try {
+                const output = document.getElementById('output');
+                output.innerHTML = '<p>Testing login...</p>';
+                
+                const response = await fetch('http://localhost:5000/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'irungumill@mail.com',
+                        password: 'Pass@12345'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                output.innerHTML = `
+                    <h3>Fresh Login Response:</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                    
+                    <h3>Currency Analysis:</h3>
+                    <p><strong>Currency in response:</strong> ${data.user?.tenant?.settings?.currency || 'Not found'}</p>
+                    <p><strong>Full tenant settings:</strong></p>
+                    <pre>${data.user?.tenant?.settings ? JSON.stringify(data.user.tenant.settings, null, 2) : 'Not found'}</pre>
+                `;
+                
+                // Show what would be stored
+                if (data.success) {
+                    const mappedUser = {
+                        id: data.user._id,
+                        email: data.user.email,
+                        name: `${data.user.firstName} ${data.user.lastName}`,
+                        firstName: data.user.firstName,
+                        lastName: data.user.lastName,
+                        role: data.user.role,
+                        tenantId: data.user.tenantId,
+                        tenantName: data.user.tenantName,
+                        tenant: data.user.tenant
+                    };
+                    
+                    output.innerHTML += `
+                        <h3>What gets stored in localStorage:</h3>
+                        <pre>${JSON.stringify(mappedUser, null, 2)}</pre>
+                        <p><strong>Mapped user currency:</strong> ${mappedUser.tenant?.settings?.currency || 'Not found'}</p>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('output').innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

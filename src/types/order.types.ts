@@ -98,6 +98,14 @@ export interface Order {
     _id: string;
     name: string;
   } | string;
+  adjustments?: {
+    type: 'add' | 'remove' | 'replace' | 'modify';
+    itemId?: string;
+    reason: string;
+    timestamp: string;
+    details?: string;
+  }[];
+  adjustmentNotes?: string;
   notes?: string;
   estimatedTime?: string;
   completedAt?: string;
@@ -109,6 +117,7 @@ export interface Order {
 export interface CreateOrderInput {
   orderType: OrderType;
   tableId?: string;
+  staffId?: string; // ID of the staff member who created the order
   customerName: string;
   customerPhone?: string;
   deliveryAddress?: DeliveryAddress;

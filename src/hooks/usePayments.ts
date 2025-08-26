@@ -145,18 +145,45 @@ export const usePaymentMethods = () => {
   return useQuery({
     queryKey: ['payment-methods'],
     queryFn: async () => {
-      const response = await fetch('/api/payments/methods', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-      
-      if (!response.ok) {
-        // Fallback to mock data if API fails
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.warn('No auth token found, using mock data');
         return generateMockPaymentMethods();
       }
-      
-      return response.json();
+
+      try {
+        const response = await fetch('http://localhost:5000/api/payments/methods', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        
+        if (!response.ok) {
+          console.error('Payment methods API failed:', response.status, response.statusText);
+          // Fallback to mock data if API fails
+          return generateMockPaymentMethods();
+        }
+        
+        const data = await response.json();
+        console.log('Payment methods from API:', data);
+        
+        // If the API returns an array, use it directly
+        if (Array.isArray(data)) {
+          return data;
+        }
+        
+        // If no payment methods are returned or empty array, show mock data as fallback
+        if (!data || (Array.isArray(data) && data.length === 0)) {
+          console.log('No payment methods configured, showing mock data');
+          return generateMockPaymentMethods();
+        }
+        
+        return data;
+      } catch (error) {
+        console.error('Error fetching payment methods:', error);
+        // Fallback to mock data on network error
+        return generateMockPaymentMethods();
+      }
     },
     staleTime: 5 * 60 * 1000 // 5 minutes
   });

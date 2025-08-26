@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePaymentMethods, usePaymentAnalytics, usePaymentSettings, useTogglePaymentMethod, useUpdatePaymentSettings } from "@/hooks/usePayments";
+import { useQueryClient } from "@tanstack/react-query";
 import { 
   CreditCard, 
   Smartphone, 
@@ -28,6 +29,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, 
 
 const PaymentProcessing = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: paymentMethods, isLoading: methodsLoading } = usePaymentMethods();
   const { data: analytics, isLoading: analyticsLoading } = usePaymentAnalytics();
   const { data: settings } = usePaymentSettings();
@@ -35,6 +37,14 @@ const PaymentProcessing = () => {
   const updateSettings = useUpdatePaymentSettings();
   
   const [localSettings, setLocalSettings] = useState(settings);
+  
+  const refreshPaymentMethods = () => {
+    queryClient.invalidateQueries({ queryKey: ['payment-methods'] });
+  };
+
+  // Debug logging
+  console.log('PaymentProcessing - paymentMethods:', paymentMethods);
+  console.log('PaymentProcessing - methodsLoading:', methodsLoading);
 
   const getPaymentIcon = (type: string) => {
     switch (type) {
@@ -56,7 +66,7 @@ const PaymentProcessing = () => {
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82ca9d'];
 
-  const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`;
+  const formatCurrency = (amount: number) => `KES ${(amount * 130).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const formatPercentage = (value: number) => `${value.toFixed(1)}%`;
 
   const handleMethodToggle = async (methodId: string, enabled: boolean) => {
@@ -108,6 +118,14 @@ const PaymentProcessing = () => {
           </div>
           
           <div className="flex gap-3">
+            <Button 
+              variant="outline" 
+              onClick={() => navigate("/payments/gateway-settings")}
+              className="flex items-center gap-2"
+            >
+              <Settings className="h-4 w-4" />
+              Gateway Settings
+            </Button>
             <Button 
               variant="outline" 
               onClick={() => navigate("/payments/transactions")}
@@ -184,63 +202,12 @@ const PaymentProcessing = () => {
           </Card>
         </div>
 
-        <Tabs defaultValue="methods" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="methods">Payment Methods</TabsTrigger>
+        <Tabs defaultValue="analytics" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
-            <TabsTrigger value="providers">Providers</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="methods" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Payment Methods</CardTitle>
-                <CardDescription>Configure available payment options for your restaurant</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {paymentMethods?.map((method) => {
-                    const Icon = getPaymentIcon(method.type);
-                    return (
-                      <div key={method.id} className="p-4 border rounded-lg">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 bg-primary/10 rounded-lg">
-                              <Icon className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                              <h3 className="font-medium">{method.name}</h3>
-                              <p className="text-sm text-muted-foreground">{method.provider}</p>
-                            </div>
-                          </div>
-                          <Switch
-                            checked={method.isEnabled}
-                            onCheckedChange={(enabled) => handleMethodToggle(method.id, enabled)}
-                            disabled={togglePaymentMethod.isPending}
-                          />
-                        </div>
-                        
-                        <div className="space-y-2 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Processing Fee:</span>
-                            <span className="font-medium">
-                              {method.processingFee === 0 ? 'Free' : `${method.processingFee}%`}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant={method.isEnabled ? "default" : "secondary"}>
-                              {method.isEnabled ? 'Active' : 'Inactive'}
-                            </Badge>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
           <TabsContent value="analytics" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -435,47 +402,6 @@ const PaymentProcessing = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="providers" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Payment Providers</CardTitle>
-                <CardDescription>Manage your payment processing providers</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {[
-                    { name: 'Stripe', status: 'active', methods: ['Credit Card', 'Debit Card', 'Digital Wallet'], fee: '2.9% + $0.30' },
-                    { name: 'Square', status: 'active', methods: ['Credit Card', 'Debit Card'], fee: '2.6% + $0.10' },
-                    { name: 'PayPal', status: 'active', methods: ['Digital Wallet', 'Bank Transfer'], fee: '2.9% + $0.30' },
-                    { name: 'Bank Transfer', status: 'inactive', methods: ['ACH'], fee: '0.8% + $0.25' }
-                  ].map((provider, index) => (
-                    <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-4">
-                        <div className="p-3 bg-primary/10 rounded-lg">
-                          <Building2 className="h-6 w-6 text-primary" />
-                        </div>
-                        <div>
-                          <h3 className="font-medium">{provider.name}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {provider.methods.join(', ')}
-                          </p>
-                          <p className="text-xs text-muted-foreground">Fee: {provider.fee}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Badge variant={provider.status === 'active' ? 'default' : 'secondary'}>
-                          {provider.status}
-                        </Badge>
-                        <Button variant="outline" size="sm">
-                          <Settings className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
       </main>
     </div>

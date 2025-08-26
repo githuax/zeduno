@@ -4,34 +4,28 @@ import restaurantHero from "@/assets/restaurant-hero.jpg";
 
 const HeroSection = () => {
   return (
-    <div className="relative bg-gradient-to-r from-restaurant-primary to-restaurant-secondary rounded-xl overflow-hidden mb-8">
-      <div className="absolute inset-0 bg-black/20" />
-      <div 
-        className="absolute inset-0 bg-cover bg-center opacity-30"
-        style={{ backgroundImage: `url(${restaurantHero})` }}
-      />
-      <div className="relative z-10 p-8 md:p-12 text-white">
+    <div className="relative bg-gradient-to-r from-blue-50 to-white rounded-2xl border border-border overflow-hidden mb-8 shadow-sm">
+      <div className="relative p-8 md:p-12">
         <div className="max-w-2xl">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Welcome to DineServe Hub
+          <h2 className="text-3xl md:text-4xl font-semibold mb-4 text-foreground">
+            Welcome to ZedUno
           </h2>
-          <p className="text-lg md:text-xl mb-6 text-white/90">
-            Streamline your restaurant operations with our comprehensive management system.
-            Manage orders, tables, inventory, and staff all in one place.
+          <p className="text-lg md:text-xl mb-6 text-muted-foreground leading-relaxed">
+            Streamline your restaurant operations with our clean, modern management system.
+            Manage orders, tables, inventory, and staff with simplicity and efficiency.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-3">
             <Button 
-              variant="secondary" 
+              variant="default" 
               size="lg" 
-              className="bg-white text-restaurant-primary hover:bg-white/90"
+              className="shadow-sm"
             >
               Quick Tour
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
             <Button 
               variant="outline" 
-              size="lg" 
-              className="border-white text-white hover:bg-white/10"
+              size="lg"
             >
               View Analytics
             </Button>

@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Edit, Trash2, Eye, EyeOff, Clock, DollarSign } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import EditMenuItemForm from './EditMenuItemForm';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface MenuItem {
   _id: string;
@@ -55,6 +56,7 @@ const MenuItemList: React.FC<MenuItemListProps> = ({
 }) => {
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const { format: formatPrice } = useCurrency();
 
   const handleEditItem = (item: MenuItem) => {
     setEditingItem(item);
@@ -67,12 +69,6 @@ const MenuItemList: React.FC<MenuItemListProps> = ({
     onItemUpdated();
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(price);
-  };
 
   const getDietaryBadges = (item: MenuItem) => {
     const badges = [];

@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "HotelZed Restaurant Management API",
-    "description": "Complete API collection for HotelZed Restaurant Management System. This collection includes all endpoints for authentication, user management, room bookings, menu management, order processing, and table management.",
+    "name": "ZedUno Restaurant Management API",
+    "description": "Complete API collection for ZedUno Restaurant Management System. This collection includes all endpoints for authentication, user management, room bookings, menu management, order processing, and table management.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "version": "1.0.0"
   },

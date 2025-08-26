@@ -1,5 +1,5 @@
 -- =============================================================================
--- HOTELZED MULTITENANT DATABASE SCHEMA
+-- ZEDUNO MULTITENANT DATABASE SCHEMA
 -- PostgreSQL 14+ with Row Level Security (RLS)
 -- =============================================================================
 

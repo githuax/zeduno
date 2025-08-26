@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Table } from '@/types/order.types';
+import { getApiUrl } from '@/config/api';
 
-const API_URL = '/api/tables';
+const API_URL = getApiUrl('tables');
 
 interface TablesQueryParams {
   status?: string;
@@ -121,7 +122,10 @@ export function useUpdateTableStatus() {
       });
       
       if (!response.ok) {
-        throw new Error('Failed to update table status');
+        const errorData = await response.json().catch(() => ({}));
+        const error = new Error(errorData.message || 'Failed to update table status');
+        (error as any).response = { data: errorData };
+        throw error;
       }
       
       return response.json() as Promise<Table>;

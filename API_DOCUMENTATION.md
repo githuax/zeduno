@@ -1,7 +1,7 @@
-# HotelZed API Documentation
+# ZedUno API Documentation
 
 ## Overview
-Complete API documentation for the HotelZed Restaurant Management System. This system provides endpoints for managing users, rooms, bookings, menu items, orders, and tables.
+Complete API documentation for the ZedUno Restaurant Management System. This system provides endpoints for managing users, rooms, bookings, menu items, orders, and tables.
 
 ## API Access Methods
 
@@ -20,9 +20,9 @@ Features:
 Import the provided Postman collection and environment files:
 
 #### Files:
-- `HotelZed_API.postman_collection.json` - Complete API collection
-- `HotelZed_API.postman_environment.json` - Local development environment
-- `HotelZed_API_Docker.postman_environment.json` - Docker environment
+- `ZedUno_API.postman_collection.json` - Complete API collection
+- `ZedUno_API.postman_environment.json` - Local development environment
+- `ZedUno_API_Docker.postman_environment.json` - Docker environment
 
 #### How to Import:
 1. Open Postman

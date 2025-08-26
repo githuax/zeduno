@@ -29,6 +29,7 @@ export const connectDB = async (): Promise<void> => {
     });
   } catch (error) {
     console.error('MongoDB connection failed:', error);
-    throw error;
+    console.log('Continuing without database connection for development...');
+    // Don't throw error - allow server to start without DB for development
   }
 };

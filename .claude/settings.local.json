@@ -12,9 +12,35 @@
       "Bash(TASKKILL /PID 6248 /F)",
       "Bash(powershell:*)",
       "Bash(rm:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npm run seed:*)",
+      "Bash(TASKKILL:*)",
+      "Bash(timeout:*)",
+      "Bash(npm run:*)",
+      "Bash(where mongod)",
+      "Bash(winget install:*)",
+      "Bash(touch:*)",
+      "Bash(node:*)",
+      "Bash(npx tsc:*)",
+      "Bash(mkdir:*)",
+      "Bash(winget search:*)",
+      "Bash(pkill:*)",
+      "Bash(set PORT=3009)",
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(git checkout:*)",
+      "Bash(gt auth:*)",
+      "Bash(npx gt auth:*)",
+      "Bash(move tenantController.ts tenant.controller.ts)",
+      "Bash(mv:*)",
+      "Bash(grep:*)",
+      "Bash(npm start)",
+      "Bash(del CON)",
+      "Bash(git commit:*)",
+      "Bash(npx kill-port:*)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "defaultMode": "acceptEdits"
   }
 }

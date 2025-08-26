@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Tenant Context</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        .section { margin: 20px 0; border: 1px solid #ddd; padding: 15px; }
+    </style>
+</head>
+<body>
+    <h1>Debug Tenant Context</h1>
+    
+    <div class="section">
+        <h2>Step 1: Check Current localStorage</h2>
+        <button onclick="checkCurrentStorage()">Check localStorage</button>
+        <div id="current-storage"></div>
+    </div>
+    
+    <div class="section">
+        <h2>Step 2: Clear localStorage</h2>
+        <button onclick="clearStorage()">Clear All localStorage</button>
+        <div id="clear-result"></div>
+    </div>
+    
+    <div class="section">
+        <h2>Step 3: Fresh Login</h2>
+        <button onclick="freshLogin()">Login Fresh</button>
+        <div id="fresh-login-result"></div>
+    </div>
+    
+    <script>
+        function checkCurrentStorage() {
+            const output = document.getElementById('current-storage');
+            const user = localStorage.getItem('user');
+            
+            if (user) {
+                const userData = JSON.parse(user);
+                output.innerHTML = `
+                    <h3>Current User Data:</h3>
+                    <pre>${JSON.stringify(userData, null, 2)}</pre>
+                    
+                    <h3>Currency Path Analysis:</h3>
+                    <p><strong>userData.tenant exists:</strong> ${userData.tenant ? '✅ Yes' : '❌ No'}</p>
+                    <p><strong>userData.tenant.settings exists:</strong> ${userData.tenant?.settings ? '✅ Yes' : '❌ No'}</p>
+                    <p><strong>userData.tenant.settings.currency:</strong> ${userData.tenant?.settings?.currency || '❌ Not found'}</p>
+                `;
+            } else {
+                output.innerHTML = '<p>❌ No user data in localStorage</p>';
+            }
+        }
+        
+        function clearStorage() {
+            localStorage.clear();
+            document.getElementById('clear-result').innerHTML = '<p>✅ localStorage cleared</p>';
+        }
+        
+        async function freshLogin() {
+            const output = document.getElementById('fresh-login-result');
+            
+            try {
+                output.innerHTML = '<p>🔄 Logging in...</p>';
+                
+                const response = await fetch('http://localhost:5000/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'irungumill@mail.com',
+                        password: 'Pass@12345'
+                    })
+                });
+                
+                const loginData = await response.json();
+                
+                if (loginData.success) {
+                    // Simulate what AuthContext.tsx does
+                    const mappedUser = {
+                        id: loginData.user._id,
+                        email: loginData.user.email,
+                        name: loginData.user.firstName && loginData.user.lastName 
+                          ? `${loginData.user.firstName} ${loginData.user.lastName}`
+                          : loginData.user.name || loginData.user.email,
+                        firstName: loginData.user.firstName,
+                        lastName: loginData.user.lastName,
+                        role: loginData.user.role === 'customer' ? 'user' : loginData.user.role,
+                        tenantId: loginData.user.tenantId,
+                        tenantName: loginData.user.tenantName,
+                        tenant: loginData.user.tenant
+                    };
+                    
+                    // Store in localStorage like AuthContext does
+                    localStorage.setItem('token', loginData.token);
+                    localStorage.setItem('user', JSON.stringify(mappedUser));
+                    
+                    output.innerHTML = `
+                        <h3>✅ Login Successful</h3>
+                        
+                        <h4>Raw Login Response (tenant part):</h4>
+                        <pre>${JSON.stringify(loginData.user.tenant?.settings, null, 2)}</pre>
+                        
+                        <h4>Mapped User Data (stored in localStorage):</h4>
+                        <pre>${JSON.stringify(mappedUser, null, 2)}</pre>
+                        
+                        <h4>Currency Check:</h4>
+                        <p><strong>Currency from response:</strong> ${loginData.user.tenant?.settings?.currency || '❌ Not found'}</p>
+                        <p><strong>Currency in mapped user:</strong> ${mappedUser.tenant?.settings?.currency || '❌ Not found'}</p>
+                        
+                        <p>✅ <strong>Now refresh your app and check if currency works!</strong></p>
+                    `;
+                } else {
+                    output.innerHTML = `<p>❌ Login failed: ${loginData.message}</p>`;
+                }
+                
+            } catch (error) {
+                output.innerHTML = `<p>❌ Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAnalytics, useDashboardStats } from "@/hooks/useAnalytics";
+import { useCurrency } from "@/hooks/useCurrency";
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -25,8 +26,8 @@ const Analytics = () => {
   
   const { data: analytics, isLoading } = useAnalytics();
   const { data: dashboardStats } = useDashboardStats();
+  const { format: formatCurrency } = useCurrency();
 
-  const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`;
   const formatPercentage = (value: number) => `${value.toFixed(1)}%`;
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
@@ -159,7 +160,7 @@ const Analytics = () => {
                     dataKey="period" 
                     tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   />
-                  <YAxis tickFormatter={(value) => `$${value}`} />
+                  <YAxis tickFormatter={formatCurrency} />
                   <Tooltip 
                     formatter={(value: number) => [formatCurrency(value), 'Revenue']}
                     labelFormatter={(label) => new Date(label).toLocaleDateString()}

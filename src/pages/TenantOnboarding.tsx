@@ -799,7 +799,7 @@ const TenantOnboarding = () => {
                     placeholder="your-restaurant"
                   />
                   <div className="flex items-center px-3 border border-l-0 rounded-r-md bg-muted">
-                    .hotelzed.com
+                    .zeduno.com
                   </div>
                 </div>
                 {data.subdomain && (
@@ -828,7 +828,7 @@ const TenantOnboarding = () => {
                       <Check className="h-5 w-5" />
                       <div>
                         <p className="font-medium">Great! Your restaurant will be available at:</p>
-                        <p className="text-lg font-bold">https://{data.subdomain}.hotelzed.com</p>
+                        <p className="text-lg font-bold">https://{data.subdomain}.zeduno.com</p>
                       </div>
                     </div>
                   </CardContent>
@@ -879,7 +879,7 @@ const TenantOnboarding = () => {
       <div className="container max-w-4xl mx-auto p-6">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2">Welcome to HotelZed</h1>
+          <h1 className="text-4xl font-bold text-foreground mb-2">Welcome to ZedUno</h1>
           <p className="text-xl text-muted-foreground">Let's get your restaurant set up in just a few steps</p>
         </div>
 

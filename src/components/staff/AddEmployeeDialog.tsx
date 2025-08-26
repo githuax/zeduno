@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CreateEmployeeInput, EmployeeRole } from '@/types/staff.types';
 import { toast } from '@/hooks/use-toast';
+import { getApiUrl } from '@/config/api';
 
 interface AddEmployeeDialogProps {
   open: boolean;
@@ -65,13 +66,35 @@ export function AddEmployeeDialog({ open, onOpenChange, onSuccess }: AddEmployee
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/employees', {
+      // Map employee roles to valid user roles that backend accepts
+      const roleMapping: Record<string, string> = {
+        'admin': 'admin',
+        'manager': 'manager', 
+        'chef': 'staff',
+        'server': 'staff',
+        'host': 'staff',
+        'cashier': 'staff',
+        'cleaner': 'staff',
+        'delivery': 'staff',
+      };
+
+      // Transform the complex employee data to simple user data that backend expects
+      const userData = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        role: roleMapping[formData.role] || 'staff', // Default to 'staff' for unknown roles
+        password: 'TempPassword123!', // Temporary password - user should change on first login
+        mustChangePassword: true,
+      };
+
+      const response = await fetch(getApiUrl('users'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(userData),
       });
 
       if (response.ok) {

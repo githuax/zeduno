@@ -5,38 +5,34 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import SuperAdminLayout from "@/components/layout/SuperAdminLayout";
+import { useAuth } from "@/contexts/AuthContext";
+import { getApiUrl } from "@/config/api";
 import { 
-  Shield, 
-  Crown, 
   Building, 
   Users, 
-  Calendar,
   Activity,
-  DollarSign,
   TrendingUp,
-  Settings,
-  LogOut,
   Plus,
   Eye,
-  AlertCircle
+  AlertCircle,
+  Shield
 } from "lucide-react";
 
 interface Tenant {
   _id: string;
   name: string;
   slug: string;
-  status: string;
-  plan: {
-    name: string;
-    displayName: string;
-  };
-  limits: {
-    currentUsers: number;
-    currentTables: number;
-    currentOrders: number;
-  };
+  email: string;
+  domain?: string;
+  plan: 'basic' | 'premium' | 'enterprise';
+  status: 'active' | 'inactive' | 'suspended';
+  maxUsers: number;
+  currentUsers: number;
   createdAt: string;
-  trialEndsAt?: string;
+  description?: string;
+  phone?: string;
+  contactPerson?: string;
 }
 
 interface SuperAdminUser {
@@ -51,34 +47,30 @@ interface SuperAdminUser {
 
 const SuperAdminDashboard = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<SuperAdminUser | null>(null);
+  const { user, isAuthenticated } = useAuth();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    // Check if user is logged in
-    const token = localStorage.getItem('superadmin_token');
-    const userData = localStorage.getItem('superadmin_user');
-    
-    if (!token || !userData) {
-      navigate('/superadmin/login');
+    // Check if user is logged in and is superadmin
+    if (!isAuthenticated || user?.role !== 'superadmin') {
+      navigate('/login');
       return;
     }
 
-    try {
-      const parsedUser = JSON.parse(userData);
-      setUser(parsedUser);
+    // For superadmin routes, use superadmin_token
+    const token = localStorage.getItem('superadmin_token') || localStorage.getItem('token');
+    if (token) {
       fetchTenants(token);
-    } catch (error) {
-      console.error('Error parsing user data:', error);
-      navigate('/superadmin/login');
+    } else {
+      setIsLoading(false);
     }
-  }, [navigate]);
+  }, [isAuthenticated, user, navigate]);
 
   const fetchTenants = async (token: string) => {
     try {
-      const response = await fetch('/api/superadmin/tenants', {
+      const response = await fetch(getApiUrl('superadmin/tenants'), {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -87,7 +79,7 @@ const SuperAdminDashboard = () => {
       const data = await response.json();
       
       if (data.success) {
-        setTenants(data.tenants);
+        setTenants(data.tenants || []);
       } else {
         setError('Failed to fetch tenants');
       }
@@ -99,18 +91,12 @@ const SuperAdminDashboard = () => {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('superadmin_token');
-    localStorage.removeItem('superadmin_user');
-    navigate('/superadmin/login');
-  };
-
   const switchToTenant = async (tenantId: string) => {
-    const token = localStorage.getItem('superadmin_token');
+    const token = localStorage.getItem('superadmin_token') || localStorage.getItem('token');
     if (!token) return;
 
     try {
-      const response = await fetch('/api/superadmin/switch-tenant', {
+      const response = await fetch(getApiUrl('superadmin/switch-tenant'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -146,8 +132,8 @@ const SuperAdminDashboard = () => {
 
   const getPlanColor = (planName: string) => {
     switch (planName) {
-      case 'starter': return 'bg-gray-100 text-gray-800';
-      case 'professional': return 'bg-blue-100 text-blue-800';
+      case 'basic': return 'bg-gray-100 text-gray-800';
+      case 'premium': return 'bg-blue-100 text-blue-800';
       case 'enterprise': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -165,39 +151,8 @@ const SuperAdminDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Shield className="h-8 w-8 text-yellow-500" />
-                <Crown className="h-4 w-4 text-yellow-400 absolute -top-1 -right-1" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">HotelZed SuperAdmin</h1>
-                <p className="text-gray-600">Platform Administration Portal</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-4">
-              {user && (
-                <div className="text-right">
-                  <p className="font-medium text-gray-900">{user.firstName} {user.lastName}</p>
-                  <p className="text-sm text-gray-600">{user.email}</p>
-                </div>
-              )}
-              <Button variant="outline" onClick={handleLogout}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main className="p-6">
+    <SuperAdminLayout>
+      <div className="space-y-6">
         {error && (
           <Alert variant="destructive" className="mb-6">
             <AlertCircle className="h-4 w-4" />
@@ -227,7 +182,7 @@ const SuperAdminDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {tenants.reduce((total, tenant) => total + tenant.limits.currentUsers, 0)}
+                {tenants.reduce((total, tenant) => total + tenant.currentUsers, 0)}
               </div>
               <p className="text-xs text-muted-foreground">
                 Across all tenants
@@ -237,30 +192,30 @@ const SuperAdminDashboard = () => {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Tables</CardTitle>
+              <CardTitle className="text-sm font-medium">Max Users</CardTitle>
               <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {tenants.reduce((total, tenant) => total + tenant.limits.currentTables, 0)}
+                {tenants.reduce((total, tenant) => total + tenant.maxUsers, 0)}
               </div>
               <p className="text-xs text-muted-foreground">
-                Restaurant tables managed
+                Total user capacity
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+              <CardTitle className="text-sm font-medium">Active Tenants</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {tenants.reduce((total, tenant) => total + tenant.limits.currentOrders, 0)}
+                {tenants.filter(t => t.status === 'active').length}
               </div>
               <p className="text-xs text-muted-foreground">
-                Orders processed today
+                Currently active
               </p>
             </CardContent>
           </Card>
@@ -274,9 +229,9 @@ const SuperAdminDashboard = () => {
                 <CardTitle>Tenant Management</CardTitle>
                 <CardDescription>Manage all restaurant tenants in the platform</CardDescription>
               </div>
-              <Button onClick={() => navigate('/onboarding')}>
+              <Button onClick={() => navigate('/superadmin/tenants')} className="bg-[#032541] hover:bg-[#021a2e]">
                 <Plus className="h-4 w-4 mr-2" />
-                Add Tenant
+                Manage Tenants
               </Button>
             </div>
           </CardHeader>
@@ -286,11 +241,10 @@ const SuperAdminDashboard = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Restaurant</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Contact</TableHead>
                   <TableHead>Plan</TableHead>
                   <TableHead>Users</TableHead>
-                  <TableHead>Tables</TableHead>
-                  <TableHead>Orders</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -302,7 +256,29 @@ const SuperAdminDashboard = () => {
                     <TableCell>
                       <div>
                         <p className="font-medium">{tenant.name}</p>
-                        <p className="text-sm text-gray-600">{tenant.slug}.hotelzed.com</p>
+                        <p className="text-sm text-gray-600">{tenant.domain || `${tenant.slug}.hotelzed.com`}</p>
+                      </div>
+                    </TableCell>
+                    
+                    <TableCell>
+                      <div>
+                        <p className="text-sm">{tenant.email}</p>
+                        {tenant.contactPerson && (
+                          <p className="text-xs text-gray-600">{tenant.contactPerson}</p>
+                        )}
+                      </div>
+                    </TableCell>
+                    
+                    <TableCell>
+                      <Badge className={getPlanColor(tenant.plan || 'basic')}>
+                        {tenant.plan ? tenant.plan.charAt(0).toUpperCase() + tenant.plan.slice(1) : 'Basic'}
+                      </Badge>
+                    </TableCell>
+                    
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <span>{tenant.currentUsers}/{tenant.maxUsers}</span>
                       </div>
                     </TableCell>
                     
@@ -311,16 +287,6 @@ const SuperAdminDashboard = () => {
                         {tenant.status}
                       </Badge>
                     </TableCell>
-                    
-                    <TableCell>
-                      <Badge className={getPlanColor(tenant.plan.name)}>
-                        {tenant.plan.displayName}
-                      </Badge>
-                    </TableCell>
-                    
-                    <TableCell>{tenant.limits.currentUsers}</TableCell>
-                    <TableCell>{tenant.limits.currentTables}</TableCell>
-                    <TableCell>{tenant.limits.currentOrders}</TableCell>
                     
                     <TableCell>
                       {new Date(tenant.createdAt).toLocaleDateString()}
@@ -348,7 +314,7 @@ const SuperAdminDashboard = () => {
                 <Building className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                 <p className="text-gray-600">No tenants found</p>
                 <p className="text-sm text-gray-500 mb-4">Create your first restaurant tenant to get started</p>
-                <Button onClick={() => navigate('/onboarding')}>
+                <Button onClick={() => navigate('/superadmin/tenants')} className="bg-[#032541] hover:bg-[#021a2e]">
                   <Plus className="h-4 w-4 mr-2" />
                   Add First Tenant
                 </Button>
@@ -356,8 +322,8 @@ const SuperAdminDashboard = () => {
             )}
           </CardContent>
         </Card>
-      </main>
-    </div>
+      </div>
+    </SuperAdminLayout>
   );
 };
 
