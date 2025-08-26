@@ -1,0 +1,117 @@
+version: '3.8'
+
+services:
+  zeduno-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev.frontend
+    ports:
+      - "3000:3000"
+      - "8080:8080"  # Alternative port for dev server
+    environment:
+      - VITE_API_URL=http://localhost:5000/api
+      - VITE_APP_NAME=ZedUno
+      - VITE_DEBUG=true
+      - VITE_ENV=development
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/dist
+    networks:
+      - zeduno-dev
+    command: npm run dev
+    stdin_open: true
+    tty: true
+
+  zeduno-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5000:5000"
+      - "9229:9229"  # Debug port
+    environment:
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://zeduno-mongodb:27017/zeduno
+      - JWT_SECRET=dev-secret-key
+      - JWT_REFRESH_SECRET=dev-refresh-secret
+      - PORT=5000
+      - HOST=0.0.0.0
+      - FRONTEND_URL=http://localhost:3000
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - ./backend/logs:/app/logs
+    depends_on:
+      zeduno-mongodb:
+        condition: service_healthy
+    networks:
+      - zeduno-dev
+    command: npm run dev:debug
+    stdin_open: true
+    tty: true
+
+  zeduno-mongodb:
+    image: mongo:7.0
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=admin123
+      - MONGO_INITDB_DATABASE=zeduno
+    volumes:
+      - zeduno-dev-data:/data/db
+      - ./scripts/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    networks:
+      - zeduno-dev
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Optional: MongoDB Admin UI
+  mongo-express:
+    image: mongo-express:1.0.2
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=admin
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=admin123
+      - ME_CONFIG_MONGODB_URL=mongodb://admin:admin123@zeduno-mongodb:27017/
+      - ME_CONFIG_BASICAUTH=false
+    depends_on:
+      zeduno-mongodb:
+        condition: service_healthy
+    networks:
+      - zeduno-dev
+    profiles:
+      - debug
+
+  # Optional: Redis for caching (if needed)
+  zeduno-redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - zeduno-redis-data:/data
+    networks:
+      - zeduno-dev
+    profiles:
+      - cache
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+networks:
+  zeduno-dev:
+    driver: bridge
+
+volumes:
+  zeduno-dev-data:
+    driver: local
+  zeduno-redis-data:
+    driver: local

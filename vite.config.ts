@@ -8,6 +8,15 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    allowedHosts: [
+      'localhost',
+      '127.0.0.1',
+      '0.0.0.0',
+      'zeduno.piskoe.com',
+      '.piskoe.com',
+      '.localhost',
+      'all'
+    ],
     proxy: {
       '/api': {
         target: 'http://localhost:5000',

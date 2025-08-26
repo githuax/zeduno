@@ -1,0 +1,22 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install dependencies first for better caching
+COPY package*.json ./
+RUN npm install
+
+# Copy source code
+COPY . .
+
+# Create development environment file
+RUN echo "VITE_API_URL=http://localhost:5000/api" > .env.local && \
+    echo "VITE_APP_NAME=ZedUno" >> .env.local && \
+    echo "VITE_DEBUG=true" >> .env.local && \
+    echo "VITE_ENV=development" >> .env.local
+
+# Expose ports
+EXPOSE 3000 8080
+
+# Set development command
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "3000"]
