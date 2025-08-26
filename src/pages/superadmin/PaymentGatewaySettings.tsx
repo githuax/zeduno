@@ -23,6 +23,7 @@ import {
   EyeOff
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { getApiUrl } from '@/utils/url';
 
 interface PaymentConfig {
   mpesa: {
@@ -118,7 +119,7 @@ export const PaymentGatewaySettings = () => {
 
   const fetchTenants = async () => {
     try {
-      const response = await fetch('/api/superadmin/tenants', {
+      const response = await fetch(getApiUrl('superadmin/tenants'), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -137,7 +138,7 @@ export const PaymentGatewaySettings = () => {
   const fetchPaymentConfig = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/payments/config/${selectedTenant}`, {
+      const response = await fetch(getApiUrl(`payments/config/${selectedTenant}`), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -170,7 +171,7 @@ export const PaymentGatewaySettings = () => {
 
     setSaving(true);
     try {
-      const response = await fetch(`/api/payments/config/${selectedTenant}`, {
+      const response = await fetch(getApiUrl(`payments/config/${selectedTenant}`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
