@@ -487,6 +487,17 @@ STRIPE_WEBHOOK_SECRET=
 SQUARE_APPLICATION_ID=
 SQUARE_ACCESS_TOKEN=
 EOF
+
+    # Create frontend .env file
+    sudo -u "$SERVICE_USER" tee "$APP_DIR/.env" > /dev/null <<EOF
+# ZedUno Frontend Environment Variables
+VITE_API_URL=${DOMAIN:+https://$DOMAIN}${DOMAIN:-http://localhost}/api
+VITE_APP_NAME=ZedUno
+VITE_APP_VERSION=1.0.0
+VITE_ENABLE_ANALYTICS=true
+VITE_ENABLE_PAYMENT_GATEWAYS=true
+VITE_DEFAULT_CURRENCY=KES
+EOF
     
     success "Environment configured ✓"
 }

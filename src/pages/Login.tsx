@@ -8,6 +8,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getApiUrl } from '@/config/api';
+import { getAssetUrl } from '@/utils/url';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -26,8 +27,8 @@ const Login = () => {
         const data = await response.json();
         
         if (data.success && data.logoUrl) {
-          // Logo URL is served from /uploads, not /api/uploads
-          setLogoUrl(`http://localhost:5000${data.logoUrl}`);
+          // Use utility function to get proper asset URL
+          setLogoUrl(getAssetUrl(data.logoUrl));
         }
       } catch (error) {
         console.error('Error fetching logo:', error);

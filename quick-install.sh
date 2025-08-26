@@ -85,6 +85,18 @@ BACKEND_URL=http://localhost:5000
 MPESA_ENVIRONMENT=sandbox
 EOF
 
+# Create frontend environment file
+cat > .env <<EOF
+# ZedUno Frontend Environment Variables - Development
+VITE_API_URL=http://localhost:5000/api
+VITE_APP_NAME=ZedUno
+VITE_APP_VERSION=1.0.0
+VITE_ENABLE_ANALYTICS=true
+VITE_ENABLE_PAYMENT_GATEWAYS=true
+VITE_DEFAULT_CURRENCY=KES
+VITE_DEBUG=true
+EOF
+
 # Install dependencies
 log "Installing dependencies..."
 npm install

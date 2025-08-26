@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/components/ui/use-toast';
 import SuperAdminLayout from '@/components/layout/SuperAdminLayout';
 import { getApiUrl } from '@/config/api';
+import { getAssetUrl } from '@/utils/url';
 import { 
   Upload, 
   Save,
@@ -31,8 +32,8 @@ const SystemSettings = () => {
       const data = await response.json();
       
       if (data.success && data.logoUrl) {
-        // Logo URL is served from /uploads, not /api/uploads
-        setLogoUrl(`http://localhost:5000${data.logoUrl}`);
+        // Use utility function to get proper asset URL
+        setLogoUrl(getAssetUrl(data.logoUrl));
       }
     } catch (error) {
       console.error('Error fetching logo:', error);
@@ -108,7 +109,7 @@ const SystemSettings = () => {
         });
         
         // Update the displayed logo
-        setLogoUrl(`http://localhost:5000${data.logoUrl}`);
+        setLogoUrl(getAssetUrl(data.logoUrl));
         setSelectedFile(null);
         setPreviewUrl(null);
         

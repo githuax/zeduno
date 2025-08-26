@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { getApiUrl } from '@/config/api';
+import { getAssetUrl } from '@/utils/url';
 import {
   Building2,
   Users,
@@ -44,7 +45,7 @@ const SuperAdminLayout = ({ children }: SuperAdminLayoutProps) => {
         const data = await response.json();
         
         if (data.success && data.logoUrl) {
-          setLogoUrl(`http://localhost:5000${data.logoUrl}`);
+          setLogoUrl(getAssetUrl(data.logoUrl));
         }
       } catch (error) {
         console.error('Error fetching logo:', error);
