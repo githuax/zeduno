@@ -144,7 +144,20 @@ const generateMockSettings = (): PaymentSettings => ({
 export const usePaymentMethods = () => {
   return useQuery({
     queryKey: ['payment-methods'],
-    queryFn: () => generateMockPaymentMethods(),
+    queryFn: async () => {
+      const response = await fetch('/api/payments/methods', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      
+      if (!response.ok) {
+        // Fallback to mock data if API fails
+        return generateMockPaymentMethods();
+      }
+      
+      return response.json();
+    },
     staleTime: 5 * 60 * 1000 // 5 minutes
   });
 };

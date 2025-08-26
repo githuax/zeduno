@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { usePaymentMethods, useProcessPayment } from "@/hooks/usePayments";
 import { PaymentIntent } from "@/types/payment.types";
+import { useCurrency } from '@/hooks/useCurrency';
+import { MPesaPaymentDialog } from './MPesaPaymentDialog';
 import { 
   CreditCard, 
   Smartphone, 
@@ -44,8 +46,10 @@ export const PaymentDialog = ({
   const [tipAmount, setTipAmount] = useState<number>(0);
   const [paymentStep, setPaymentStep] = useState<'select' | 'process' | 'success' | 'error'>('select');
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [showMPesaDialog, setShowMPesaDialog] = useState<boolean>(false);
 
   const { data: paymentMethods } = usePaymentMethods();
+  const { format: formatPrice } = useCurrency();
   const processPayment = useProcessPayment();
 
   const activePaymentMethods = paymentMethods?.filter(method => method.isEnabled) || [];
@@ -76,6 +80,12 @@ export const PaymentDialog = ({
 
   const handlePayment = async () => {
     if (!selectedMethod) return;
+
+    // Handle M-Pesa payment separately
+    if (selectedMethod.id === 'mpesa') {
+      setShowMPesaDialog(true);
+      return;
+    }
 
     setPaymentStep('process');
 
@@ -117,7 +127,18 @@ export const PaymentDialog = ({
     setSelectedPaymentMethod('');
     setTipAmount(0);
     setErrorMessage('');
+    setShowMPesaDialog(false);
     onOpenChange(false);
+  };
+
+  const handleMPesaSuccess = (transactionId: string, mpesaReceipt: string) => {
+    onPaymentSuccess?.(transactionId);
+    handleClose();
+  };
+
+  const handleMPesaError = (error: string) => {
+    onPaymentError?.(error);
+    setShowMPesaDialog(false);
   };
 
   const tipOptions = [0, 15, 18, 20, 25];
@@ -159,7 +180,7 @@ export const PaymentDialog = ({
                 {orderData.items.map((item, index) => (
                   <div key={index} className="flex justify-between text-sm">
                     <span>{item.quantity}x {item.name}</span>
-                    <span>${(item.price * item.quantity).toFixed(2)}</span>
+                    <span>{formatPrice(item.price * item.quantity)}</span>
                   </div>
                 ))}
               </div>
@@ -169,26 +190,26 @@ export const PaymentDialog = ({
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
-                  <span>${subtotal.toFixed(2)}</span>
+                  <span>{formatPrice(subtotal)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Tax (8.5%):</span>
-                  <span>${taxAmount.toFixed(2)}</span>
+                  <span>{formatPrice(taxAmount)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Tip:</span>
-                  <span>${tipAmount.toFixed(2)}</span>
+                  <span>{formatPrice(tipAmount)}</span>
                 </div>
                 {selectedMethod && processingFee > 0 && (
                   <div className="flex justify-between text-sm text-muted-foreground">
                     <span>Processing Fee ({selectedMethod.processingFee}%):</span>
-                    <span>${processingFee.toFixed(2)}</span>
+                    <span>{formatPrice(processingFee)}</span>
                   </div>
                 )}
                 <Separator />
                 <div className="flex justify-between font-medium text-lg">
                   <span>Total:</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>{formatPrice(total)}</span>
                 </div>
               </div>
             </CardContent>
@@ -280,7 +301,7 @@ export const PaymentDialog = ({
                   className="w-full"
                   size="lg"
                 >
-                  Process Payment ${total.toFixed(2)}
+                  Process Payment {formatPrice(total)}
                 </Button>
               </>
             )}
@@ -303,7 +324,7 @@ export const PaymentDialog = ({
                   <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
                   <h3 className="text-lg font-medium mb-2">Payment Successful</h3>
                   <p className="text-muted-foreground text-center">
-                    Your payment of ${total.toFixed(2)} has been processed successfully.
+                    Your payment of {formatPrice(total)} has been processed successfully.
                   </p>
                 </CardContent>
               </Card>
@@ -330,6 +351,15 @@ export const PaymentDialog = ({
           </div>
         </div>
       </DialogContent>
+      
+      {/* M-Pesa Payment Dialog */}
+      <MPesaPaymentDialog
+        open={showMPesaDialog}
+        onOpenChange={setShowMPesaDialog}
+        orderData={orderData}
+        onPaymentSuccess={handleMPesaSuccess}
+        onPaymentError={handleMPesaError}
+      />
     </Dialog>
   );
 };
