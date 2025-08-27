@@ -136,7 +136,7 @@ export const MPesaPaymentDialog = ({
     try {
       const formattedPhone = formatPhoneNumber(phoneNumber);
       
-      const response = await fetch('/api/payments/mpesa/initiate', {
+      const response = await fetch(`${window.location.hostname === '192.168.2.43' ? 'http://192.168.2.43:5000/api' : '/api'}/payments/mpesa/initiate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

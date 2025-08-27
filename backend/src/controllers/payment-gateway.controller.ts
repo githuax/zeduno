@@ -69,7 +69,54 @@ export class PaymentGatewayController {
   async getTenantPaymentConfig(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const tenantId = req.user?.tenantId;
+      const userRole = req.user?.role;
       
+      // SuperAdmin can access any tenant's config (use query param or default to first tenant)
+      if (userRole === 'superadmin') {
+        const requestedTenantId = req.query.tenantId as string;
+        
+        if (requestedTenantId) {
+          // SuperAdmin requested specific tenant
+          const tenant = await Tenant.findById(requestedTenantId).select('paymentConfig name');
+          if (!tenant) {
+            res.status(404).json({ error: 'Tenant not found' });
+            return;
+          }
+          
+          res.json({
+            success: true,
+            config: tenant.paymentConfig || {},
+            tenantInfo: { id: tenant._id, name: tenant.name }
+          });
+          return;
+        } else {
+          // SuperAdmin wants to see all tenants' configs
+          const tenants = await Tenant.find({ isActive: true }).select('paymentConfig name');
+          
+          if (tenants.length === 0) {
+            // No tenants exist, return default response
+            res.json({
+              success: true,
+              message: 'No tenants found. SuperAdmin can create payment configurations.',
+              tenants: [],
+              canCreateTenant: true
+            });
+            return;
+          }
+          
+          res.json({
+            success: true,
+            tenants: tenants.map(t => ({
+              id: t._id,
+              name: t.name,
+              config: t.paymentConfig || {}
+            }))
+          });
+          return;
+        }
+      }
+      
+      // Regular tenant users
       if (!tenantId) {
         res.status(403).json({ error: 'Access denied - no tenant associated' });
         return;
@@ -121,8 +168,45 @@ export class PaymentGatewayController {
   async updateTenantPaymentConfig(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const tenantId = req.user?.tenantId;
+      const userRole = req.user?.role;
       
-      if (!tenantId || (req.user?.role !== 'admin' && req.user?.role !== 'superadmin')) {
+      // SuperAdmin can update any tenant's config
+      if (userRole === 'superadmin') {
+        const targetTenantId = req.body.tenantId || req.query.tenantId as string;
+        
+        if (!targetTenantId) {
+          res.status(400).json({ error: 'Tenant ID required for SuperAdmin operations' });
+          return;
+        }
+        
+        const { config } = req.body;
+        if (!config) {
+          res.status(400).json({ error: 'Payment configuration is required' });
+          return;
+        }
+
+        const updatedTenant = await Tenant.findByIdAndUpdate(
+          targetTenantId,
+          { paymentConfig: config },
+          { new: true }
+        ).select('paymentConfig name');
+
+        if (!updatedTenant) {
+          res.status(404).json({ error: 'Tenant not found' });
+          return;
+        }
+
+        res.json({
+          success: true,
+          message: 'Payment configuration updated successfully',
+          config: updatedTenant.paymentConfig,
+          tenant: { id: updatedTenant._id, name: updatedTenant.name }
+        });
+        return;
+      }
+      
+      // Regular tenant users
+      if (!tenantId || userRole !== 'admin') {
         res.status(403).json({ error: 'Only tenant administrators can update payment configuration' });
         return;
       }
@@ -393,7 +477,7 @@ export class PaymentGatewayController {
       }
 
       // Get order
-      const order = await Order.findOne({ _id: orderId, tenant: tenantId });
+      const order = await Order.findOne({ _id: orderId, tenantId: tenantId });
       if (!order) {
         res.status(404).json({ error: 'Order not found' });
         return;
@@ -426,7 +510,16 @@ export class PaymentGatewayController {
         environment: tenant.paymentConfig.mpesa.environment,
       };
 
-      const callbackUrl = `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/payments/mpesa-callback`;
+      // Development-friendly callback URL handling
+      let callbackUrl;
+      if (process.env.NODE_ENV === "development" || !process.env.BACKEND_URL || process.env.BACKEND_URL.includes("localhost")) {
+        // For development, use a test callback that M-Pesa accepts
+        callbackUrl = "https://postman-echo.com/post";
+        console.log("⚠️  Development mode: Using postman-echo.com for M-Pesa callbacks");
+        console.log("   Payment status will be updated via polling instead of callback");
+      } else {
+        callbackUrl = `${process.env.BACKEND_URL}/api/payments/mpesa-callback`;
+      }
       
       const paymentRequest = {
         phoneNumber,
