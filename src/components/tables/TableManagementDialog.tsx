@@ -38,6 +38,11 @@ export function TableManagementDialog({
     table?.currentOrderId || ''
   );
 
+  // Early return if no table is selected
+  if (!table) {
+    return null;
+  }
+
   const handleStatusChange = async (newStatus: string) => {
     if (!table) return;
     setIsUpdating(true);
@@ -124,7 +129,7 @@ export function TableManagementDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open && !!table} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">

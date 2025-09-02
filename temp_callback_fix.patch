@@ -1,0 +1,17 @@
+--- backend/src/controllers/payment-gateway.controller.ts.original
++++ backend/src/controllers/payment-gateway.controller.ts
+@@ -430,7 +430,15 @@
+       };
+ 
+-      const callbackUrl = `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/payments/mpesa-callback`;
++      // Use a development callback URL that M-Pesa can reach
++      let callbackUrl;
++      if (process.env.NODE_ENV === 'development' || process.env.BACKEND_URL?.includes('localhost')) {
++        // For development, use a public webhook testing service
++        callbackUrl = 'https://webhook.site/unique-id-here';
++        console.log('⚠️  Development mode: Using webhook.site for M-Pesa callbacks');
++      } else {
++        callbackUrl = `${process.env.BACKEND_URL}/api/payments/mpesa-callback`;
++      }
+       
+       const paymentRequest = {

@@ -43,14 +43,28 @@ export default function OrderManagement() {
     return true;
   });
 
+  // Get today's date range
+  const today = new Date();
+  const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+  // Filter today's paid orders
+  const todaysPaidOrders = orders.filter(o => {
+    // Only include paid orders from today
+    if (o.paymentStatus !== 'paid') return false;
+    
+    // Check if order was created today
+    const orderDate = new Date(o.createdAt || o.updatedAt);
+    return orderDate >= startOfDay && orderDate < endOfDay;
+  });
+
   const stats = {
     total: orders.length,
     pending: orders.filter(o => o.status === 'pending').length,
     preparing: orders.filter(o => o.status === 'preparing').length,
     ready: orders.filter(o => o.status === 'ready').length,
-    totalRevenue: orders
-      .filter(o => o.paymentStatus === 'paid')
-      .reduce((sum, o) => sum + o.total, 0),
+    totalRevenue: todaysPaidOrders.reduce((sum, o) => sum + o.total, 0),
+    todayTransactions: todaysPaidOrders.length,
   };
 
   const handleOrderClick = (order: Order) => {
@@ -143,11 +157,14 @@ export default function OrderManagement() {
         </Card>
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Today's Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium">Today's Collection</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
               KES {stats.totalRevenue.toFixed(2)}
+            </div>
+            <div className="text-xs text-gray-500 mt-1">
+              {stats.todayTransactions} transactions today
             </div>
           </CardContent>
         </Card>

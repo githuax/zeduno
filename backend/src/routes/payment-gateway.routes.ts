@@ -23,6 +23,7 @@ router.get('/methods/:tenantId?', paymentGatewayController.getAvailablePaymentMe
 
 // M-Pesa payment routes
 router.post('/mpesa/initiate', validateMPesaPayment, paymentGatewayController.initiateMPesaPayment);
+router.post('/cash/process', paymentGatewayController.processCashPayment);
 router.get('/mpesa/status/:transactionId', paymentGatewayController.queryMPesaPaymentStatus);
 
 // Payment transactions

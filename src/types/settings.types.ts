@@ -12,6 +12,10 @@ export interface RestaurantSettings {
   };
   branding: BrandingSettings;
   operatingMode: 'dine-in' | 'takeaway' | 'delivery' | 'all';
+  // Additional branding fields
+  logo?: string;
+  tagline?: string;
+  displayName?: string;
 }
 
 export interface Address {

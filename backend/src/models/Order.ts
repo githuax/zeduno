@@ -374,10 +374,9 @@ OrderSchema.index({ 'paymentStatus': 1 });
 
 OrderSchema.pre('save', function(next) {
   if (this.isNew) {
-    const date = new Date();
-    const dateStr = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
+    // Generate shorter order number format: ORD-XXXX
     const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-    this.orderNumber = `ORD-${dateStr}-${random}`;
+    this.orderNumber = `ORD-${random}`;
     
     // Add initial status to history
     const statusHistory = this.statusHistory || [];

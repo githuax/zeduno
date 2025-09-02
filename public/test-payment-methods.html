@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Payment Methods</title>
+</head>
+<body>
+    <h1>M-Pesa KCB Payment Methods Test</h1>
+    <button onclick="testPaymentMethods()">Test Payment Methods Loading</button>
+    <div id="results"></div>
+    
+    <script>
+        async function testPaymentMethods() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<p>Testing payment methods...</p>';
+            
+            try {
+                // Simulate what the usePaymentMethods hook does
+                const mockPaymentMethods = [
+                    {
+                        id: 'mpesa',
+                        type: 'digital_wallet',
+                        name: 'M-Pesa',
+                        isEnabled: true,
+                        processingFee: 0,
+                        icon: 'smartphone',
+                        provider: 'Safaricom'
+                    },
+                    {
+                        id: 'mpesa-kcb',
+                        type: 'digital_wallet',
+                        name: 'M-Pesa KCB',
+                        isEnabled: true,
+                        processingFee: 1.5,
+                        icon: 'building',
+                        provider: 'KCB Bank'
+                    },
+                    {
+                        id: 'cash',
+                        type: 'cash',
+                        name: 'Cash Payment',
+                        isEnabled: true,
+                        processingFee: 0,
+                        icon: 'banknote',
+                        provider: 'Manual'
+                    }
+                ];
+                
+                const activePaymentMethods = mockPaymentMethods.filter(method => method.isEnabled);
+                
+                let output = '<h2>Payment Methods Found:</h2><ul>';
+                activePaymentMethods.forEach(method => {
+                    output += `<li><strong>${method.name}</strong> (${method.provider}) - Icon: ${method.icon}</li>`;
+                });
+                output += '</ul>';
+                
+                output += '<h2>M-Pesa KCB Status:</h2>';
+                const kcbMethod = activePaymentMethods.find(m => m.id === 'mpesa-kcb');
+                if (kcbMethod) {
+                    output += '<p style="color: green;">✅ M-Pesa KCB is enabled and should appear in payment options</p>';
+                    output += `<p>Provider: ${kcbMethod.provider}</p>`;
+                    output += `<p>Processing Fee: ${kcbMethod.processingFee}%</p>`;
+                } else {
+                    output += '<p style="color: red;">❌ M-Pesa KCB not found in payment methods</p>';
+                }
+                
+                results.innerHTML = output;
+                
+            } catch (error) {
+                results.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

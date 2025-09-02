@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Building2, Plus, Edit, Trash2, Users, Calendar, Search, Filter, Smartphone, Eye, EyeOff } from 'lucide-react';
+import { Building2, Plus, Edit, Trash2, Users, Calendar, Search, Filter, Smartphone, Eye, EyeOff, ExternalLink } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
@@ -83,7 +83,7 @@ const TenantManagement = () => {
     address: '',
     phone: '',
     contactPerson: '',
-    currency: 'USD',
+    currency: 'KES',
     adminEmail: '',
     adminPassword: '',
     adminFirstName: '',
@@ -338,6 +338,19 @@ const TenantManagement = () => {
     }));
   };
 
+
+  const accessTenant = (tenant: Tenant) => {
+    // Store tenant context for superadmin access
+    localStorage.setItem('superadmin_accessing_tenant', JSON.stringify({
+      tenantId: tenant._id,
+      tenantName: tenant.name,
+      accessedAt: new Date().toISOString()
+    }));
+    
+    // Redirect to tenant dashboard
+    window.location.href = '/dashboard';
+  };
+
   const resetForm = () => {
     setFormData({
       name: '',
@@ -348,7 +361,7 @@ const TenantManagement = () => {
       address: '',
       phone: '',
       contactPerson: '',
-      currency: 'USD',
+      currency: 'KES',
       adminEmail: '',
       adminPassword: '',
       adminFirstName: '',
@@ -381,7 +394,7 @@ const TenantManagement = () => {
       address: tenant.address || '',
       phone: tenant.phone || '',
       contactPerson: tenant.contactPerson || '',
-      currency: tenant.settings?.currency || 'USD',
+      currency: tenant.settings?.currency || 'KES',
       adminEmail: '',
       adminPassword: '',
       adminFirstName: '',
@@ -866,7 +879,7 @@ const TenantManagement = () => {
                         <TableCell>{getPlanBadge(tenant.plan)}</TableCell>
                         <TableCell>
                           <Badge variant="outline">
-                            {tenant.settings?.currency || 'USD'}
+                            {tenant.settings?.currency || 'KES'}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -883,6 +896,15 @@ const TenantManagement = () => {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => accessTenant(tenant)}
+                              title="Access Tenant Dashboard"
+                              className="text-blue-600 hover:text-blue-700"
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </Button>
                             <Button
                               size="sm"
                               variant="ghost"

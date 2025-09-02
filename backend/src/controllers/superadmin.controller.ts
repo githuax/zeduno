@@ -216,28 +216,102 @@ export const createTenant = async (req: Request, res: Response, next: NextFuncti
 
     // Create new tenant in database
     const { Tenant } = require('../models/Tenant');
+    const { User } = require('../models/User');
+    
+    // Extract admin user info from request
+    const { name, email, contactPerson, phone, address, plan, maxUsers, admin } = req.body;
+    
+    // Extract admin password if provided in admin object or directly
+    const adminPassword = admin?.password || req.body.adminPassword;
+    
+    // Validate required fields
+    if (!name || !email || !contactPerson) {
+      return res.status(400).json({
+        success: false,
+        message: 'Restaurant name, email, and contact person are required'
+      });
+    }
     
     // Generate slug from name if not provided
     const tenantData = {
       ...req.body,
-      slug: req.body.slug || req.body.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''),
+      slug: req.body.slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''),
       status: req.body.status || 'active',
-      plan: req.body.plan || 'basic',
+      plan: plan || 'basic',
       currentUsers: 0,
-      maxUsers: req.body.maxUsers || 10,
+      maxUsers: maxUsers || 10,
       isActive: true,
       createdBy: user._id // Track who created this tenant
     };
+
+    // Check if tenant with this email already exists
+    const existingTenant = await Tenant.findOne({ 
+      $or: [{ email: email }, { slug: tenantData.slug }]
+    });
+    
+    if (existingTenant) {
+      return res.status(400).json({
+        success: false,
+        message: 'A tenant with this email or name already exists'
+      });
+    }
 
     const newTenant = new Tenant(tenantData);
     await newTenant.save();
 
     console.log('New tenant created:', newTenant.name, 'with ID:', newTenant._id);
+    
+    // Automatically create admin user for this tenant
+    const bcrypt = require('bcryptjs');
+    
+    // Use provided password or generate a default one
+    const userPassword = adminPassword || 'restaurant123';
+    const hashedPassword = await bcrypt.hash(userPassword, 10);
+    
+    // Extract first and last name from contactPerson
+    const nameParts = contactPerson.trim().split(' ');
+    const firstName = nameParts[0] || 'Admin';
+    const lastName = nameParts.slice(1).join(' ') || 'User';
+    
+    // Create the admin user
+    const adminUser = new User({
+      email: email,
+      firstName: firstName,
+      lastName: lastName,
+      role: 'admin',
+      password: hashedPassword,
+      tenantId: newTenant._id,
+      tenantName: newTenant.name,
+      isActive: true,
+      mustChangePassword: true, // Force password change on first login
+      accountStatus: 'active',
+      passwordLastChanged: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+    
+    await adminUser.save();
+    
+    // Update tenant's current user count
+    await Tenant.updateOne(
+      { _id: newTenant._id },
+      { $set: { currentUsers: 1 } }
+    );
+    
+    console.log('Admin user created for tenant:', email, 'with password:', userPassword);
 
     res.status(201).json({
       success: true,
       tenant: newTenant,
-      message: 'Tenant created successfully'
+      adminUser: {
+        email: adminUser.email,
+        firstName: adminUser.firstName,
+        lastName: adminUser.lastName,
+        role: adminUser.role,
+        defaultPassword: userPassword,
+        mustChangePassword: true
+      },
+      message: 'Tenant and admin user created successfully'
     });
   } catch (error) {
     console.error('Create tenant error:', error);
@@ -418,29 +492,54 @@ export const getUsers = async (req: Request, res: Response, next: NextFunction) 
     const { User } = require('../models/User');
     const { Tenant } = require('../models/Tenant');
     
+    console.log('Fetching all users...');
+    
     const users = await User.find({})
       .populate('tenantId', 'name slug domain status')
       .select('-password')
       .sort({ createdAt: -1 });
 
+    console.log(`Found ${users.length} users`);
+
     // Transform users to include tenant name
-    const usersWithTenants = users.map(user => ({
-      _id: user._id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role,
-      isActive: user.isActive,
-      tenantId: user.tenantId?._id,
-      tenantName: user.tenantId?.name || (user.role === 'superadmin' ? 'System Admin' : 'No Tenant'),
-      tenantSlug: user.tenantId?.slug,
-      tenantStatus: user.tenantId?.status,
-      mustChangePassword: user.mustChangePassword,
-      accountStatus: user.accountStatus,
-      lastLogin: user.lastLogin,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt
+    const usersWithTenants = await Promise.all(users.map(async (user) => {
+      let tenantInfo = null;
+      
+      // If user has tenantId, fetch the tenant details
+      if (user.tenantId) {
+        // Check if populate worked
+        if (typeof user.tenantId === 'object' && user.tenantId.name) {
+          tenantInfo = user.tenantId;
+        } else {
+          // Manually fetch tenant if populate didn't work
+          try {
+            tenantInfo = await Tenant.findById(user.tenantId);
+          } catch (err) {
+            console.log(`Failed to fetch tenant for user ${user.email}:`, err.message);
+          }
+        }
+      }
+      
+      return {
+        _id: user._id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        isActive: user.isActive,
+        tenantId: user.tenantId?._id || user.tenantId,
+        tenantName: tenantInfo?.name || user.tenantName || (user.role === 'superadmin' ? 'System Admin' : 'No Tenant'),
+        tenantSlug: tenantInfo?.slug,
+        tenantStatus: tenantInfo?.status,
+        mustChangePassword: user.mustChangePassword,
+        accountStatus: user.accountStatus,
+        lastLogin: user.lastLogin,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
+      };
     }));
+
+    console.log('Sample user with tenant:', usersWithTenants.find(u => u.email === 'chris@mail.com'));
 
     res.json({
       success: true,
@@ -551,28 +650,94 @@ export const deleteUser = async (req: Request, res: Response, next: NextFunction
 
 export const updateUserStatus = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Mock response
+    const { id } = req.params;
+    const { isActive } = req.body;
+    
+    console.log(`Updating user ${id} status to ${isActive ? 'active' : 'inactive'}`);
+    
+    // Import User model
+    const { User } = await import('../models/User');
+    
+    // Update user status
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      { 
+        isActive: isActive,
+        accountStatus: isActive ? 'active' : 'suspended'
+      },
+      { new: true, select: '_id email firstName lastName isActive accountStatus role' }
+    );
+    
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    console.log(`User ${updatedUser.email} status updated successfully`);
+    
     res.json({
       success: true,
-      user: { _id: req.params.id, isActive: req.body.isActive },
+      message: `User ${isActive ? 'activated' : 'deactivated'} successfully`,
+      user: updatedUser
     });
   } catch (error) {
     console.error('Update user status error:', error);
-    next(error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update user status',
+      error: error.message
+    });
   }
 };
 
 export const getSystemAnalytics = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Mock analytics data
+    // Get real analytics data from database
+    const { Tenant } = await import('../models/Tenant');
+    const { User } = await import('../models/User');
+    
+    const [
+      totalTenants,
+      activeTenants,
+      totalUsers,
+      activeUsers
+    ] = await Promise.all([
+      Tenant.countDocuments(),
+      Tenant.countDocuments({ status: 'active' }),
+      User.countDocuments({ role: { $ne: 'superadmin' } }),
+      User.countDocuments({ role: { $ne: 'superadmin' }, isActive: true })
+    ]);
+
+    // Get order stats if orders collection exists
+    let totalOrders = 0;
+    let totalRevenue = 0;
+    
+    try {
+      const mongoose = await import('mongoose');
+      const ordersCount = await mongoose.connection.db.collection('orders').countDocuments();
+      const revenueResult = await mongoose.connection.db.collection('orders').aggregate([
+        { $match: { status: { $in: ['completed', 'delivered'] } } },
+        { $group: { _id: null, total: { $sum: '$totalAmount' } } }
+      ]).toArray();
+      
+      totalOrders = ordersCount;
+      totalRevenue = revenueResult.length > 0 ? revenueResult[0].total : 0;
+    } catch (error) {
+      console.log('Orders collection not available yet');
+    }
+
     const stats = {
-      totalTenants: 5,
-      activeTenants: 4,
-      totalUsers: 25,
-      activeUsers: 20,
-      totalOrders: 1500,
-      totalRevenue: 45000,
-      systemUptime: "15d 8h",
+      totalTenants,
+      activeTenants,
+      totalUsers,
+      activeUsers,
+      totalOrders,
+      totalRevenue,
+      systemUptime: process.uptime() > 86400 ? 
+        `${Math.floor(process.uptime() / 86400)}d ${Math.floor((process.uptime() % 86400) / 3600)}h` :
+        `${Math.floor(process.uptime() / 3600)}h ${Math.floor((process.uptime() % 3600) / 60)}m`,
       lastBackup: new Date().toLocaleString(),
     };
 
@@ -588,20 +753,55 @@ export const getSystemAnalytics = async (req: Request, res: Response, next: Next
 
 export const getTenantAnalytics = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Mock tenant analytics
-    const analytics = [
-      {
-        _id: 'tenant-1',
-        name: 'Demo Restaurant',
-        plan: 'basic',
-        status: 'active',
-        userCount: 5,
-        orderCount: 150,
-        revenue: 5000,
-        lastActive: new Date().toISOString(),
-        createdAt: new Date(),
+    // Get real tenant analytics from database
+    const { Tenant } = await import('../models/Tenant');
+    const { User } = await import('../models/User');
+    
+    const tenants = await Tenant.find({}, {
+      name: 1,
+      plan: 1,
+      status: 1,
+      currentUsers: 1,
+      createdAt: 1,
+      updatedAt: 1
+    });
+
+    const analytics = await Promise.all(tenants.map(async (tenant) => {
+      // Get user count for this tenant
+      const userCount = await User.countDocuments({ tenantId: tenant._id });
+      
+      // Get order stats for this tenant
+      let orderCount = 0;
+      let revenue = 0;
+      
+      try {
+        const mongoose = await import('mongoose');
+        orderCount = await mongoose.connection.db.collection('orders').countDocuments({ 
+          tenantId: tenant._id 
+        });
+        
+        const revenueResult = await mongoose.connection.db.collection('orders').aggregate([
+          { $match: { tenantId: tenant._id, status: { $in: ['completed', 'delivered'] } } },
+          { $group: { _id: null, total: { $sum: '$totalAmount' } } }
+        ]).toArray();
+        
+        revenue = revenueResult.length > 0 ? revenueResult[0].total : 0;
+      } catch (error) {
+        console.log('Orders collection not available for tenant:', tenant._id);
       }
-    ];
+
+      return {
+        _id: tenant._id,
+        name: tenant.name,
+        plan: tenant.plan,
+        status: tenant.status,
+        userCount,
+        orderCount,
+        revenue,
+        lastActive: tenant.updatedAt.toISOString(),
+        createdAt: tenant.createdAt,
+      };
+    }));
 
     res.json({
       success: true,

@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { getApiUrl } from '@/config/api';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, AlertCircle } from 'lucide-react';
 import { useCurrency } from '@/hooks/useCurrency';
 
 interface Category {
@@ -26,12 +26,10 @@ interface MenuItemFormData {
   isAvailable: boolean;
   preparationTime: number;
   tags: string[];
-  dietaryInfo: {
-    isVegetarian: boolean;
-    isVegan: boolean;
-    isGlutenFree: boolean;
-    isSpicy: boolean;
-  };
+  isVegetarian: boolean;
+  isVegan: boolean;
+  isGlutenFree: boolean;
+  spiceLevel: 'mild' | 'medium' | 'hot' | 'extra-hot';
   nutritionalInfo: {
     calories?: number;
     protein?: number;
@@ -60,12 +58,10 @@ const AddMenuItemModal: React.FC<AddMenuItemModalProps> = ({ onItemAdded }) => {
     isAvailable: true,
     preparationTime: 15,
     tags: [],
-    dietaryInfo: {
-      isVegetarian: false,
-      isVegan: false,
-      isGlutenFree: false,
-      isSpicy: false,
-    },
+    isVegetarian: false,
+    isVegan: false,
+    isGlutenFree: false,
+    spiceLevel: 'mild',
     nutritionalInfo: {
       calories: undefined,
       protein: undefined,
@@ -78,6 +74,8 @@ const AddMenuItemModal: React.FC<AddMenuItemModalProps> = ({ onItemAdded }) => {
   const fetchCategories = async () => {
     try {
       const token = localStorage.getItem('token');
+      console.log('Fetching categories with token:', token ? 'Present' : 'Missing');
+      
       const response = await fetch(getApiUrl('menu/categories'), {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -85,12 +83,18 @@ const AddMenuItemModal: React.FC<AddMenuItemModalProps> = ({ onItemAdded }) => {
         }
       });
 
+      console.log('Categories response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('Categories data:', data);
         setCategories(data.data || []);
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to fetch categories:', errorData);
       }
     } catch (error) {
-      console.log('Failed to fetch categories');
+      console.error('Error fetching categories:', error);
     }
   };
 
@@ -106,21 +110,67 @@ const AddMenuItemModal: React.FC<AddMenuItemModalProps> = ({ onItemAdded }) => {
 
     try {
       const token = localStorage.getItem('token');
+      
+      // Validate required fields
+      if (!formData.name.trim()) {
+        toast({
+          title: "Error",
+          description: "Name is required",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (!formData.categoryId) {
+        toast({
+          title: "Error",
+          description: "Please select a category",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Transform the data to match backend expectations
+      const submitData = {
+        name: formData.name.trim(),
+        description: formData.description.trim() || 'No description provided',
+        price: formData.price,
+        categoryId: formData.categoryId,
+        isAvailable: formData.isAvailable,
+        preparationTime: formData.preparationTime,
+        tags: formData.tags,
+        // Flatten dietary info to match backend schema
+        isVegetarian: formData.isVegetarian,
+        isVegan: formData.isVegan,
+        isGlutenFree: formData.isGlutenFree,
+        spiceLevel: formData.spiceLevel,
+        // Filter out undefined nutritional values
+        nutritionalInfo: Object.fromEntries(
+          Object.entries(formData.nutritionalInfo).filter(([_, value]) => value !== undefined && value !== '')
+        )
+      };
+
+      console.log('Submitting data:', submitData);
+      console.log('Available categories:', categories);
+      console.log('Selected category ID:', formData.categoryId);
+      console.log('Category exists in list:', categories.some(cat => cat._id === formData.categoryId));
+
       const response = await fetch(getApiUrl('menu/items'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          ...formData,
-          nutritionalInfo: Object.fromEntries(
-            Object.entries(formData.nutritionalInfo).filter(([_, value]) => value !== undefined && value !== '')
-          )
-        })
+        body: JSON.stringify(submitData)
       });
 
+      console.log('Submit response status:', response.status);
+
       if (response.ok) {
+        const responseData = await response.json();
+        console.log('Success response:', responseData);
         toast({
           title: "Success",
           description: "Menu item created successfully",
@@ -135,12 +185,10 @@ const AddMenuItemModal: React.FC<AddMenuItemModalProps> = ({ onItemAdded }) => {
           isAvailable: true,
           preparationTime: 15,
           tags: [],
-          dietaryInfo: {
-            isVegetarian: false,
-            isVegan: false,
-            isGlutenFree: false,
-            isSpicy: false,
-          },
+          isVegetarian: false,
+          isVegan: false,
+          isGlutenFree: false,
+          spiceLevel: 'mild',
           nutritionalInfo: {
             calories: undefined,
             protein: undefined,
@@ -153,6 +201,7 @@ const AddMenuItemModal: React.FC<AddMenuItemModalProps> = ({ onItemAdded }) => {
         onItemAdded();
       } else {
         const errorData = await response.json();
+        console.error('Server validation errors:', errorData);
         toast({
           title: "Error",
           description: errorData.message || "Failed to create menu item",
@@ -160,6 +209,7 @@ const AddMenuItemModal: React.FC<AddMenuItemModalProps> = ({ onItemAdded }) => {
         });
       }
     } catch (error) {
+      console.error('Network error:', error);
       toast({
         title: "Error",
         description: "Network error. Please try again.",
@@ -200,6 +250,17 @@ const AddMenuItemModal: React.FC<AddMenuItemModalProps> = ({ onItemAdded }) => {
           <DialogTitle>Add New Menu Item</DialogTitle>
         </DialogHeader>
         
+        {/* Show warning if no categories */}
+        {categories.length === 0 && (
+          <div className="flex items-center space-x-2 p-4 mb-4 bg-yellow-50 border border-yellow-200 rounded-md">
+            <AlertCircle className="h-5 w-5 text-yellow-600" />
+            <div className="text-sm text-yellow-800">
+              <p className="font-medium">No categories available</p>
+              <p>You need to create menu categories first before adding menu items. Please create at least one category in the Categories tab.</p>
+            </div>
+          </div>
+        )}
+        
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Information */}
           <Card>
@@ -212,6 +273,7 @@ const AddMenuItemModal: React.FC<AddMenuItemModalProps> = ({ onItemAdded }) => {
                     value={formData.name}
                     onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                     required
+                    disabled={categories.length === 0}
                   />
                 </div>
                 <div className="space-y-2">
@@ -220,41 +282,57 @@ const AddMenuItemModal: React.FC<AddMenuItemModalProps> = ({ onItemAdded }) => {
                     id="price"
                     type="number"
                     step="0.01"
+                    min="0"
                     value={formData.price || ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
                     required
+                    disabled={categories.length === 0}
                   />
                 </div>
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description">Description *</Label>
                 <Textarea
                   id="description"
                   value={formData.description}
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                   rows={3}
+                  placeholder="Enter a description for this menu item..."
+                  required
+                  disabled={categories.length === 0}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="category">Category</Label>
-                  <Select
-                    value={formData.categoryId}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, categoryId: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category._id} value={category._id}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="category">Category * ({categories.length} available)</Label>
+                  {categories.length > 0 ? (
+                    <Select
+                      value={formData.categoryId}
+                      onValueChange={(value) => {
+                        console.log('Category selected:', value);
+                        setFormData(prev => ({ ...prev, categoryId: value }));
+                      }}
+                      required
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((category) => (
+                          <SelectItem key={category._id} value={category._id}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="flex items-center space-x-2 p-2 bg-gray-50 border border-gray-200 rounded-md">
+                      <AlertCircle className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm text-gray-500">No categories available</span>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
@@ -262,8 +340,11 @@ const AddMenuItemModal: React.FC<AddMenuItemModalProps> = ({ onItemAdded }) => {
                   <Input
                     id="preparationTime"
                     type="number"
+                    min="0"
+                    max="480"
                     value={formData.preparationTime}
                     onChange={(e) => setFormData(prev => ({ ...prev, preparationTime: parseInt(e.target.value) || 15 }))}
+                    disabled={categories.length === 0}
                   />
                 </div>
               </div>
@@ -273,6 +354,7 @@ const AddMenuItemModal: React.FC<AddMenuItemModalProps> = ({ onItemAdded }) => {
                   id="isAvailable"
                   checked={formData.isAvailable}
                   onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isAvailable: checked }))}
+                  disabled={categories.length === 0}
                 />
                 <Label htmlFor="isAvailable">Available for ordering</Label>
               </div>
@@ -290,8 +372,9 @@ const AddMenuItemModal: React.FC<AddMenuItemModalProps> = ({ onItemAdded }) => {
                     onChange={(e) => setNewTag(e.target.value)}
                     placeholder="Add a tag"
                     onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
+                    disabled={categories.length === 0}
                   />
-                  <Button type="button" onClick={addTag} size="sm">
+                  <Button type="button" onClick={addTag} size="sm" disabled={categories.length === 0}>
                     Add
                   </Button>
                 </div>
@@ -320,23 +403,56 @@ const AddMenuItemModal: React.FC<AddMenuItemModalProps> = ({ onItemAdded }) => {
             <CardContent className="pt-4 space-y-4">
               <Label>Dietary Information</Label>
               <div className="grid grid-cols-2 gap-4">
-                {Object.entries(formData.dietaryInfo).map(([key, value]) => (
-                  <div key={key} className="flex items-center space-x-2">
-                    <Switch
-                      id={key}
-                      checked={value}
-                      onCheckedChange={(checked) => 
-                        setFormData(prev => ({
-                          ...prev,
-                          dietaryInfo: { ...prev.dietaryInfo, [key]: checked }
-                        }))
-                      }
-                    />
-                    <Label htmlFor={key} className="capitalize">
-                      {key.replace('is', '').replace(/([A-Z])/g, ' $1').trim()}
-                    </Label>
-                  </div>
-                ))}
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="isVegetarian"
+                    checked={formData.isVegetarian}
+                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isVegetarian: checked }))}
+                    disabled={categories.length === 0}
+                  />
+                  <Label htmlFor="isVegetarian">Vegetarian</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="isVegan"
+                    checked={formData.isVegan}
+                    onCheckedChange={(checked) => setFormData(prev => ({ 
+                      ...prev, 
+                      isVegan: checked,
+                      // Automatically mark as vegetarian if vegan
+                      isVegetarian: checked ? true : prev.isVegetarian
+                    }))}
+                    disabled={categories.length === 0}
+                  />
+                  <Label htmlFor="isVegan">Vegan</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="isGlutenFree"
+                    checked={formData.isGlutenFree}
+                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isGlutenFree: checked }))}
+                    disabled={categories.length === 0}
+                  />
+                  <Label htmlFor="isGlutenFree">Gluten Free</Label>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="spiceLevel">Spice Level</Label>
+                  <Select
+                    value={formData.spiceLevel}
+                    onValueChange={(value: 'mild' | 'medium' | 'hot' | 'extra-hot') => setFormData(prev => ({ ...prev, spiceLevel: value }))}
+                    disabled={categories.length === 0}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select spice level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="mild">Mild</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="hot">Hot</SelectItem>
+                      <SelectItem value="extra-hot">Extra Hot</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -353,6 +469,7 @@ const AddMenuItemModal: React.FC<AddMenuItemModalProps> = ({ onItemAdded }) => {
                       id={key}
                       type="number"
                       step="0.1"
+                      min="0"
                       value={value || ''}
                       onChange={(e) => 
                         setFormData(prev => ({
@@ -363,6 +480,7 @@ const AddMenuItemModal: React.FC<AddMenuItemModalProps> = ({ onItemAdded }) => {
                           }
                         }))
                       }
+                      disabled={categories.length === 0}
                     />
                   </div>
                 ))}
@@ -374,8 +492,8 @@ const AddMenuItemModal: React.FC<AddMenuItemModalProps> = ({ onItemAdded }) => {
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Creating...' : 'Create Menu Item'}
+            <Button type="submit" disabled={loading || categories.length === 0}>
+              {loading ? 'Creating...' : categories.length === 0 ? 'Create Categories First' : 'Create Menu Item'}
             </Button>
           </div>
         </form>

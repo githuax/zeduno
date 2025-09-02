@@ -33,6 +33,10 @@ export interface IMenuItem extends Document {
   tags?: string[];
   popularity: number;
   stockQuantity?: number;
+  amount: number; // Current stock amount
+  minStockLevel?: number; // Alert when stock is below this level
+  maxStockLevel?: number; // Maximum stock capacity
+  trackInventory: boolean; // Whether to track inventory for this item
   isVegetarian?: boolean;
   isVegan?: boolean;
   isGlutenFree?: boolean;
@@ -45,6 +49,10 @@ export interface IMenuItem extends Document {
   updateAvailability(isAvailable: boolean): Promise<IMenuItem>;
   addCustomization(option: ICustomizationOption): Promise<IMenuItem>;
   removeCustomization(optionName: string): Promise<IMenuItem>;
+  reduceStock(quantity: number): Promise<IMenuItem>;
+  increaseStock(quantity: number): Promise<IMenuItem>;
+  checkStockAvailable(quantity: number): boolean;
+  isLowStock(): boolean;
 }
 
 // MenuItem Schema
@@ -159,6 +167,25 @@ const menuItemSchema = new Schema<IMenuItem>({
     type: Number,
     min: 0
   },
+  amount: {
+    type: Number,
+    required: [true, 'Stock amount is required'],
+    min: [0, 'Stock amount cannot be negative'],
+    default: 0
+  },
+  minStockLevel: {
+    type: Number,
+    min: [0, 'Minimum stock level cannot be negative'],
+    default: 0
+  },
+  maxStockLevel: {
+    type: Number,
+    min: [0, 'Maximum stock level cannot be negative']
+  },
+  trackInventory: {
+    type: Boolean,
+    default: true
+  },
   isVegetarian: {
     type: Boolean,
     default: false
@@ -255,6 +282,50 @@ menuItemSchema.methods.removeCustomization = function(optionName: string) {
   );
   
   return this.save();
+};
+
+// Instance method to reduce stock
+menuItemSchema.methods.reduceStock = function(quantity: number) {
+  if (!this.trackInventory) {
+    return Promise.resolve(this);
+  }
+  
+  if (this.amount < quantity) {
+    throw new Error(`Insufficient stock. Available: ${this.amount}, Requested: ${quantity}`);
+  }
+  
+  this.amount -= quantity;
+  
+  // Auto-disable if out of stock
+  if (this.amount <= 0) {
+    this.isAvailable = false;
+  }
+  
+  return this.save();
+};
+
+// Instance method to increase stock
+menuItemSchema.methods.increaseStock = function(quantity: number) {
+  this.amount += quantity;
+  
+  // Auto-enable if stock is restored
+  if (this.amount > 0 && !this.isAvailable && this.isActive) {
+    this.isAvailable = true;
+  }
+  
+  return this.save();
+};
+
+// Instance method to check if stock is available
+menuItemSchema.methods.checkStockAvailable = function(quantity: number) {
+  if (!this.trackInventory) return true;
+  return this.amount >= quantity;
+};
+
+// Instance method to check if stock is low
+menuItemSchema.methods.isLowStock = function() {
+  if (!this.trackInventory) return false;
+  return this.amount <= (this.minStockLevel || 0);
 };
 
 // Static method to get menu items by category

@@ -120,13 +120,45 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
       orderData.orderNumber = `ORD-${dateStr}-${random}`;
     }
     
-    // Calculate totals
+    // Calculate totals and validate/reduce stock
     let subtotal = 0;
+    const stockUpdates = []; // Track stock updates for rollback if needed
+    
     for (const item of orderData.items) {
       const menuItem = await MenuItem.findById(item.menuItem);
       if (!menuItem) {
         return res.status(400).json({ message: `Menu item ${item.menuItem} not found` });
       }
+      
+      // Check stock availability if inventory tracking is enabled
+      if (menuItem.trackInventory && !menuItem.checkStockAvailable(item.quantity)) {
+        // Rollback any stock changes made so far
+        for (const update of stockUpdates) {
+          await MenuItem.findByIdAndUpdate(update.itemId, { $inc: { amount: update.quantity } });
+        }
+        return res.status(400).json({ 
+          success: false,
+          message: `Insufficient stock for ${menuItem.name}. Available: ${menuItem.amount}, Requested: ${item.quantity}` 
+        });
+      }
+      
+      // Reduce stock if inventory tracking is enabled
+      if (menuItem.trackInventory) {
+        try {
+          await menuItem.reduceStock(item.quantity);
+          stockUpdates.push({ itemId: menuItem._id, quantity: item.quantity });
+        } catch (error) {
+          // Rollback any stock changes made so far
+          for (const update of stockUpdates) {
+            await MenuItem.findByIdAndUpdate(update.itemId, { $inc: { amount: update.quantity } });
+          }
+          return res.status(400).json({ 
+            success: false,
+            message: error.message 
+          });
+        }
+      }
+      
       item.price = menuItem.price;
       
       // Add customization prices
@@ -178,6 +210,14 @@ export const updateOrder = async (req: AuthRequest, res: Response, next: NextFun
       const existingOrder = await Order.findById(id);
       if (!existingOrder) {
         return res.status(404).json({ message: 'Order not found' });
+      }
+
+      // Prevent editing confirmed orders - only pending orders can be modified
+      if (existingOrder.status !== 'pending') {
+        return res.status(400).json({ 
+          message: 'Order cannot be modified', 
+          error: `Orders with status '${existingOrder.status}' cannot be edited. Only pending orders can be modified.`
+        });
       }
 
       let subtotal = 0;
@@ -441,6 +481,19 @@ export const cancelOrder = async (req: AuthRequest, res: Response, next: NextFun
         success: false,
         message: `Cannot cancel order with status: ${order.status}`
       });
+    }
+
+    // Restore stock for cancelled items
+    for (const item of order.items) {
+      const menuItem = await MenuItem.findById(item.menuItem);
+      if (menuItem && menuItem.trackInventory) {
+        try {
+          await menuItem.increaseStock(item.quantity);
+          console.log(`Restored ${item.quantity} units of ${menuItem.name} to stock`);
+        } catch (error) {
+          console.error(`Failed to restore stock for ${menuItem.name}:`, error);
+        }
+      }
     }
 
     // Use the model method to update status

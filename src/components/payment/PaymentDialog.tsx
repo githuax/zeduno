@@ -11,11 +11,13 @@ import { usePaymentMethods, useProcessPayment } from "@/hooks/usePayments";
 import { PaymentIntent } from "@/types/payment.types";
 import { useCurrency } from '@/hooks/useCurrency';
 import { MPesaPaymentDialog } from './MPesaPaymentDialog';
+import { MPesaKCBPaymentDialog } from './MPesaKCBPaymentDialog';
 import { 
   CreditCard, 
   Smartphone, 
   Banknote, 
   Building2, 
+  Building,
   Gift,
   Loader2,
   CheckCircle,
@@ -47,15 +49,19 @@ export const PaymentDialog = ({
   const [paymentStep, setPaymentStep] = useState<'select' | 'process' | 'success' | 'error'>('select');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [showMPesaDialog, setShowMPesaDialog] = useState<boolean>(false);
+  const [showMPesaKCBDialog, setShowMPesaKCBDialog] = useState<boolean>(false);
 
   const { data: paymentMethods } = usePaymentMethods();
-  const { format: formatPrice } = useCurrency();
+  const { format: formatPrice, currencyCode, symbol } = useCurrency();
   const processPayment = useProcessPayment();
 
   const activePaymentMethods = paymentMethods?.filter(method => method.isEnabled) || [];
   const selectedMethod = activePaymentMethods.find(method => method.id === selectedPaymentMethod);
 
-  const getPaymentIcon = (type: string) => {
+  const getPaymentIcon = (type: string, icon?: string) => {
+    // Check for specific icon first
+    if (icon === 'building') return Building;
+    
     switch (type) {
       case 'credit_card':
       case 'debit_card':
@@ -81,7 +87,13 @@ export const PaymentDialog = ({
   const handlePayment = async () => {
     if (!selectedMethod) return;
 
-    // Handle M-Pesa payment separately
+    // Handle M-Pesa KCB payment separately
+    if (selectedMethod.id === 'mpesa-kcb') {
+      setShowMPesaKCBDialog(true);
+      return;
+    }
+
+    // Handle M-Pesa (Safaricom) payment separately
     if (selectedMethod.id === 'mpesa') {
       setShowMPesaDialog(true);
       return;
@@ -92,7 +104,7 @@ export const PaymentDialog = ({
     const paymentIntent: PaymentIntent = {
       id: `pi_${Date.now()}`,
       amount: total,
-      currency: 'USD',
+      currency: currencyCode,
       paymentMethod: selectedMethod.id,
       orderId: orderData.id,
       customerInfo: {
@@ -128,6 +140,7 @@ export const PaymentDialog = ({
     setTipAmount(0);
     setErrorMessage('');
     setShowMPesaDialog(false);
+    setShowMPesaKCBDialog(false);
     onOpenChange(false);
   };
 
@@ -139,6 +152,16 @@ export const PaymentDialog = ({
   const handleMPesaError = (error: string) => {
     onPaymentError?.(error);
     setShowMPesaDialog(false);
+  };
+
+  const handleMPesaKCBSuccess = (transactionId: string, reference: string) => {
+    onPaymentSuccess?.(transactionId);
+    handleClose();
+  };
+
+  const handleMPesaKCBError = (error: string) => {
+    onPaymentError?.(error);
+    setShowMPesaKCBDialog(false);
   };
 
   const tipOptions = [0, 15, 18, 20, 25];
@@ -226,7 +249,7 @@ export const PaymentDialog = ({
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {activePaymentMethods.map((method) => {
-                      const Icon = getPaymentIcon(method.type);
+                      const Icon = getPaymentIcon(method.type, method.icon);
                       return (
                         <div
                           key={method.id}
@@ -239,10 +262,15 @@ export const PaymentDialog = ({
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <Icon className="h-5 w-5 text-primary" />
+                              <Icon className={`h-5 w-5 ${method.id === 'mpesa-kcb' ? 'text-green-600' : 'text-primary'}`} />
                               <div>
                                 <p className="font-medium">{method.name}</p>
                                 <p className="text-sm text-muted-foreground">{method.provider}</p>
+                                {method.id === 'mpesa-kcb' && (
+                                  <Badge variant="outline" className="text-xs mt-1">
+                                    Multi-Currency
+                                  </Badge>
+                                )}
                               </div>
                             </div>
                             {method.processingFee > 0 && (
@@ -277,9 +305,11 @@ export const PaymentDialog = ({
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="custom-tip">Custom Tip Amount</Label>
+                      <Label htmlFor="custom-tip">Custom Tip Amount ({currencyCode})</Label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2">$</span>
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 font-medium">
+                          {symbol}
+                        </span>
                         <Input
                           id="custom-tip"
                           type="number"
@@ -291,6 +321,9 @@ export const PaymentDialog = ({
                           min="0"
                         />
                       </div>
+                      <p className="text-xs text-muted-foreground">
+                        Enter tip amount in {currencyCode}
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
@@ -298,9 +331,10 @@ export const PaymentDialog = ({
                 <Button 
                   onClick={handlePayment}
                   disabled={!selectedPaymentMethod}
-                  className="w-full"
+                  className={`w-full ${selectedMethod?.id === 'mpesa-kcb' ? 'bg-green-600 hover:bg-green-700' : ''}`}
                   size="lg"
                 >
+                  {selectedMethod?.id === 'mpesa-kcb' && <Building className="h-4 w-4 mr-2" />}
                   Process Payment {formatPrice(total)}
                 </Button>
               </>
@@ -359,6 +393,15 @@ export const PaymentDialog = ({
         orderData={orderData}
         onPaymentSuccess={handleMPesaSuccess}
         onPaymentError={handleMPesaError}
+      />
+
+      {/* M-Pesa KCB Payment Dialog */}
+      <MPesaKCBPaymentDialog
+        open={showMPesaKCBDialog}
+        onOpenChange={setShowMPesaKCBDialog}
+        orderData={orderData}
+        onPaymentSuccess={handleMPesaKCBSuccess}
+        onPaymentError={handleMPesaKCBError}
       />
     </Dialog>
   );

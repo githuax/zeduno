@@ -89,6 +89,7 @@ export function EditOrderDialog({ order, open, onOpenChange, onSuccess }: EditOr
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('current');
   const [selectedItemForAction, setSelectedItemForAction] = useState<string | null>(null);
+  const [itemToReplace, setItemToReplace] = useState<string | null>(null); // Track the item being replaced
   const [adjustmentReason, setAdjustmentReason] = useState('');
   const [adjustmentNotes, setAdjustmentNotes] = useState('');
   const [showReasonDialog, setShowReasonDialog] = useState(false);
@@ -537,7 +538,7 @@ export function EditOrderDialog({ order, open, onOpenChange, onSuccess }: EditOr
               <div class="item-details">
                 <div>${item.quantity}x ${item.menuItem.name}</div>
                 ${item.customizations.length > 0 ? 
-                  `<div class="customizations">+ ${item.customizations.map(c => c.option).join(', ')}</div>` : ''}
+                  `<div class="customizations">+ ${item.customizations.filter(c => c && c.option).map(c => c.option).join(', ')}</div>` : ''}
                 ${item.specialInstructions ? 
                   `<div class="instructions">Note: ${item.specialInstructions}</div>` : ''}
               </div>
@@ -581,6 +582,33 @@ export function EditOrderDialog({ order, open, onOpenChange, onSuccess }: EditOr
     `;
   };
 
+  // Don't allow editing of confirmed orders
+  if (order && order.status !== 'pending') {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Order Cannot Be Edited</DialogTitle>
+            <DialogDescription>
+              This order has been {order.status} and cannot be modified.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center space-y-4 py-4">
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Only pending orders can be edited. This order is currently {order.status}.
+              </AlertDescription>
+            </Alert>
+            <Button onClick={() => onOpenChange(false)}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
@@ -591,7 +619,15 @@ export function EditOrderDialog({ order, open, onOpenChange, onSuccess }: EditOr
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
+        <Tabs value={activeTab} onValueChange={(value) => {
+          setActiveTab(value);
+          // Clear replacement state when switching tabs
+          if (value !== 'add') {
+            setCurrentAction(null);
+            setItemToReplace(null);
+            setSelectedItemForAction(null);
+          }
+        }} className="flex-1">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="current">
               Current Order
@@ -626,7 +662,8 @@ export function EditOrderDialog({ order, open, onOpenChange, onSuccess }: EditOr
                         className={`p-4 border rounded-lg ${
                           item.status === 'removed' ? 'opacity-50 bg-red-50' :
                           item.status === 'new' ? 'bg-green-50' :
-                          item.status === 'modified' ? 'bg-yellow-50' : ''
+                          item.status === 'modified' ? 'bg-yellow-50' :
+                          itemToReplace === item.id ? 'border-orange-500 bg-orange-50' : ''
                         }`}
                       >
                         <div className="flex items-start justify-between">
@@ -644,11 +681,14 @@ export function EditOrderDialog({ order, open, onOpenChange, onSuccess }: EditOr
                               {item.status === 'removed' && (
                                 <Badge variant="destructive">Removed</Badge>
                               )}
+                              {itemToReplace === item.id && (
+                                <Badge variant="secondary" className="bg-orange-500 text-white">Being Replaced</Badge>
+                              )}
                             </div>
                             
                             {item.customizations.length > 0 && (
                               <p className="text-sm text-muted-foreground mt-1">
-                                {item.customizations.map(c => c.option).join(', ')}
+                                {item.customizations.filter(c => c && c.option).map(c => c.option).join(', ')}
                               </p>
                             )}
                             
@@ -701,7 +741,8 @@ export function EditOrderDialog({ order, open, onOpenChange, onSuccess }: EditOr
                                   size="sm"
                                   variant="ghost"
                                   onClick={() => {
-                                    setSelectedItemForAction(item.id);
+                                    setItemToReplace(item.id); // Store the item to be replaced
+                                    setSelectedItemForAction(null); // Clear the selected item
                                     setCurrentAction('replace');
                                     setActiveTab('add');
                                   }}
@@ -798,10 +839,10 @@ export function EditOrderDialog({ order, open, onOpenChange, onSuccess }: EditOr
                               }}
                               disabled={!item.isAvailable}
                             >
-                              {currentAction === 'replace' ? (
+                              {currentAction === 'replace' && itemToReplace ? (
                                 <>
                                   <Replace className="h-4 w-4 mr-1" />
-                                  Replace
+                                  Select Replacement
                                 </>
                               ) : (
                                 <>
@@ -979,11 +1020,10 @@ export function EditOrderDialog({ order, open, onOpenChange, onSuccess }: EditOr
                     }
                   } else if (currentAction === 'remove' && selectedItemForAction) {
                     handleRemoveItem(selectedItemForAction, adjustmentReason, adjustmentNotes);
-                  } else if (currentAction === 'replace' && selectedItemForAction) {
-                    const oldItemId = editableItems.find(i => i.id === selectedItemForAction)?.id;
+                  } else if (currentAction === 'replace' && selectedItemForAction && itemToReplace) {
                     const newMenuItem = menuItems.find(m => m._id === selectedItemForAction);
-                    if (oldItemId && newMenuItem) {
-                      handleReplaceItem(oldItemId, newMenuItem, adjustmentReason, adjustmentNotes);
+                    if (newMenuItem) {
+                      handleReplaceItem(itemToReplace, newMenuItem, adjustmentReason, adjustmentNotes);
                     }
                   }
 
@@ -991,6 +1031,7 @@ export function EditOrderDialog({ order, open, onOpenChange, onSuccess }: EditOr
                   setAdjustmentReason('');
                   setAdjustmentNotes('');
                   setSelectedItemForAction(null);
+                  setItemToReplace(null);
                   setCurrentAction(null);
                 }}
                 disabled={!adjustmentReason}

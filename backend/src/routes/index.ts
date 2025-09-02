@@ -12,6 +12,7 @@ import shiftRoutes from './shift.routes';
 import attendanceRoutes from './attendance.routes';
 import dashboardRoutes from './dashboard.routes';
 import paymentGatewayRoutes, { callbackRouter } from './payment-gateway.routes';
+import mpesaKCBRoutes from './mpesa-kcb.routes';
 
 const router = Router();
 
@@ -30,5 +31,6 @@ router.use('/attendance', attendanceRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/payments', paymentGatewayRoutes);
 router.use('/payments', callbackRouter);
+router.use('/mpesa-kcb', mpesaKCBRoutes);
 
 export default router;

@@ -110,7 +110,14 @@ const SuperAdminDashboard = () => {
       if (data.success) {
         // Open tenant in new tab
         const tenant = data.tenant;
-        window.open(`http://localhost:8080/dashboard?tenant=${tenant.slug}`, '_blank');
+        // Set up authentication for tenant dashboard access
+        const superadminToken = localStorage.getItem('superadmin_token');
+        const superadminUser = localStorage.getItem('superadmin_user');
+        if (superadminToken && superadminUser) {
+          localStorage.setItem('token', superadminToken);
+          localStorage.setItem('user', superadminUser);
+        }
+        window.open(`/dashboard?tenant=${tenant.slug}`, '_blank');
       } else {
         setError('Failed to switch to tenant');
       }

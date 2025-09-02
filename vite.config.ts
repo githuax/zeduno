@@ -5,6 +5,36 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  build: {
+    // Enable aggressive minification
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+        pure_funcs: ['console.log', 'console.info', 'console.debug'],
+      },
+    },
+    // Enable code splitting for better caching
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Split React and related libraries
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          // Split UI libraries
+          'ui-vendor': ['@mui/material', '@mui/icons-material', '@radix-ui/react-dialog', '@radix-ui/react-select'],
+          // Split utility libraries
+          'utils': ['date-fns', 'lodash'],
+          // Split data fetching
+          'query': ['@tanstack/react-query'],
+        },
+      },
+    },
+    // Optimize chunk sizes
+    chunkSizeWarningLimit: 500,
+    // Enable source maps for production debugging (but exclude from main bundle)
+    sourcemap: false,
+  },
   server: {
     host: "::",
     port: 8080,
@@ -40,6 +70,12 @@ export default defineConfig(({ mode }) => ({
         target: 'http://localhost:5000',
         changeOrigin: true,
         secure: false,
+      },
+      '/socket.io': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false,
+        ws: true,
       },
     },
   },

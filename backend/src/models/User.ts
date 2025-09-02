@@ -94,7 +94,9 @@ userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
   
   try {
-    const salt = await bcrypt.genSalt(10);
+    // Use lower salt rounds for faster hashing in development
+    const saltRounds = process.env.NODE_ENV === 'production' ? 10 : 8;
+    const salt = await bcrypt.genSalt(saltRounds);
     this.password = await bcrypt.hash(this.password, salt);
     // Update passwordLastChanged when password is changed
     this.passwordLastChanged = new Date();
@@ -108,9 +110,12 @@ userSchema.methods.comparePassword = async function (candidatePassword: string):
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-// Helper function to update tenant user count
+// Helper function to update tenant user count (debounced)
 const updateTenantUserCount = async (tenantId: mongoose.Types.ObjectId) => {
   if (!tenantId) return;
+  
+  // Skip in development for faster response
+  if (process.env.NODE_ENV !== 'production') return;
   
   try {
     const { Tenant } = await import('./Tenant');
@@ -128,10 +133,11 @@ const updateTenantUserCount = async (tenantId: mongoose.Types.ObjectId) => {
   }
 };
 
-// Post-save middleware to update tenant user count
+// Post-save middleware to update tenant user count (async)
 userSchema.post('save', async function(doc) {
   if (doc.tenantId && doc.role !== 'superadmin') {
-    await updateTenantUserCount(doc.tenantId);
+    // Run asynchronously to not block response
+    setImmediate(() => updateTenantUserCount(doc.tenantId));
   }
 });
 

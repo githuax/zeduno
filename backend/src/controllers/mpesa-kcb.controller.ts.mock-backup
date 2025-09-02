@@ -1,0 +1,252 @@
+import { Request, Response } from 'express';
+
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id: string;
+    role: string;
+    tenantId?: string;
+  };
+}
+
+export class MPesaKCBController {
+  /**
+   * Initiate MPESA KCB STK Push payment
+   */
+  async initiatePayment(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const { 
+        amount, 
+        phoneNumber, 
+        phone, 
+        currency = 'KES', 
+        orderId, 
+        customerName, 
+        description, 
+        type = 'deposit' 
+      } = req.body;
+      
+      const tenantId = req.user?.tenantId;
+
+      if (!tenantId) {
+        res.status(400).json({ 
+          success: false, 
+          error: 'Tenant ID is required' 
+        });
+        return;
+      }
+
+      // Use phoneNumber if provided (from frontend), otherwise fall back to phone
+      const inputPhone = phoneNumber || phone;
+      
+      if (!inputPhone) {
+        res.status(400).json({ 
+          success: false, 
+          error: 'Phone number is required' 
+        });
+        return;
+      }
+
+      // Validate phone number format for East African countries
+      if (!this.validateEastAfricanPhoneNumber(inputPhone)) {
+        res.status(400).json({ 
+          success: false, 
+          error: 'Invalid East African phone number format. Please use format: +254XXXXXXXXX, +256XXXXXXXXX, +255XXXXXXXXX, +250XXXXXXXXX, +257XXXXXXXXX, +243XXXXXXXXX, or +211XXXXXXXXX' 
+        });
+        return;
+      }
+
+      // Validate currency
+      const supportedCurrencies = ['KES', 'UGX', 'TZS', 'RWF', 'BIF', 'CDF', 'SSP'];
+      if (!supportedCurrencies.includes(currency)) {
+        res.status(400).json({ 
+          success: false, 
+          error: 'Unsupported currency. Supported currencies: ' + supportedCurrencies.join(', ') 
+        });
+        return;
+      }
+
+      // Format phone number
+      const formattedPhone = this.formatPhoneNumber(inputPhone);
+
+      // Generate order ID if not provided
+      const finalOrderId = orderId || `${type.toUpperCase()}-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+      // IMPORTANT: Return PENDING status instead of success
+      // This prevents premature order settlement
+      res.json({
+        success: true,
+        message: 'Payment request initiated. Please wait for M-Pesa STK push on your phone.',
+        data: {
+          transactionId: finalOrderId,
+          checkoutRequestId: `ws_CO_${Date.now()}`,
+          orderId: finalOrderId,
+          amount,
+          currency,
+          phone: formattedPhone,
+          customerName,
+          description,
+          status: 'pending' // Keep as pending until actual payment
+        },
+        reference: `KCB${Date.now()}`,
+        // Add this flag to prevent frontend from marking order as paid
+        paymentStatus: 'initiated', // Not 'completed'
+        requiresUserAction: true,
+        message_details: 'M-Pesa KCB integration is not fully configured. This is a mock response for development testing.'
+      });
+    } catch (error) {
+      console.error('Error initiating MPESA KCB payment:', error);
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : 'Payment initiation failed' 
+      });
+    }
+  }
+
+  /**
+   * Handle MPESA KCB callback
+   */
+  async handleCallback(req: Request, res: Response): Promise<void> {
+    try {
+      console.log('MPESA KCB callback received:', JSON.stringify(req.body, null, 2));
+
+      // Process the callback (implement based on actual KCB callback format)
+      // This is where you would update the order status to 'paid' after confirming payment
+      
+      res.status(200).json({ 
+        success: true,
+        message: 'Callback processed successfully' 
+      });
+    } catch (error) {
+      console.error('Error handling MPESA KCB callback:', error);
+      res.status(500).json({ 
+        success: false,
+        error: 'Internal server error' 
+      });
+    }
+  }
+
+  /**
+   * Query payment status
+   */
+  async queryPaymentStatus(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const { transactionId } = req.params;
+
+      // For development: return pending status
+      // In real implementation, query actual M-Pesa status
+      res.json({
+        success: true,
+        data: {
+          transactionId,
+          status: 'pending',
+          message: 'Transaction is being processed. Please wait for M-Pesa confirmation.'
+        },
+      });
+    } catch (error) {
+      console.error('Error querying payment status:', error);
+      res.status(500).json({ 
+        success: false,
+        error: 'Failed to query payment status' 
+      });
+    }
+  }
+
+  /**
+   * Get payment history
+   */
+  async getPaymentHistory(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const tenantId = req.user?.tenantId;
+
+      // Mock response for now
+      res.json({
+        success: true,
+        data: {
+          transactions: [],
+          totalCount: 0,
+          totalPages: 0,
+          currentPage: 1,
+        },
+      });
+    } catch (error) {
+      console.error('Error getting payment history:', error);
+      res.status(500).json({ 
+        success: false,
+        error: 'Failed to get payment history' 
+      });
+    }
+  }
+
+  /**
+   * Get payment statistics
+   */
+  async getPaymentStatistics(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      // Mock response for now
+      res.json({
+        success: true,
+        data: {
+          summary: {
+            totalTransactions: 0,
+            totalAmount: 0,
+            successfulTransactions: 0,
+            successfulAmount: 0,
+            failedTransactions: 0,
+            pendingTransactions: 0,
+          },
+          breakdown: [],
+        },
+      });
+    } catch (error) {
+      console.error('Error getting payment statistics:', error);
+      res.status(500).json({ 
+        success: false,
+        error: 'Failed to get payment statistics' 
+      });
+    }
+  }
+
+  /**
+   * Validate East African phone number format
+   */
+  private validateEastAfricanPhoneNumber(phoneNumber: string): boolean {
+    const digits = phoneNumber.replace(/\D/g, '');
+    
+    // Check for valid East African country codes and proper length
+    const validPatterns = [
+      /^254[17]\d{8}$/,    // Kenya: 254 + 7/1 + 8 digits
+      /^256[37]\d{8}$/,    // Uganda: 256 + 7/3 + 8 digits  
+      /^255[67]\d{8}$/,    // Tanzania: 255 + 6/7 + 8 digits
+      /^250[78]\d{8}$/,    // Rwanda: 250 + 7/8 + 8 digits
+      /^257[68]\d{7}$/,    // Burundi: 257 + 6/8 + 7 digits
+      /^243[89]\d{8}$/,    // Congo: 243 + 8/9 + 8 digits
+      /^211[19]\d{8}$/     // South Sudan: 211 + 1/9 + 8 digits
+    ];
+    
+    return validPatterns.some(pattern => pattern.test(digits));
+  }
+
+  /**
+   * Format phone number to required format
+   */
+  private formatPhoneNumber(phoneNumber: string): string {
+    let cleaned = phoneNumber.replace(/[\s\-\(\)]/g, '');
+    
+    // Remove leading + if present
+    if (cleaned.startsWith('+')) {
+      cleaned = cleaned.substring(1);
+    }
+    
+    // Remove leading 0 and add appropriate country code
+    if (cleaned.startsWith('0')) {
+      cleaned = cleaned.substring(1);
+      // Default to Kenya if no country code provided
+      cleaned = `254${cleaned}`;
+    }
+    
+    return cleaned;
+  }
+}
+
+const mpesaKCBController = new MPesaKCBController();
+export default mpesaKCBController;

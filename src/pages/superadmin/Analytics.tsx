@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getApiUrl } from '@/config/api';
 import { Badge } from '@/components/ui/badge';
+import { formatCurrency } from '../../utils/currency';
 import {
   Table,
   TableBody,
@@ -15,7 +16,7 @@ import {
   TrendingUp, 
   Users, 
   Building2, 
-  DollarSign,
+  Banknote,
   Activity,
   Calendar,
   Server
@@ -180,10 +181,10 @@ const SuperAdminAnalytics = () => {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <Banknote className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">${systemStats.totalRevenue.toLocaleString()}</div>
+                <div className="text-2xl font-bold">{formatCurrency(systemStats.totalRevenue, "KES")}</div>
                 <p className="text-xs text-muted-foreground">
                   Across all tenants
                 </p>
@@ -241,7 +242,7 @@ const SuperAdminAnalytics = () => {
                   </div>
                   <div className="flex justify-between items-center text-sm">
                     <span>Revenue generated (24h)</span>
-                    <span className="font-medium">+$3,420</span>
+                    <span className="font-medium">+{formatCurrency(3420, "KES")}</span>
                   </div>
                 </div>
               </CardContent>
@@ -301,8 +302,8 @@ const SuperAdminAnalytics = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          <DollarSign className="h-4 w-4 text-muted-foreground" />
-                          <span>${tenant.revenue.toLocaleString()}</span>
+                          <Banknote className="h-4 w-4 text-muted-foreground" />
+                          <span>{formatCurrency(tenant.revenue, "KES")}</span>
                         </div>
                       </TableCell>
                       <TableCell>

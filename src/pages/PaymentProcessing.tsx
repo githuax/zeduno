@@ -295,17 +295,20 @@ const PaymentProcessing = () => {
                   <div className="space-y-2">
                     <Label htmlFor="currency">Currency</Label>
                     <Select 
-                      value={localSettings?.currency || 'USD'} 
+                      value={localSettings?.currency || 'KES'} 
                       onValueChange={(value) => handleSettingsUpdate({ ...localSettings, currency: value })}
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="USD">USD - US Dollar</SelectItem>
-                        <SelectItem value="EUR">EUR - Euro</SelectItem>
-                        <SelectItem value="GBP">GBP - British Pound</SelectItem>
-                        <SelectItem value="CAD">CAD - Canadian Dollar</SelectItem>
+                        <SelectItem value="KES">KES - Kenyan Shilling</SelectItem>
+                        <SelectItem value="UGX">UGX - Ugandan Shilling</SelectItem>
+                        <SelectItem value="TZS">TZS - Tanzanian Shilling</SelectItem>
+                        <SelectItem value="RWF">RWF - Rwandan Franc</SelectItem>
+                        <SelectItem value="BIF">BIF - Burundian Franc</SelectItem>
+                        <SelectItem value="CDF">CDF - Congolese Franc</SelectItem>
+                        <SelectItem value="SSP">SSP - South Sudanese Pound</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

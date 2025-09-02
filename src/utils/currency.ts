@@ -9,190 +9,64 @@ export interface Currency {
 }
 
 export const CURRENCIES: Record<string, Currency> = {
-  USD: {
-    code: 'USD',
-    name: 'US Dollar',
-    symbol: '$',
-    symbolPosition: 'before',
-    decimalPlaces: 2,
-    thousandsSeparator: ',',
-    decimalSeparator: '.',
-  },
-  EUR: {
-    code: 'EUR',
-    name: 'Euro',
-    symbol: '€',
-    symbolPosition: 'before',
-    decimalPlaces: 2,
-    thousandsSeparator: ',',
-    decimalSeparator: '.',
-  },
-  GBP: {
-    code: 'GBP',
-    name: 'British Pound',
-    symbol: '£',
-    symbolPosition: 'before',
-    decimalPlaces: 2,
-    thousandsSeparator: ',',
-    decimalSeparator: '.',
-  },
-  JPY: {
-    code: 'JPY',
-    name: 'Japanese Yen',
-    symbol: '¥',
-    symbolPosition: 'before',
-    decimalPlaces: 0,
-    thousandsSeparator: ',',
-    decimalSeparator: '.',
-  },
-  CAD: {
-    code: 'CAD',
-    name: 'Canadian Dollar',
-    symbol: 'C$',
-    symbolPosition: 'before',
-    decimalPlaces: 2,
-    thousandsSeparator: ',',
-    decimalSeparator: '.',
-  },
-  AUD: {
-    code: 'AUD',
-    name: 'Australian Dollar',
-    symbol: 'A$',
-    symbolPosition: 'before',
-    decimalPlaces: 2,
-    thousandsSeparator: ',',
-    decimalSeparator: '.',
-  },
-  CHF: {
-    code: 'CHF',
-    name: 'Swiss Franc',
-    symbol: 'Fr.',
-    symbolPosition: 'after',
-    decimalPlaces: 2,
-    thousandsSeparator: ',',
-    decimalSeparator: '.',
-  },
-  CNY: {
-    code: 'CNY',
-    name: 'Chinese Yuan',
-    symbol: '¥',
-    symbolPosition: 'before',
-    decimalPlaces: 2,
-    thousandsSeparator: ',',
-    decimalSeparator: '.',
-  },
-  INR: {
-    code: 'INR',
-    name: 'Indian Rupee',
-    symbol: '₹',
-    symbolPosition: 'before',
-    decimalPlaces: 2,
-    thousandsSeparator: ',',
-    decimalSeparator: '.',
-  },
-  KRW: {
-    code: 'KRW',
-    name: 'South Korean Won',
-    symbol: '₩',
-    symbolPosition: 'before',
-    decimalPlaces: 0,
-    thousandsSeparator: ',',
-    decimalSeparator: '.',
-  },
-  MXN: {
-    code: 'MXN',
-    name: 'Mexican Peso',
-    symbol: '$',
-    symbolPosition: 'before',
-    decimalPlaces: 2,
-    thousandsSeparator: ',',
-    decimalSeparator: '.',
-  },
-  BRL: {
-    code: 'BRL',
-    name: 'Brazilian Real',
-    symbol: 'R$',
-    symbolPosition: 'before',
-    decimalPlaces: 2,
-    thousandsSeparator: '.',
-    decimalSeparator: ',',
-  },
   KES: {
     code: 'KES',
     name: 'Kenyan Shilling',
-    symbol: 'KES',
+    symbol: 'KSh',
+    symbolPosition: 'before',
+    decimalPlaces: 2,
+    thousandsSeparator: ',',
+    decimalSeparator: '.',
+  },
+  UGX: {
+    code: 'UGX',
+    name: 'Ugandan Shilling',
+    symbol: 'USh',
     symbolPosition: 'before',
     decimalPlaces: 0,
     thousandsSeparator: ',',
     decimalSeparator: '.',
   },
-  SGD: {
-    code: 'SGD',
-    name: 'Singapore Dollar',
-    symbol: 'S$',
+  TZS: {
+    code: 'TZS',
+    name: 'Tanzanian Shilling',
+    symbol: 'TSh',
     symbolPosition: 'before',
     decimalPlaces: 2,
     thousandsSeparator: ',',
     decimalSeparator: '.',
   },
-  HKD: {
-    code: 'HKD',
-    name: 'Hong Kong Dollar',
-    symbol: 'HK$',
+  RWF: {
+    code: 'RWF',
+    name: 'Rwandan Franc',
+    symbol: 'RWF',
+    symbolPosition: 'before',
+    decimalPlaces: 0,
+    thousandsSeparator: ',',
+    decimalSeparator: '.',
+  },
+  BIF: {
+    code: 'BIF',
+    name: 'Burundian Franc',
+    symbol: 'FBu',
+    symbolPosition: 'before',
+    decimalPlaces: 0,
+    thousandsSeparator: ',',
+    decimalSeparator: '.',
+  },
+  CDF: {
+    code: 'CDF',
+    name: 'Congolese Franc',
+    symbol: 'FC',
     symbolPosition: 'before',
     decimalPlaces: 2,
     thousandsSeparator: ',',
     decimalSeparator: '.',
   },
-  SEK: {
-    code: 'SEK',
-    name: 'Swedish Krona',
-    symbol: 'kr',
-    symbolPosition: 'after',
-    decimalPlaces: 2,
-    thousandsSeparator: ' ',
-    decimalSeparator: ',',
-  },
-  NOK: {
-    code: 'NOK',
-    name: 'Norwegian Krone',
-    symbol: 'kr',
-    symbolPosition: 'after',
-    decimalPlaces: 2,
-    thousandsSeparator: ' ',
-    decimalSeparator: ',',
-  },
-  DKK: {
-    code: 'DKK',
-    name: 'Danish Krone',
-    symbol: 'kr',
-    symbolPosition: 'after',
-    decimalPlaces: 2,
-    thousandsSeparator: '.',
-    decimalSeparator: ',',
-  },
-  PLN: {
-    code: 'PLN',
-    name: 'Polish Zloty',
-    symbol: 'zł',
-    symbolPosition: 'after',
-    decimalPlaces: 2,
-    thousandsSeparator: ' ',
-    decimalSeparator: ',',
-  },
-  THB: {
-    code: 'THB',
-    name: 'Thai Baht',
-    symbol: '฿',
-    symbolPosition: 'before',
-    decimalPlaces: 2,
-    thousandsSeparator: ',',
-    decimalSeparator: '.',
-  },
-  AED: {
-    code: 'AED',
-    name: 'UAE Dirham',
-    symbol: 'د.إ',
+  SSP: {
+    code: 'SSP',
+    name: 'South Sudanese Pound',
+    symbol: 'SS£',
     symbolPosition: 'before',
     decimalPlaces: 2,
     thousandsSeparator: ',',
@@ -202,14 +76,14 @@ export const CURRENCIES: Record<string, Currency> = {
 
 export function formatCurrency(
   amount: number,
-  currencyCode: string = 'USD',
+  currencyCode: string = 'KES',
   options: {
     showCurrencyCode?: boolean;
     minimumFractionDigits?: number;
     maximumFractionDigits?: number;
   } = {}
 ): string {
-  const currency = CURRENCIES[currencyCode] || CURRENCIES.USD;
+  const currency = CURRENCIES[currencyCode] || CURRENCIES.KES;
   const {
     showCurrencyCode = false,
     minimumFractionDigits = currency.decimalPlaces,
@@ -259,12 +133,12 @@ export const formatCurrencyWithDecimals = (amount: number, currencyCode: string 
   return formatCurrency(amount, currencyCode, { minimumFractionDigits: 2 });
 };
 
-export function getCurrencySymbol(currencyCode: string = 'USD'): string {
-  return CURRENCIES[currencyCode]?.symbol || '$';
+export function getCurrencySymbol(currencyCode: string = 'KES'): string {
+  return CURRENCIES[currencyCode]?.symbol || 'KSh';
 }
 
 export function getCurrencyName(currencyCode: string): string {
-  return CURRENCIES[currencyCode]?.name || 'US Dollar';
+  return CURRENCIES[currencyCode]?.name || 'Kenyan Shilling';
 }
 
 export function getAllCurrencies(): Currency[] {
@@ -276,8 +150,8 @@ export function getCurrency(currencyCode: string): Currency | undefined {
 }
 
 // Parse currency input (remove formatting and return number) - backward compatible
-export const parseCurrency = (value: string, currencyCode: string = 'USD'): number => {
-  const currency = CURRENCIES[currencyCode] || CURRENCIES.USD;
+export const parseCurrency = (value: string, currencyCode: string = 'KES'): number => {
+  const currency = CURRENCIES[currencyCode] || CURRENCIES.KES;
   
   // Remove currency symbol and separators
   let cleanInput = value

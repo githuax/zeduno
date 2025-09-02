@@ -8,7 +8,7 @@ import { MenuService } from '../services/menu.service';
 interface AuthRequest extends Request {
   user?: {
     id: string;
-    tenantId: string;
+    tenantId?: string;  // Made optional for SuperAdmin
     role: string;
   };
 }
@@ -17,8 +17,11 @@ interface AuthRequest extends Request {
 
 export const getMenuItems = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { tenantId } = req.user!;
+    const { tenantId, role } = req.user!;
     const { category, search, available, page = 1, limit = 50, sortBy = 'name', order = 'asc' } = req.query;
+
+    // SuperAdmin can see all data, regular users only see their tenant data
+    const filterTenantId = role === 'superadmin' ? undefined : tenantId;
 
     const result = await MenuService.getMenuItems({
       category: category as string,
@@ -28,7 +31,7 @@ export const getMenuItems = async (req: AuthRequest, res: Response, next: NextFu
       limit: parseInt(limit as string),
       sortBy: sortBy as string,
       order: order as string,
-      tenantId,
+      tenantId: filterTenantId,
       isPublic: false
     });
 
@@ -258,9 +261,11 @@ export const toggleMenuItemAvailability = async (req: AuthRequest, res: Response
 
 export const getCategories = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { tenantId } = req.user!;
+    const { tenantId, role } = req.user!;
 
-    const result = await MenuService.getCategories(tenantId, false);
+    // SuperAdmin can see all categories, regular users only see their tenant categories
+    const filterTenantId = role === 'superadmin' ? undefined : tenantId;
+    const result = await MenuService.getCategories(filterTenantId, false);
 
     res.json({
       success: true,

@@ -1,0 +1,291 @@
+
+> zeduno-backend@1.0.0 start
+> node dist/server.js
+
+MongoDB connected successfully
+Server is running on port 5000
+Environment: development
+API Documentation: http://localhost:5000/api-docs
+[0mPOST /api/auth/login [32m200[0m 151.342 ms - 1481[0m
+[0mPOST /api/auth/login [32m200[0m 116.974 ms - 1481[0m
+[0mPOST /api/auth/login [32m200[0m 131.585 ms - -[0m
+Debug: All staff/manager/admin users for tenant: new ObjectId('68b1324d846869f99beef6cd')
+Debug: Users found: [
+  { name: 'james User', role: 'admin', isActive: true },
+  { name: 'Sarah Johnson', role: 'staff', isActive: true }
+]
+Debug: Total staff count: 2
+Debug: Active staff count: 2
+[0mGET /api/dashboard/stats [32m200[0m 33.685 ms - 317[0m
+[0mGET /api/superadmin/settings/logo [36m304[0m 3.833 ms - -[0m
+SuperAdmin login attempt for: superadmin@zeduno.com
+(node:2583349) [MONGOOSE] Warning: Duplicate schema index on {"email":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:2583349) [MONGOOSE] Warning: Duplicate schema index on {"username":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+SuperAdmin model search result: Not found
+User model search result: Found
+Found superadmin: { email: 'superadmin@zeduno.com', role: 'superadmin', isActive: true }
+Password validation result: true
+Generated token with isSuperAdmin flag
+[0mPOST /api/superadmin/login [32m200[0m 115.341 ms - 435[0m
+getTenants called for user: {
+  id: new ObjectId('68addb47d7d24e9876412937'),
+  email: 'superadmin@zeduno.com',
+  role: 'superadmin'
+}
+User from database: { found: true, email: 'superadmin@zeduno.com', role: 'superadmin' }
+User is root superadmin by email
+Query for tenants: {}
+Is root superadmin: true
+Found 3 tenants matching query
+First tenant: {
+  name: 'DAILY HOTEL',
+  email: 'dailyhotel@mail.com',
+  createdBy: {
+    _id: new ObjectId('68addb47d7d24e9876412937'),
+    email: 'superadmin@zeduno.com',
+    firstName: 'Super',
+    lastName: 'Admin'
+  },
+  slug: 'daily-hotel'
+}
+[0mGET /api/superadmin/tenants [32m200[0m 20.725 ms - -[0m
+[0mGET /api/superadmin/settings/logo [36m304[0m 1.365 ms - -[0m
+[0mGET /api/superadmin/settings/logo [36m304[0m 0.598 ms - -[0m
+getTenants called for user: {
+  id: new ObjectId('68addb47d7d24e9876412937'),
+  email: 'superadmin@zeduno.com',
+  role: 'superadmin'
+}
+User from database: { found: true, email: 'superadmin@zeduno.com', role: 'superadmin' }
+User is root superadmin by email
+Query for tenants: {}
+Is root superadmin: true
+Found 3 tenants matching query
+First tenant: {
+  name: 'DAILY HOTEL',
+  email: 'dailyhotel@mail.com',
+  createdBy: {
+    _id: new ObjectId('68addb47d7d24e9876412937'),
+    email: 'superadmin@zeduno.com',
+    firstName: 'Super',
+    lastName: 'Admin'
+  },
+  slug: 'daily-hotel'
+}
+[0mGET /api/superadmin/tenants [36m304[0m 18.701 ms - -[0m
+New tenant created: MANSA HOTEL with ID: new ObjectId('68b13925ab05dc28d81fb43d')
+[0mPOST /api/superadmin/tenants [32m201[0m 21.706 ms - -[0m
+getTenants called for user: {
+  id: new ObjectId('68addb47d7d24e9876412937'),
+  email: 'superadmin@zeduno.com',
+  role: 'superadmin'
+}
+User from database: { found: true, email: 'superadmin@zeduno.com', role: 'superadmin' }
+User is root superadmin by email
+Query for tenants: {}
+Is root superadmin: true
+Found 4 tenants matching query
+First tenant: {
+  name: 'MANSA HOTEL',
+  email: 'charlesmutai@mail.com',
+  createdBy: {
+    _id: new ObjectId('68addb47d7d24e9876412937'),
+    email: 'superadmin@zeduno.com',
+    firstName: 'Super',
+    lastName: 'Admin'
+  },
+  slug: 'mansa-hotel'
+}
+[0mGET /api/superadmin/tenants [32m200[0m 16.240 ms - -[0m
+[0mGET /api/superadmin/settings/logo [36m304[0m 1.163 ms - -[0m
+[0mPOST /api/auth/login [33m401[0m 4.495 ms - 49[0m
+[0mPOST /api/auth/login [32m200[0m 111.258 ms - 1484[0m
+[0mPOST /api/auth/login [32m200[0m 104.182 ms - 1484[0m
+[0mPOST /api/auth/login [32m200[0m 107.012 ms - -[0m
+Debug: All staff/manager/admin users for tenant: new ObjectId('68b13925ab05dc28d81fb43d')
+Debug: Users found: [ { name: 'Charles Mutai', role: 'admin', isActive: true } ]
+Debug: Total staff count: 1
+Debug: Active staff count: 1
+[0mGET /api/dashboard/stats [32m200[0m 20.232 ms - 317[0m
+[0mGET /api/superadmin/settings/logo [36m304[0m 1.407 ms - -[0m
+[0mPOST /api/auth/login [32m200[0m 109.540 ms - -[0m
+Debug: All staff/manager/admin users for tenant: new ObjectId('68b13925ab05dc28d81fb43d')
+Debug: Users found: [ { name: 'Charles Mutai', role: 'admin', isActive: true } ]
+Debug: Total staff count: 1
+Debug: Active staff count: 1
+[0mGET /api/dashboard/stats [36m304[0m 28.016 ms - -[0m
+[0mGET /api/superadmin/settings/logo [36m304[0m 1.020 ms - -[0m
+[0mPOST /api/auth/login [32m200[0m 131.772 ms - -[0m
+Debug: All staff/manager/admin users for tenant: new ObjectId('68b1324d846869f99beef6cd')
+Debug: Users found: [
+  { name: 'james User', role: 'admin', isActive: true },
+  { name: 'Sarah Johnson', role: 'staff', isActive: true }
+]
+Debug: Total staff count: 2
+Debug: Active staff count: 2
+[0mGET /api/dashboard/stats [32m200[0m 21.991 ms - 317[0m
+[0mGET /api/superadmin/settings/logo [36m304[0m 0.969 ms - -[0m
+[0mPOST /api/auth/login [32m200[0m 106.914 ms - -[0m
+Debug: All staff/manager/admin users for tenant: new ObjectId('68b03ce5a9c2640784f4a50d')
+Debug: Users found: [
+  { name: 'one user', role: 'admin', isActive: true },
+  { name: 'brian irungu', role: 'staff', isActive: true }
+]
+Debug: Total staff count: 2
+Debug: Active staff count: 2
+[0mGET /api/dashboard/stats [32m200[0m 21.867 ms - 319[0m
+Debug: All staff/manager/admin users for tenant: new ObjectId('68b03ce5a9c2640784f4a50d')
+Debug: Users found: [
+  { name: 'one user', role: 'admin', isActive: true },
+  { name: 'brian irungu', role: 'staff', isActive: true }
+]
+Debug: Total staff count: 2
+Debug: Active staff count: 2
+[0mGET /api/dashboard/stats [36m304[0m 18.640 ms - -[0m
+Debug: All staff/manager/admin users for tenant: new ObjectId('68b03ce5a9c2640784f4a50d')
+Debug: Users found: [
+  { name: 'one user', role: 'admin', isActive: true },
+  { name: 'brian irungu', role: 'staff', isActive: true }
+]
+Debug: Total staff count: 2
+Debug: Active staff count: 2
+[0mGET /api/dashboard/stats [36m304[0m 17.458 ms - -[0m
+Debug: All staff/manager/admin users for tenant: new ObjectId('68b03ce5a9c2640784f4a50d')
+Debug: Users found: [
+  { name: 'one user', role: 'admin', isActive: true },
+  { name: 'brian irungu', role: 'staff', isActive: true }
+]
+Debug: Total staff count: 2
+Debug: Active staff count: 2
+[0mGET /api/dashboard/stats [36m304[0m 18.061 ms - -[0m
+[0mGET /api/tables? [32m200[0m 20.760 ms - -[0m
+[0mGET /api/tables?floor=1 [32m200[0m 21.896 ms - -[0m
+[0mGET /api/orders?orderType=dine-in&status=preparing [32m200[0m 20.025 ms - 83[0m
+[0mGET /api/menu/items? [32m200[0m 28.388 ms - -[0m
+[0mGET /api/users?status=active&tenantId=68b03ce5a9c2640784f4a50d [32m200[0m 4.938 ms - -[0m
+Get order error: BSONError: input must be a 24 character hex string, 12 byte Uint8Array, or an integer
+    at new ObjectId (/home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/bson/lib/bson.cjs:2538:23)
+    at OrderService.getOrderById (/home/osbui/applications/zeduno/dine-serve-hub/backend/dist/services/order.service.js:102:30)
+    at getOrder (/home/osbui/applications/zeduno/dine-serve-hub/backend/dist/controllers/order.controller.js:53:58)
+    at Layer.handle [as handle_request] (/home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/express/lib/router/layer.js:95:5)
+    at next (/home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/express/lib/router/route.js:149:13)
+    at Route.dispatch (/home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/express/lib/router/route.js:119:3)
+    at Layer.handle [as handle_request] (/home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/express/lib/router/layer.js:95:5)
+    at /home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/express/lib/router/index.js:284:15
+    at param (/home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/express/lib/router/index.js:365:14)
+    at param (/home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/express/lib/router/index.js:376:14)
+[0mGET /api/orders/[object%20Object] [31m500[0m 6.729 ms - -[0m
+[0mPATCH /api/tables/68b0426602a0cc5f1eeb0f05/status [33m400[0m 8.501 ms - 211[0m
+Get order error: BSONError: input must be a 24 character hex string, 12 byte Uint8Array, or an integer
+    at new ObjectId (/home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/bson/lib/bson.cjs:2538:23)
+    at OrderService.getOrderById (/home/osbui/applications/zeduno/dine-serve-hub/backend/dist/services/order.service.js:102:30)
+    at getOrder (/home/osbui/applications/zeduno/dine-serve-hub/backend/dist/controllers/order.controller.js:53:58)
+    at Layer.handle [as handle_request] (/home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/express/lib/router/layer.js:95:5)
+    at next (/home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/express/lib/router/route.js:149:13)
+    at Route.dispatch (/home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/express/lib/router/route.js:119:3)
+    at Layer.handle [as handle_request] (/home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/express/lib/router/layer.js:95:5)
+    at /home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/express/lib/router/index.js:284:15
+    at param (/home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/express/lib/router/index.js:365:14)
+    at param (/home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/express/lib/router/index.js:376:14)
+[0mGET /api/orders/[object%20Object] [31m500[0m 5.854 ms - -[0m
+Get order error: BSONError: input must be a 24 character hex string, 12 byte Uint8Array, or an integer
+    at new ObjectId (/home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/bson/lib/bson.cjs:2538:23)
+    at OrderService.getOrderById (/home/osbui/applications/zeduno/dine-serve-hub/backend/dist/services/order.service.js:102:30)
+    at getOrder (/home/osbui/applications/zeduno/dine-serve-hub/backend/dist/controllers/order.controller.js:53:58)
+    at Layer.handle [as handle_request] (/home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/express/lib/router/layer.js:95:5)
+    at next (/home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/express/lib/router/route.js:149:13)
+    at Route.dispatch (/home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/express/lib/router/route.js:119:3)
+    at Layer.handle [as handle_request] (/home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/express/lib/router/layer.js:95:5)
+    at /home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/express/lib/router/index.js:284:15
+    at param (/home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/express/lib/router/index.js:365:14)
+    at param (/home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/express/lib/router/index.js:376:14)
+[0mGET /api/orders/[object%20Object] [31m500[0m 5.534 ms - -[0m
+Get order error: BSONError: input must be a 24 character hex string, 12 byte Uint8Array, or an integer
+    at new ObjectId (/home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/bson/lib/bson.cjs:2538:23)
+    at OrderService.getOrderById (/home/osbui/applications/zeduno/dine-serve-hub/backend/dist/services/order.service.js:102:30)
+    at getOrder (/home/osbui/applications/zeduno/dine-serve-hub/backend/dist/controllers/order.controller.js:53:58)
+    at Layer.handle [as handle_request] (/home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/express/lib/router/layer.js:95:5)
+    at next (/home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/express/lib/router/route.js:149:13)
+    at Route.dispatch (/home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/express/lib/router/route.js:119:3)
+    at Layer.handle [as handle_request] (/home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/express/lib/router/layer.js:95:5)
+    at /home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/express/lib/router/index.js:284:15
+    at param (/home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/express/lib/router/index.js:365:14)
+    at param (/home/osbui/applications/zeduno/dine-serve-hub/backend/node_modules/express/lib/router/index.js:376:14)
+[0mGET /api/orders/[object%20Object] [31m500[0m 7.214 ms - -[0m
+Debug: All staff/manager/admin users for tenant: new ObjectId('68b03ce5a9c2640784f4a50d')
+Debug: Users found: [
+  { name: 'one user', role: 'admin', isActive: true },
+  { name: 'brian irungu', role: 'staff', isActive: true }
+]
+Debug: Total staff count: 2
+Debug: Active staff count: 2
+[0mGET /api/dashboard/stats [36m304[0m 17.119 ms - -[0m
+Debug: All staff/manager/admin users for tenant: new ObjectId('68b03ce5a9c2640784f4a50d')
+Debug: Users found: [
+  { name: 'one user', role: 'admin', isActive: true },
+  { name: 'brian irungu', role: 'staff', isActive: true }
+]
+Debug: Total staff count: 2
+Debug: Active staff count: 2
+[0mGET /api/dashboard/stats [36m304[0m 17.215 ms - -[0m
+Debug: All staff/manager/admin users for tenant: new ObjectId('68b03ce5a9c2640784f4a50d')
+Debug: Users found: [
+  { name: 'one user', role: 'admin', isActive: true },
+  { name: 'brian irungu', role: 'staff', isActive: true }
+]
+Debug: Total staff count: 2
+Debug: Active staff count: 2
+[0mGET /api/dashboard/stats [36m304[0m 17.269 ms - -[0m
+Debug: All staff/manager/admin users for tenant: new ObjectId('68b03ce5a9c2640784f4a50d')
+Debug: Users found: [
+  { name: 'one user', role: 'admin', isActive: true },
+  { name: 'brian irungu', role: 'staff', isActive: true }
+]
+Debug: Total staff count: 2
+Debug: Active staff count: 2
+[0mGET /api/dashboard/stats [36m304[0m 17.483 ms - -[0m
+[0mGET /api [33m404[0m 1.369 ms - 142[0m
+[0mGET /api/payments/methods/68b03ce5a9c2640784f4a50d [32m200[0m 10.408 ms - 150[0m
+[0mGET /api [33m404[0m 1.158 ms - 142[0m
+[0mGET /api/payments/gateway-config [32m200[0m 7.365 ms - 368[0m
+[0mGET /api [33m404[0m 1.191 ms - 142[0m
+[0mGET /api/payments/methods/68b03ce5a9c2640784f4a50d [36m304[0m 13.573 ms - -[0m
+[0mGET /api [33m404[0m 0.887 ms - 142[0m
+[0mGET /api [33m404[0m 0.929 ms - 142[0m
+[0mGET /api [33m404[0m 1.426 ms - 142[0m
+[0mGET /api/superadmin/settings/logo [36m304[0m 1.027 ms - -[0m
+[0mGET /uploads/logos/system-logo.svg [36m304[0m 4.491 ms - -[0m
+SuperAdmin login attempt for: superadmin@zeduno.com
+SuperAdmin model search result: Not found
+User model search result: Found
+Found superadmin: { email: 'superadmin@zeduno.com', role: 'superadmin', isActive: true }
+Password validation result: true
+Generated token with isSuperAdmin flag
+[0mPOST /api/superadmin/login [32m200[0m 120.512 ms - 435[0m
+getTenants called for user: {
+  id: new ObjectId('68addb47d7d24e9876412937'),
+  email: 'superadmin@zeduno.com',
+  role: 'superadmin'
+}
+User from database: { found: true, email: 'superadmin@zeduno.com', role: 'superadmin' }
+User is root superadmin by email
+Query for tenants: {}
+Is root superadmin: true
+Found 4 tenants matching query
+First tenant: {
+  name: 'MANSA HOTEL',
+  email: 'charlesmutai@mail.com',
+  createdBy: {
+    _id: new ObjectId('68addb47d7d24e9876412937'),
+    email: 'superadmin@zeduno.com',
+    firstName: 'Super',
+    lastName: 'Admin'
+  },
+  slug: 'mansa-hotel'
+}
+[0mGET /api/superadmin/tenants [32m200[0m 38.250 ms - -[0m
+[0mGET /api/superadmin/settings/logo [36m304[0m 0.907 ms - -[0m
+[0mGET /api [33m404[0m 0.985 ms - 142[0m
+[0mGET /api [33m404[0m 0.322 ms - 142[0m
+[0mGET /api/payments/methods/68b03ce5a9c2640784f4a50d [36m304[0m 8.007 ms - -[0m

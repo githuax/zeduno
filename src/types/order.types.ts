@@ -23,6 +23,10 @@ export interface MenuItem {
   preparationTime: number;
   allergens?: string[];
   customizations?: MenuItemCustomization[];
+  amount?: number;
+  minStockLevel?: number;
+  maxStockLevel?: number;
+  trackInventory?: boolean;
   tags?: string[];
   createdAt: string;
   updatedAt: string;

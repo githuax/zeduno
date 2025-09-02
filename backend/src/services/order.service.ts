@@ -40,9 +40,9 @@ export class OrderService {
    * Generate unique order number
    */
   static generateOrderNumber(): string {
-    const timestamp = Date.now().toString().slice(-6);
-    const random = Math.floor(Math.random() * 999).toString().padStart(3, '0');
-    return `ORD-${timestamp}${random}`;
+    // Generate shorter order number format: ORD-XXXX
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    return `ORD-${random}`;
   }
 
   /**

@@ -1,6 +1,14 @@
 import axios from 'axios';
 import { ITenant } from '../models/Tenant';
 
+// Zed Business API Configuration - Updated with correct endpoints
+const ZED_BUSINESS_CONFIG = {
+  apiKey: 'X-Authorization',
+  baseUrl: 'https://api.dev.zed.business',
+  externalOrigin: '9002742',
+  authToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub2IiOnsidmFsdWUiOjUwLCJzdGF0ZSI6ZmFsc2V9LCJ2b2NiIjpmYWxzZSwidXNlcklkIjoiNjQ5ZDJlMTc2MmFlMjJkZjg2ZjAxNjk3IiwiaWQiOiI2NDlkMmUxNzYyYWUyMmRmODZmMDE2OTciLCJlbWFpbCI6ImtpbWF0aGljaHJpczEzK2RhaWx5aG90ZWxAZ21haWwuY29tIiwidXNlck5hbWUiOiJCcmlhbkdpdGh1YSIsImdyb3VwIjoiTWVyY2hhbnQiLCJiaWQiOiI5MDAyNzQyIiwiYmlkU3RyaW5nIjoiNjhiMTQ4MjM4MDRlNWRmNzA5ZGU2MWM3IiwiY3VzdG9tZXJJZCI6IjY2MjY1ZmYzZDg5Njc1YTk3NTY1ZGRkYSIsImJ1c2luZXNzTmFtZSI6IkRhaWx5IEhvdGVsIiwiYnVzaW5lc3NPd25lclBob25lIjoiKzI1NDU0NTQ1NDU0NCIsImJ1c2luZXNzT3duZXJBZGRyZXNzIjoiTmFpcm9iaSwgS2VueWEiLCJidWxrVGVybWluYWxzIjpbXSwic2Vzc2lvbkV4cGlyeSI6IjIwMjUtMDgtMzBUMDY6MjY6NDUuMjM5WiIsIlRpbGwiOiIiLCJQYXliaWxsIjoiIiwiVm9vbWEiOiIiLCJFcXVpdGVsIjoiIiwic3RvcmVOYW1lIjoibnVsbCIsImxvY2FsQ3VycmVuY3kiOiJLRVMiLCJ4ZXJvQWNjb3VudGluZ0VuYWJsZWQiOiJmYWxzZSIsInF1aWNrYm9va3NBY2NvdW50aW5nRW5hYmxlZCI6ImZhbHNlIiwiem9ob0FjY291bnRpbmdFbmFibGVkIjoiZmFsc2UiLCJpYXQiOjE3NTY0NDg4MDUsImV4cCI6MTc1NjUzNTIwNX0.4LrMoetiZiTSc7HzeCGuAaxnEk1tP7e3F05ccxxxtwc'
+};
+
 export interface MPesaCredentials {
   consumerKey: string;
   consumerSecret: string;
@@ -42,9 +50,22 @@ export interface MPesaCallbackResponse {
   };
 }
 
+// Zed Business API response interfaces
+interface ZedBusinessPaymentResponse {
+  success?: boolean;
+  status?: string;
+  message?: string;
+  errorMessage?: string;
+  ResponseCode?: string;
+  CheckoutRequestID?: string;
+  MerchantRequestID?: string;
+  CustomerMessage?: string;
+  transactionId?: string;
+  [key: string]: any;
+}
+
 export class MPesaService {
   private static instance: MPesaService;
-  private accessTokenCache: Map<string, { token: string; expires: number }> = new Map();
 
   public static getInstance(): MPesaService {
     if (!MPesaService.instance) {
@@ -53,194 +74,221 @@ export class MPesaService {
     return MPesaService.instance;
   }
 
-  private getBaseUrl(environment: 'sandbox' | 'production'): string {
-    return environment === 'production'
-      ? 'https://api.safaricom.co.ke'
-      : 'https://sandbox.safaricom.co.ke';
+  private constructor() {
+    console.log('🔧 MPesa Service initialized with Zed Business integration');
   }
 
-  private async getAccessToken(credentials: MPesaCredentials): Promise<string> {
-    const cacheKey = `${credentials.consumerKey}-${credentials.environment}`;
-    const cached = this.accessTokenCache.get(cacheKey);
-
-    if (cached && cached.expires > Date.now()) {
-      return cached.token;
-    }
-
+  /**
+   * Validate tenant M-Pesa configuration
+   * For Zed Business integration, we just need to check if M-Pesa is enabled
+   */
+  public validateTenantMPesaConfig(tenant: ITenant): boolean {
     try {
-      const auth = Buffer.from(`${credentials.consumerKey}:${credentials.consumerSecret}`).toString('base64');
-      const baseUrl = this.getBaseUrl(credentials.environment);
-
-      const response = await axios.get(`${baseUrl}/oauth/v1/generate?grant_type=client_credentials`, {
-        headers: {
-          'Authorization': `Basic ${auth}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const { access_token, expires_in } = response.data;
-      const expiresAt = Date.now() + (expires_in * 1000) - 60000; // Expire 1 minute early
-
-      this.accessTokenCache.set(cacheKey, {
-        token: access_token,
-        expires: expiresAt,
-      });
-
-      return access_token;
+      // For Zed Business, we use centralized credentials
+      // Just check if M-Pesa is enabled for the tenant
+      return tenant.paymentConfig?.mpesa?.enabled === true;
     } catch (error) {
-      console.error('Failed to get M-Pesa access token:', error);
-      throw new Error('Failed to authenticate with M-Pesa API');
+      console.error('Error validating tenant MPesa config:', error);
+      return false;
     }
   }
 
+  /**
+   * Format phone number for Zed Business API
+   */
+  private formatPhoneNumber(phoneNumber: string): string {
+    let cleaned = phoneNumber.replace(/[\s\-\(\)]/g, '');
+    
+    // Remove leading + if present
+    if (cleaned.startsWith('+')) {
+      cleaned = cleaned.substring(1);
+    }
+    
+    // Convert local format (0) to international format
+    if (cleaned.startsWith('0')) {
+      cleaned = cleaned.substring(1);
+      // Default to Kenya if no country code provided
+      cleaned = `254${cleaned}`;
+    }
+    
+    return cleaned;
+  }
+
+  /**
+   * Initiate STK Push via Zed Business API
+   */
   public async initiateSTKPush(
     credentials: MPesaCredentials,
     paymentRequest: MPesaPaymentRequest
   ): Promise<MPesaPaymentResponse> {
     try {
-      const accessToken = await this.getAccessToken(credentials);
-      const baseUrl = this.getBaseUrl(credentials.environment);
+      console.log('🚀 Initiating M-Pesa STK Push via Zed Business:', {
+        phone: this.formatPhoneNumber(paymentRequest.phoneNumber),
+        amount: paymentRequest.amount,
+        reference: paymentRequest.accountReference
+      });
 
-      // Format phone number (remove + and ensure it starts with 254)
-      let formattedPhone = paymentRequest.phoneNumber.replace(/\+/g, '');
-      if (formattedPhone.startsWith('0')) {
-        formattedPhone = '254' + formattedPhone.substring(1);
-      } else if (!formattedPhone.startsWith('254')) {
-        formattedPhone = '254' + formattedPhone;
-      }
+      // Format phone number for Zed Business
+      const formattedPhone = this.formatPhoneNumber(paymentRequest.phoneNumber);
 
-      // Generate timestamp
-      const timestamp = new Date().toISOString().replace(/[:\-T.]/g, '').substring(0, 14);
-      
-      // Generate password
-      const password = Buffer.from(
-        credentials.businessShortCode + credentials.passkey + timestamp
-      ).toString('base64');
+      // Generate unique transaction reference
+      const transactionRef = `${paymentRequest.accountReference}_${Date.now()}`;
 
-      const stkPushData = {
-        BusinessShortCode: credentials.businessShortCode,
-        Password: password,
-        Timestamp: timestamp,
-        TransactionType: 'CustomerPayBillOnline',
-        Amount: Math.round(paymentRequest.amount),
-        PartyA: formattedPhone,
-        PartyB: credentials.businessShortCode,
-        PhoneNumber: formattedPhone,
-        CallBackURL: paymentRequest.callbackUrl,
-        AccountReference: paymentRequest.accountReference,
-        TransactionDesc: paymentRequest.transactionDesc,
+      // Prepare payload for Zed Business M-Pesa API
+      // Based on the API v1 structure from documentation
+      // Use the exact payload format from the API documentation
+      const zedPayload = {
+        amount: parseFloat(paymentRequest.amount.toString()),
+        phone: formattedPhone, // Use 'phone' as per docs
+        type: 'bookingTicket', // Default type as per docs
+        externalOrigin: ZED_BUSINESS_CONFIG.externalOrigin, // Business ID
+        orderIds: [paymentRequest.accountReference], // Order/Invoice number array
+        batchId: '' // Empty as per docs
       };
 
-      const response = await axios.post(
-        `${baseUrl}/mpesa/stkpush/v1/processrequest`,
-        stkPushData,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      // Use the exact endpoint from the official API documentation
+      const endpoint = '/api/v1/payments/initiate_kcb_stk_push';
 
-      return response.data;
-    } catch (error) {
-      console.error('STK Push failed:', error);
-      if (axios.isAxiosError(error)) {
-        throw new Error(`M-Pesa API Error: ${error.response?.data?.errorMessage || error.message}`);
+      console.log(`🚀 Initiating M-Pesa payment via Zed Business:`, zedPayload);
+      console.log(`📡 Using endpoint: ${endpoint}`);
+      
+      const response = await fetch(`${ZED_BUSINESS_CONFIG.baseUrl}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Authorization': ZED_BUSINESS_CONFIG.authToken, // Use X-Authorization as per docs
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(zedPayload)
+      });
+
+      console.log(`📡 Response status:`, response.status, response.statusText);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Zed Business API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+        throw new Error(`Zed Business API error: ${response.status} ${response.statusText}. Response: ${errorText}`);
       }
-      throw new Error('Failed to initiate M-Pesa payment');
+
+      const zedResult = await response.json() as any;
+      console.log('✅ Zed Business API response:', zedResult);
+
+      // Convert Zed Business response to MPesa format based on the documentation
+      return {
+        MerchantRequestID: zedResult.data?.requestReferenceId || transactionRef,
+        CheckoutRequestID: zedResult.data?.id || transactionRef,
+        ResponseCode: zedResult.data?.status === 200 ? '0' : '1',
+        ResponseDescription: zedResult.data?.status === 200 ? 'Request processed successfully' : 'Request failed',
+        CustomerMessage: 'Please check your phone and enter your M-Pesa PIN to complete the transaction'
+      };
+
+    } catch (error) {
+      console.error('Error initiating STK Push via Zed Business:', error);
+      
+      // Return error response in MPesa format
+      throw new Error(`Zed Business M-Pesa integration error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
+  /**
+   * Extract callback data from M-Pesa callback request
+   */
+  public extractCallbackData(callbackBody: any): any {
+    try {
+      // Handle standard M-Pesa callback format
+      if (callbackBody?.Body?.stkCallback) {
+        const callback = callbackBody.Body.stkCallback;
+        const metadata = callback.CallbackMetadata?.Item || [];
+        
+        const extractMetadataValue = (name: string) => {
+          const item = metadata.find((item: any) => item.Name === name);
+          return item?.Value;
+        };
+
+        return {
+          merchantRequestId: callback.MerchantRequestID,
+          checkoutRequestId: callback.CheckoutRequestID,
+          resultCode: callback.ResultCode,
+          resultDesc: callback.ResultDesc,
+          amount: extractMetadataValue('Amount'),
+          mpesaReceiptNumber: extractMetadataValue('MpesaReceiptNumber'),
+          transactionDate: extractMetadataValue('TransactionDate'),
+          phoneNumber: extractMetadataValue('PhoneNumber')
+        };
+      }
+      
+      // Handle Zed Business callback format
+      if (callbackBody?.checkoutRequestId || callbackBody?.CheckoutRequestID) {
+        return {
+          merchantRequestId: callbackBody.merchantRequestId || callbackBody.MerchantRequestID,
+          checkoutRequestId: callbackBody.checkoutRequestId || callbackBody.CheckoutRequestID,
+          resultCode: callbackBody.resultCode || callbackBody.ResultCode || 0,
+          resultDesc: callbackBody.resultDesc || callbackBody.ResultDesc || 'Success',
+          amount: callbackBody.amount || callbackBody.Amount,
+          mpesaReceiptNumber: callbackBody.transactionId || callbackBody.MpesaReceiptNumber,
+          transactionDate: callbackBody.transactionDate || new Date().toISOString(),
+          phoneNumber: callbackBody.phoneNumber || callbackBody.PhoneNumber
+        };
+      }
+
+      // If format is not recognized, return raw data
+      console.warn('Unrecognized callback format:', callbackBody);
+      return callbackBody;
+    } catch (error) {
+      console.error('Error extracting callback data:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Query payment status via Zed Business API
+   */
   public async queryPaymentStatus(
     credentials: MPesaCredentials,
     checkoutRequestId: string
   ): Promise<any> {
     try {
-      const accessToken = await this.getAccessToken(credentials);
-      const baseUrl = this.getBaseUrl(credentials.environment);
+      console.log('🔍 Querying payment status via Zed Business:', checkoutRequestId);
 
-      const timestamp = new Date().toISOString().replace(/[:\-T.]/g, '').substring(0, 14);
-      const password = Buffer.from(
-        credentials.businessShortCode + credentials.passkey + timestamp
-      ).toString('base64');
-
-      const queryData = {
-        BusinessShortCode: credentials.businessShortCode,
-        Password: password,
-        Timestamp: timestamp,
-        CheckoutRequestID: checkoutRequestId,
-      };
-
-      const response = await axios.post(
-        `${baseUrl}/mpesa/stkpushquery/v1/query`,
-        queryData,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
+      // Try to query status from Zed Business
+      const statusResponse = await fetch(`${ZED_BUSINESS_CONFIG.baseUrl}/api/mpesa/query/${checkoutRequestId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${ZED_BUSINESS_CONFIG.authToken}`,
+          [ZED_BUSINESS_CONFIG.apiKey]: ZED_BUSINESS_CONFIG.authToken,
+          'Accept': 'application/json'
         }
-      );
+      });
 
-      return response.data;
-    } catch (error) {
-      console.error('Payment status query failed:', error);
-      if (axios.isAxiosError(error)) {
-        throw new Error(`M-Pesa Query Error: ${error.response?.data?.errorMessage || error.message}`);
+      if (statusResponse.ok) {
+        const result = await statusResponse.json();
+        console.log('✅ Zed Business status query result:', result);
+        return result;
+      } else {
+        console.log('❌ Status query failed, returning pending status');
       }
-      throw new Error('Failed to query payment status');
-    }
-  }
-
-  public validateTenantMPesaConfig(tenant: ITenant): boolean {
-    const { mpesa } = tenant.paymentConfig;
-    
-    if (!mpesa.enabled) {
-      return false;
+    } catch (error) {
+      console.log('❌ Error querying payment status:', error);
     }
 
-    const requiredFields = [
-      mpesa.businessShortCode,
-      mpesa.passkey,
-      mpesa.consumerKey,
-      mpesa.consumerSecret
-    ];
-
-    return requiredFields.every(field => field && field.trim().length > 0);
-  }
-
-  public extractCallbackData(callbackResponse: MPesaCallbackResponse): {
-    merchantRequestId: string;
-    checkoutRequestId: string;
-    resultCode: number;
-    resultDesc: string;
-    amount?: number;
-    mpesaReceiptNumber?: string;
-    transactionDate?: string;
-    phoneNumber?: string;
-  } {
-    const callback = callbackResponse.Body.stkCallback;
-    const result = {
-      merchantRequestId: callback.MerchantRequestID,
-      checkoutRequestId: callback.CheckoutRequestID,
-      resultCode: callback.ResultCode,
-      resultDesc: callback.ResultDesc,
+    // Return default pending status
+    return {
+      ResultCode: '1',
+      ResultDesc: 'Transaction is being processed',
+      status: 'pending'
     };
+  }
 
-    if (callback.CallbackMetadata) {
-      const metadata = callback.CallbackMetadata.Item;
-      
-      return {
-        ...result,
-        amount: metadata.find(item => item.Name === 'Amount')?.Value as number,
-        mpesaReceiptNumber: metadata.find(item => item.Name === 'MpesaReceiptNumber')?.Value as string,
-        transactionDate: metadata.find(item => item.Name === 'TransactionDate')?.Value as string,
-        phoneNumber: metadata.find(item => item.Name === 'PhoneNumber')?.Value as string,
-      };
-    }
-
-    return result;
+  /**
+   * Legacy method - not used with Zed Business integration
+   */
+  private async getAccessToken(credentials: MPesaCredentials): Promise<string> {
+    // Not needed for Zed Business integration since we use their token
+    return ZED_BUSINESS_CONFIG.authToken;
   }
 }
 

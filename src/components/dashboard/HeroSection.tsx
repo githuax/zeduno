@@ -3,6 +3,10 @@ import { ArrowRight } from "lucide-react";
 import restaurantHero from "@/assets/restaurant-hero.jpg";
 
 const HeroSection = () => {
+  return null; // Hidden component
+  
+  // Original component (hidden)
+  /*
   return (
     <div className="relative bg-gradient-to-r from-blue-50 to-white rounded-2xl border border-border overflow-hidden mb-8 shadow-sm">
       <div className="relative p-8 md:p-12">
@@ -34,6 +38,7 @@ const HeroSection = () => {
       </div>
     </div>
   );
+  */
 };
 
 export default HeroSection;

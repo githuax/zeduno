@@ -73,7 +73,7 @@ export const QuickPayment = ({ onPaymentSuccess, onPaymentError }: QuickPaymentP
     const paymentIntent: PaymentIntent = {
       id: `pi_${Date.now()}`,
       amount: calculateTotal(),
-      currency: 'USD',
+      currency: 'KES',
       paymentMethod: selectedMethod.id,
       orderId: `quick_${Date.now()}`,
       customerInfo: {

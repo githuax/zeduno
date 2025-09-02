@@ -22,7 +22,7 @@ const generateMockTenants = (): Tenant[] => [
       name: 'professional',
       displayName: 'Professional',
       price: 79,
-      currency: 'USD',
+      currency: 'KES',
       billingCycle: 'monthly',
       features: ['online_ordering', 'analytics', 'inventory'],
       limits: {
@@ -39,7 +39,7 @@ const generateMockTenants = (): Tenant[] => [
     },
     settings: {
       timezone: 'America/New_York',
-      currency: 'USD',
+      currency: 'KES',
       language: 'en',
       dateFormat: 'MM/DD/YYYY',
       timeFormat: '12h',
@@ -48,7 +48,10 @@ const generateMockTenants = (): Tenant[] => [
       allowGuestCheckout: true,
       requireEmailVerification: true,
       enableNotifications: true,
-      maintenanceMode: false
+      maintenanceMode: false,
+      displayName: "Joe's Pizza Palace",
+      tagline: "Authentic New York Style Pizza",
+      logo: undefined // Will be set via settings page
     },
     contact: {
       email: 'joe@joespizza.com',
@@ -101,7 +104,7 @@ const generateMockTenants = (): Tenant[] => [
       name: 'enterprise',
       displayName: 'Enterprise',
       price: 199,
-      currency: 'USD',
+      currency: 'KES',
       billingCycle: 'monthly',
       features: ['multi_location', 'api_access', 'white_label'],
       limits: {
@@ -118,7 +121,7 @@ const generateMockTenants = (): Tenant[] => [
     },
     settings: {
       timezone: 'America/Los_Angeles',
-      currency: 'USD',
+      currency: 'KES',
       language: 'en',
       dateFormat: 'MM/DD/YYYY',
       timeFormat: '12h',
@@ -127,7 +130,10 @@ const generateMockTenants = (): Tenant[] => [
       allowGuestCheckout: true,
       requireEmailVerification: true,
       enableNotifications: true,
-      maintenanceMode: false
+      maintenanceMode: false,
+      displayName: "Bella Vista Restaurants",
+      tagline: "Fine Dining Experience",
+      logo: undefined // Will be set via settings page
     },
     contact: {
       email: 'admin@bellavista.com',
@@ -230,7 +236,7 @@ const generateMockSubscriptionPlans = (): SubscriptionPlan[] => [
     name: 'starter',
     displayName: 'Starter',
     price: 29,
-    currency: 'USD',
+    currency: 'KES',
     billingCycle: 'monthly',
     features: ['basic_pos', 'order_management'],
     limits: {
@@ -250,7 +256,7 @@ const generateMockSubscriptionPlans = (): SubscriptionPlan[] => [
     name: 'professional',
     displayName: 'Professional',
     price: 79,
-    currency: 'USD',
+    currency: 'KES',
     billingCycle: 'monthly',
     features: ['basic_pos', 'online_ordering', 'analytics', 'inventory'],
     limits: {
@@ -270,7 +276,7 @@ const generateMockSubscriptionPlans = (): SubscriptionPlan[] => [
     name: 'enterprise',
     displayName: 'Enterprise',
     price: 199,
-    currency: 'USD',
+    currency: 'KES',
     billingCycle: 'monthly',
     features: ['everything', 'multi_location', 'white_label', 'api_access'],
     limits: {
@@ -315,34 +321,71 @@ const mapSlugToTenantId = (slug: string): string => {
 // Tenant Context Hook
 export const useTenantContext = () => {
   // Get actual user data from localStorage (set during login)
-  // Use try-catch to handle potential JSON parse errors
-  const userData = localStorage.getItem('user');
+  // Check for superadmin first, then regular user
   let user = null;
-  try {
-    user = userData ? JSON.parse(userData) : null;
-  } catch (error) {
-    console.error('Failed to parse user data from localStorage:', error);
-    localStorage.removeItem('user'); // Remove corrupted data
-    user = null;
+  let isSuperadmin = false;
+  
+  // Check for superadmin token first
+  const superadminUserData = localStorage.getItem('superadmin_user');
+  if (superadminUserData) {
+    try {
+      user = JSON.parse(superadminUserData);
+      isSuperadmin = true;
+    } catch (error) {
+      console.error('Failed to parse superadmin user data:', error);
+      localStorage.removeItem('superadmin_user');
+    }
+  }
+  
+  // If no superadmin, check regular user
+  if (!user) {
+    const userData = localStorage.getItem('user');
+    try {
+      user = userData ? JSON.parse(userData) : null;
+    } catch (error) {
+      console.error('Failed to parse user data from localStorage:', error);
+      localStorage.removeItem('user'); // Remove corrupted data
+      user = null;
+    }
   }
   
   
-  // Check URL query parameter first
+  // For superadmin, check if they're accessing a tenant
   let currentTenantId = user?.tenantId || 'no-tenant';
+  let accessingTenant = null;
+  
+  if (isSuperadmin) {
+    // Check if superadmin is accessing a specific tenant
+    try {
+      const accessingTenantData = localStorage.getItem('superadmin_accessing_tenant');
+      if (accessingTenantData) {
+        accessingTenant = JSON.parse(accessingTenantData);
+        currentTenantId = accessingTenant.tenantId;
+      }
+    } catch (error) {
+      console.error('Failed to parse accessing tenant data:', error);
+      localStorage.removeItem('superadmin_accessing_tenant');
+    }
+  }
+  
+  // Check URL query parameter first
   if (typeof window !== 'undefined') {
     const urlParams = new URLSearchParams(window.location.search);
     const tenantParam = urlParams.get('tenant');
     if (tenantParam) {
       currentTenantId = mapSlugToTenantId(tenantParam);
-    } else {
+    } else if (!isSuperadmin || !accessingTenant) {
       currentTenantId = user?.tenantId || user?.tenantName || user?.tenant?._id || 'no-tenant';
     }
-  } else {
+  } else if (!isSuperadmin || !accessingTenant) {
     currentTenantId = user?.tenantId || user?.tenantName || user?.tenant?._id || 'no-tenant';
   }
   
   // Use tenantName from user data, with proper fallback chain
-  const tenantName = user?.tenantName || user?.tenant?.name || "Default Restaurant";
+  // For superadmin accessing tenant, use the accessed tenant name
+  const tenantName = (isSuperadmin && accessingTenant) 
+    ? accessingTenant.tenantName 
+    : user?.tenantName || user?.tenant?.name || "Default Restaurant";
   
   return useQuery({
     queryKey: ['tenant-context', currentTenantId, user?.email], // Include user email to ensure cache invalidation on user change
@@ -360,6 +403,9 @@ export const useTenantContext = () => {
           settings: realTenant?.settings ? {
             ...realTenant.settings,
             currency: realTenant.settings.currency || 'KES',
+            logo: realTenant.settings.logo || undefined,
+            tagline: realTenant.settings.tagline || undefined,
+            displayName: realTenant.settings.displayName || undefined,
           } : {
             timezone: 'America/New_York',
             currency: 'KES', // Default currency
@@ -371,14 +417,17 @@ export const useTenantContext = () => {
             allowGuestCheckout: true,
             requireEmailVerification: true,
             enableNotifications: true,
-            maintenanceMode: false
+            maintenanceMode: false,
+            logo: undefined,
+            tagline: undefined,
+            displayName: undefined,
           },
           plan: {
             id: 'plan_pro',
             name: 'professional',
             displayName: 'Professional',
             price: 79,
-            currency: realTenant?.settings?.currency || 'USD',
+            currency: realTenant?.settings?.currency || 'KES',
             billingCycle: 'monthly',
             features: ['online_ordering', 'analytics', 'inventory'],
             limits: {

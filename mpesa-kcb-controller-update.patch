@@ -1,0 +1,219 @@
+--- backend/src/controllers/mpesa-kcb.controller.ts.original
++++ backend/src/controllers/mpesa-kcb.controller.ts
+@@ -1,4 +1,7 @@
+ import { Request, Response } from 'express';
++import { Order } from '../models/Order';
++import { PaymentTransaction } from '../models/PaymentTransaction';
++import mongoose from 'mongoose';
+ 
+ interface AuthenticatedRequest extends Request {
+   user?: {
+@@ -25,6 +28,134 @@
+   [key: string]: any;
+ }
+ 
++// Enhanced callback data interface
++interface ZedBusinessCallbackData {
++  // Standard Zed Business callback fields
++  resultCode?: number;
++  ResultCode?: string;
++  status?: string;
++  message?: string;
++  errorMessage?: string;
++  
++  // Transaction details
++  transactionId?: string;
++  merchantRequestId?: string;
++  checkoutRequestId?: string;
++  CheckoutRequestID?: string;
++  MpesaReceiptNumber?: string;
++  mpesaReceiptNumber?: string;
++  TransactionDate?: string;
++  PhoneNumber?: string;
++  Amount?: number;
++  
++  // Order reference
++  orderId?: string;
++  orderIds?: string[];
++  reference?: string;
++  accountReference?: string;
++  
++  // Payment metadata
++  currency?: string;
++  customerName?: string;
++  description?: string;
++  
++  // Any additional data from Zed Business
++  [key: string]: any;
++}
++
++class CallbackProcessor {
++  /**
++   * Extract order ID from callback data
++   */
++  extractOrderId(callbackData: ZedBusinessCallbackData): string | null {
++    // Try multiple possible fields for order ID
++    return callbackData.orderId || 
++           (callbackData.orderIds && callbackData.orderIds[0]) ||
++           callbackData.reference ||
++           callbackData.accountReference ||
++           null;
++  }
++
++  /**
++   * Extract transaction ID from callback data
++   */
++  extractTransactionId(callbackData: ZedBusinessCallbackData): string {
++    return callbackData.transactionId ||
++           callbackData.CheckoutRequestID ||
++           callbackData.checkoutRequestId ||
++           callbackData.MpesaReceiptNumber ||
++           callbackData.mpesaReceiptNumber ||
++           `TXN_${Date.now()}`;
++  }
++
++  /**
++   * Determine if payment was successful
++   */
++  isPaymentSuccessful(callbackData: ZedBusinessCallbackData): boolean {
++    // Check multiple possible success indicators
++    const resultCode = callbackData.resultCode || parseInt(callbackData.ResultCode || '1');
++    const status = callbackData.status?.toLowerCase();
++    
++    // Zed Business typically uses ResultCode '0' for success
++    return resultCode === 0 || 
++           status === 'success' || 
++           status === 'completed' ||
++           (callbackData.MpesaReceiptNumber && callbackData.MpesaReceiptNumber.length > 0) ||
++           (callbackData.mpesaReceiptNumber && callbackData.mpesaReceiptNumber.length > 0);
++  }
++
++  /**
++   * Update order and create payment transaction
++   */
++  async processPaymentCallback(callbackData: ZedBusinessCallbackData): Promise<void> {
++    const session = await mongoose.startSession();
++    
++    try {
++      await session.startTransaction();
++      
++      const orderId = this.extractOrderId(callbackData);
++      const transactionId = this.extractTransactionId(callbackData);
++      const isSuccessful = this.isPaymentSuccessful(callbackData);
++      
++      if (!orderId) {
++        console.warn('⚠️ No order ID found in callback data');
++        return;
++      }
++
++      // Find the order
++      const order = await Order.findById(orderId).session(session);
++      if (!order) {
++        throw new Error(`Order not found: ${orderId}`);
++      }
++
++      if (isSuccessful) {
++        console.log(`💰 Processing successful payment for order: ${order.orderNumber}`);
++        
++        // Update order payment status
++        order.paymentStatus = 'paid';
++        order.paymentMethod = 'mpesa';
++        order.paidAt = new Date();
++        
++        // Update payment details
++        order.paymentDetails = {
++          transactionId: transactionId,
++          gateway: 'zed-business',
++          paidAt: new Date(),
++          ...order.paymentDetails
++        };
++        
++        // Update order status if pending
++        if (order.status === 'pending') {
++          await order.updateStatus('confirmed', undefined, 'Payment confirmed via M-Pesa');
++        }
++        
++        await order.save({ session });
++        console.log(`✅ Order ${order.orderNumber} marked as paid successfully`);
++      }
++      
++      // Create payment transaction record
++      await this.createPaymentTransaction(callbackData, order, isSuccessful ? 'completed' : 'failed', session);
++      
++      await session.commitTransaction();
++    } catch (error) {
++      await session.abortTransaction();
++      throw error;
++    } finally {
++      await session.endSession();
++    }
++  }
++
++  /**
++   * Create payment transaction record
++   */
++  private async createPaymentTransaction(
++    callbackData: ZedBusinessCallbackData,
++    order: any,
++    status: 'completed' | 'failed',
++    session: mongoose.mongo.ClientSession
++  ): Promise<void> {
++    const transactionData = {
++      tenantId: order.tenantId,
++      orderId: order._id,
++      paymentMethod: 'mpesa' as const,
++      amount: callbackData.Amount || order.total,
++      currency: callbackData.currency || 'KES',
++      status,
++      customerPhone: callbackData.PhoneNumber || order.customerPhone,
++      customerName: callbackData.customerName || order.customerName,
++      gatewayTransactionId: this.extractTransactionId(callbackData),
++      gatewayResponse: callbackData,
++      mpesaData: {
++        merchantRequestId: callbackData.merchantRequestId,
++        checkoutRequestId: callbackData.checkoutRequestId || callbackData.CheckoutRequestID,
++        mpesaReceiptNumber: callbackData.MpesaReceiptNumber || callbackData.mpesaReceiptNumber,
++        phoneNumber: callbackData.PhoneNumber,
++        accountReference: callbackData.reference || callbackData.accountReference,
++        transactionDesc: callbackData.description || `Payment for Order #${order.orderNumber}`
++      },
++      initiatedAt: new Date(),
++      completedAt: status === 'completed' ? new Date() : undefined,
++      failedAt: status === 'failed' ? new Date() : undefined
++    };
++
++    // Check if transaction already exists
++    const existingTransaction = await PaymentTransaction.findOne({
++      orderId: order._id,
++      'mpesaData.checkoutRequestId': transactionData.mpesaData.checkoutRequestId
++    }).session(session);
++
++    if (existingTransaction) {
++      // Update existing transaction
++      existingTransaction.status = status;
++      existingTransaction.gatewayResponse = callbackData;
++      existingTransaction.mpesaData = { ...existingTransaction.mpesaData, ...transactionData.mpesaData };
++      
++      if (status === 'completed') {
++        existingTransaction.completedAt = new Date();
++      } else if (status === 'failed') {
++        existingTransaction.failedAt = new Date();
++      }
++      
++      await existingTransaction.save({ session });
++      console.log(`💾 Updated existing payment transaction: ${existingTransaction._id}`);
++    } else {
++      // Create new transaction
++      const transaction = new PaymentTransaction(transactionData);
++      await transaction.save({ session });
++      console.log(`💾 Created new payment transaction: ${transaction._id}`);
++    }
++  }
++}
++
+ export class MPesaKCBController {
++  private callbackProcessor = new CallbackProcessor();
++
+   /**
+    * Initiate MPESA KCB STK Push payment via Zed Business API
+    */

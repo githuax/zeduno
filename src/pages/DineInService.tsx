@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { TableGrid } from '@/components/tables/TableGrid';
 import { SimpleTableDialog } from '@/components/tables/SimpleTableDialog';
+import { TableManagementDialog } from '@/components/tables/TableManagementDialog';
 import { ReservationDialog } from '@/components/tables/ReservationDialog';
 import { CreateOrderDialog } from '@/components/orders/CreateOrderDialog';
 import { useTables } from '@/hooks/useTables';
@@ -21,6 +22,7 @@ export default function DineInService() {
   const [selectedSection, setSelectedSection] = useState<string>('all');
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);
   const [isTableManagementOpen, setIsTableManagementOpen] = useState(false);
+  const [isTableEditOpen, setIsTableEditOpen] = useState(false);
   const [isReservationOpen, setIsReservationOpen] = useState(false);
   const [isCreateOrderOpen, setIsCreateOrderOpen] = useState(false);
   const [selectedTableForOrder, setSelectedTableForOrder] = useState<string>('');
@@ -54,6 +56,7 @@ export default function DineInService() {
       setSelectedTableForOrder(table._id);
       setIsCreateOrderOpen(true);
     } else {
+      // Use TableManagementDialog for occupied/reserved tables
       setIsTableManagementOpen(true);
     }
   };
@@ -75,6 +78,7 @@ export default function DineInService() {
           description: 'Table status updated',
         });
         refetchTables();
+        return true;
       } else {
         const errorData = await response.json().catch(() => ({}));
         const details = errorData.details;
@@ -86,6 +90,7 @@ export default function DineInService() {
             : errorData.message || 'Failed to update table status',
           variant: 'destructive',
         });
+        throw new Error(errorData.message || 'Failed to update table status');
       }
     } catch (error: any) {
       toast({
@@ -93,6 +98,7 @@ export default function DineInService() {
         description: error.message || 'Failed to update table status',
         variant: 'destructive',
       });
+      throw error;
     }
   };
 
@@ -102,6 +108,11 @@ export default function DineInService() {
       title: 'Refreshed',
       description: 'Table data updated',
     });
+  };
+
+  const handleManageTables = () => {
+    setSelectedTable(null); // No specific table selected
+    setIsTableEditOpen(true); // Open table creation/edit dialog
   };
 
   const sections = ['all', ...new Set(tables.map(t => t.section))];
@@ -127,7 +138,7 @@ export default function DineInService() {
           </Button>
           <Button 
             variant="outline"
-            onClick={() => setIsTableManagementOpen(true)}
+            onClick={handleManageTables}
           >
             <Plus className="mr-2 h-4 w-4" />
             Manage Tables
@@ -283,10 +294,20 @@ export default function DineInService() {
         </CardContent>
       </Card>
 
-      <SimpleTableDialog
+      {/* Table Management Dialog - for managing occupied/reserved tables */}
+      <TableManagementDialog
         table={selectedTable}
         open={isTableManagementOpen}
         onOpenChange={setIsTableManagementOpen}
+        onUpdateStatus={handleUpdateTableStatus}
+        onRefresh={refetchTables}
+      />
+
+      {/* Simple Table Dialog - for creating/editing table properties */}
+      <SimpleTableDialog
+        table={selectedTable}
+        open={isTableEditOpen}
+        onOpenChange={setIsTableEditOpen}
         onRefresh={refetchTables}
       />
 

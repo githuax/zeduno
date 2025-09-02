@@ -251,7 +251,7 @@ const TenantOnboarding = () => {
         plan: selectedPlan!,
         settings: {
           timezone: 'America/New_York',
-          currency: 'USD',
+          currency: 'KES',
           language: 'en',
           dateFormat: 'MM/DD/YYYY',
           timeFormat: '12h',

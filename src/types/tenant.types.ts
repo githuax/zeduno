@@ -55,6 +55,17 @@ export interface TenantSettings {
   enableNotifications: boolean;
   maintenanceMode: boolean;
   customCSS?: string;
+  // Branding & Logo settings
+  logo?: string; // URL or base64 of the logo image
+  logoUpload?: File; // For handling file uploads
+  favicon?: string; // URL or base64 of the favicon
+  brandingColors?: {
+    primary: string;
+    secondary: string;
+    accent: string;
+  };
+  tagline?: string; // Business tagline/slogan
+  displayName?: string; // Display name (can be different from tenant name)
 }
 
 export interface TenantContact {

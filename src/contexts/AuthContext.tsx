@@ -12,6 +12,7 @@ interface User {
   tenantName?: string;
   tenant?: any; // Store the full tenant object from the backend
   permissions?: string[];
+  mustChangePassword?: boolean;
 }
 
 interface AuthContextType {
@@ -95,25 +96,103 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     try {
+      console.log('Starting login attempt for:', email);
+      
       // Determine endpoint based on email domain
       const endpoint = email === 'superadmin@zeduno.com' 
         ? getApiUrl('superadmin/login')
         : getApiUrl('auth/login');
       
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
+      console.log('Making request to:', endpoint);
+      
+      // Add a shorter initial timeout with retry logic
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      let response;
+      let retryCount = 0;
+      const maxRetries = 2;
+      
+      while (retryCount <= maxRetries) {
+        try {
+          response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email, password }),
+            signal: controller.signal,
+          });
+          break; // Success, exit retry loop
+        } catch (error: any) {
+          if (error.name === 'AbortError' && retryCount < maxRetries) {
+            console.log(`Login attempt ${retryCount + 1} timed out, retrying...`);
+            retryCount++;
+            // Reset controller for retry
+            controller.abort();
+            const newController = new AbortController();
+            Object.assign(controller, newController);
+            clearTimeout(timeoutId);
+            const newTimeoutId = setTimeout(() => controller.abort(), 10000);
+            Object.assign({ timeoutId }, { timeoutId: newTimeoutId });
+          } else {
+            throw error;
+          }
+        }
+      }
+      
+      if (!response) {
+        throw new Error('Failed to connect to server after multiple attempts');
+      }
+      
+      clearTimeout(timeoutId);
+      
+      console.log('Response status:', response.status);
+      console.log('Response content-type:', response.headers.get('content-type'));
+      
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Login failed');
+        // Check if response has content and is JSON before trying to parse
+        const contentType = response.headers.get('content-type');
+        let errorMessage = 'Login failed';
+        
+        if (contentType && contentType.includes('application/json')) {
+          try {
+            const error = await response.json();
+            console.log('Login error response:', error);
+            errorMessage = error.message || 'Login failed';
+          } catch (jsonError) {
+            console.error('Failed to parse error response as JSON:', jsonError);
+            errorMessage = `Server error (${response.status}): Unable to process response`;
+          }
+        } else {
+          // For non-JSON responses (like empty 500 responses)
+          const responseText = await response.text();
+          console.log('Login error response (text):', responseText);
+          
+          if (response.status === 500) {
+            errorMessage = 'Server error: The login service is currently unavailable. Please try again later or contact support.';
+          } else if (response.status === 404) {
+            errorMessage = 'Login endpoint not found. Please contact support.';
+          } else if (response.status >= 500) {
+            errorMessage = `Server error (${response.status}): Please try again later.`;
+          } else if (response.status === 401) {
+            errorMessage = 'Invalid email or password.';
+          } else {
+            errorMessage = `Login failed (${response.status}): ${responseText || 'Unknown error'}`;
+          }
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      // Check if successful response has content before parsing
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Server returned an invalid response format. Expected JSON.');
       }
 
       const data = await response.json();
+      console.log('Login success data:', data);
       
       // Map backend user format to frontend User interface
       const mappedUser: User = {
@@ -126,7 +205,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         tenantId: data.user.tenantId,
         tenantName: data.user.tenantName || data.user.tenant?.name,
         tenant: data.user.tenant, // Store the full tenant object
-        permissions: data.user.permissions
+        permissions: data.user.permissions,
+        mustChangePassword: data.user.mustChangePassword || false
       };
       
       localStorage.setItem('token', data.token);
@@ -143,10 +223,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Invalidate tenant context queries to force refresh with new user data
       queryClient.invalidateQueries({ queryKey: ['tenant-context'] });
 
+      // Check if password change is required
+      if (mappedUser.mustChangePassword) {
+        // For users who must change password, redirect to a password change page
+        // or show a modal (we'll handle this in the Login component)
+        return; // Don't redirect yet, let the Login component handle it
+      }
+
       // Redirect based on role and tenant
       redirectBasedOnRole(mappedUser);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
+      
+      // Handle timeout errors
+      if (error.name === 'AbortError') {
+        throw new Error('Login request timed out. The server may be slow or unavailable. Please try again.');
+      }
+      
+      // Handle network errors
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        throw new Error('Network error. Please check your connection and try again.');
+      }
+      
       throw error;
     }
   };

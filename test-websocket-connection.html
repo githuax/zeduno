@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Connection Test</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .connected { background: #d4edda; color: #155724; }
+        .disconnected { background: #f8d7da; color: #721c24; }
+        .connecting { background: #fff3cd; color: #856404; }
+        .log { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 5px; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1>🔌 WebSocket Connection Test</h1>
+    
+    <div id="status" class="status disconnected">Not Connected</div>
+    
+    <button onclick="connect()">Connect</button>
+    <button onclick="disconnect()">Disconnect</button>
+    <button onclick="joinOrderRoom()">Join Order Room</button>
+    <button onclick="clearLogs()">Clear Logs</button>
+    
+    <h2>Connection Logs:</h2>
+    <div id="logs"></div>
+    
+    <script>
+        let socket = null;
+        const logs = document.getElementById('logs');
+        const status = document.getElementById('status');
+        
+        function log(message) {
+            const entry = document.createElement('div');
+            entry.className = 'log';
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logs.appendChild(entry);
+        }
+        
+        function updateStatus(text, className) {
+            status.textContent = text;
+            status.className = 'status ' + className;
+        }
+        
+        function connect() {
+            const socketUrl = 'http://192.168.2.43:5000';
+            log(`Attempting to connect to ${socketUrl}`);
+            updateStatus('Connecting...', 'connecting');
+            
+            socket = io(socketUrl, {
+                withCredentials: true,
+                transports: ['websocket', 'polling'],
+                timeout: 20000,
+                reconnection: true
+            });
+            
+            socket.on('connect', () => {
+                log(`✅ Connected! Socket ID: ${socket.id}`);
+                updateStatus(`Connected (ID: ${socket.id})`, 'connected');
+            });
+            
+            socket.on('disconnect', (reason) => {
+                log(`❌ Disconnected: ${reason}`);
+                updateStatus('Disconnected', 'disconnected');
+            });
+            
+            socket.on('connect_error', (error) => {
+                log(`❌ Connection Error: ${error.message}`);
+                updateStatus('Connection Error', 'disconnected');
+            });
+            
+            socket.on('payment:status-update', (data) => {
+                log(`💳 Payment Update: ${JSON.stringify(data)}`);
+            });
+            
+            socket.on('order:status-update', (data) => {
+                log(`📦 Order Update: ${JSON.stringify(data)}`);
+            });
+        }
+        
+        function disconnect() {
+            if (socket) {
+                socket.disconnect();
+                log('Disconnected manually');
+            }
+        }
+        
+        function joinOrderRoom() {
+            if (socket && socket.connected) {
+                const orderId = prompt('Enter Order ID (e.g., ORD-1205):');
+                if (orderId) {
+                    socket.emit('join-order', orderId);
+                    log(`Joined order room: ${orderId}`);
+                }
+            } else {
+                alert('Please connect first!');
+            }
+        }
+        
+        function clearLogs() {
+            logs.innerHTML = '';
+        }
+        
+        // Auto-connect on load
+        window.onload = () => {
+            log('Page loaded. Click Connect to test WebSocket connection.');
+        };
+    </script>
+</body>
+</html>

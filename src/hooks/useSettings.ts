@@ -56,7 +56,11 @@ const generateMockRestaurantSettings = (): RestaurantSettings => ({
     fontFamily: 'Inter',
     theme: 'light'
   },
-  operatingMode: 'all'
+  operatingMode: 'all',
+  // Additional branding fields
+  logo: undefined, // Will be set via settings
+  tagline: 'Premium Restaurant Experience',
+  displayName: 'ZedUno Restaurant'
 });
 
 const generateMockUserSettings = (): UserSettings => ({
@@ -65,7 +69,7 @@ const generateMockUserSettings = (): UserSettings => ({
   preferences: {
     language: 'en',
     timezone: 'America/New_York',
-    currency: 'USD',
+    currency: 'KES',
     dateFormat: 'MM/DD/YYYY',
     timeFormat: '12h',
     theme: 'light',
@@ -113,7 +117,7 @@ const generateMockSystemSettings = (): SystemSettings => ({
     environment: 'production',
     timezone: 'America/New_York',
     language: 'en',
-    currency: 'USD',
+    currency: 'KES',
     taxRate: 8.5,
     serviceChargeRate: 0,
     orderNumberPrefix: 'ORD',
@@ -458,11 +462,18 @@ export const useUpdateRestaurantSettings = () => {
   
   return useMutation({
     mutationFn: async (settings: Partial<RestaurantSettings>) => {
+      console.log('Updating restaurant settings:', settings);
       await new Promise(resolve => setTimeout(resolve, 1000));
       return settings;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Restaurant settings updated successfully:', data);
       queryClient.invalidateQueries({ queryKey: ['restaurant-settings'] });
+      // Also invalidate tenant context to refresh header
+      queryClient.invalidateQueries({ queryKey: ['tenant-context'] });
+    },
+    onError: (error) => {
+      console.error('Failed to update restaurant settings:', error);
     }
   });
 };

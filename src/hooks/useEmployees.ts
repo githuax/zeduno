@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Employee, CreateEmployeeInput, EmployeeRole, EmploymentStatus } from '@/types/staff.types';
+import { useTenantContext } from '@/hooks/useTenant';
 
 const API_BASE = '/api';
 
@@ -14,12 +15,17 @@ interface EmployeesResponse {
   total: number;
 }
 
-const fetchEmployees = async (options: UseEmployeesOptions = {}): Promise<Employee[]> => {
+const fetchEmployees = async (options: UseEmployeesOptions = {}, tenantId?: string): Promise<Employee[]> => {
   const params = new URLSearchParams();
   
   if (options.role) params.append('role', options.role);
   if (options.status) params.append('status', options.status);
   if (options.department) params.append('department', options.department);
+  
+  // Add tenant filtering - this is the key fix!
+  if (tenantId) {
+    params.append('tenantId', tenantId);
+  }
 
   const response = await fetch(`${API_BASE}/users?${params.toString()}`, {
     headers: {
@@ -218,10 +224,14 @@ const deleteEmployee = async (id: string): Promise<void> => {
 };
 
 export const useEmployees = (options: UseEmployeesOptions = {}) => {
+  const { data: tenantContext } = useTenantContext();
+  const tenantId = tenantContext?.tenant?.id;
+
   return useQuery({
-    queryKey: ['employees', options],
-    queryFn: () => fetchEmployees(options),
+    queryKey: ['employees', options, tenantId],
+    queryFn: () => fetchEmployees(options, tenantId),
     staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !!tenantId, // Only run query when we have a tenant ID
   });
 };
 

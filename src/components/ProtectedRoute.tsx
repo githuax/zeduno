@@ -29,12 +29,16 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       
       let token, userData;
       
-      if (isSuperAdminRoute) {
-        // For superadmin routes, check superadmin tokens
-        token = localStorage.getItem('superadmin_token');
-        userData = localStorage.getItem('superadmin_user');
-      } else {
-        // For regular routes, check regular tokens
+      // First, check for superadmin tokens (these take priority)
+      const superadminToken = localStorage.getItem('superadmin_token');
+      const superadminUser = localStorage.getItem('superadmin_user');
+      
+      if (superadminToken && superadminUser) {
+        // User is a superadmin
+        token = superadminToken;
+        userData = superadminUser;
+      } else if (!isSuperAdminRoute) {
+        // For regular routes, check regular tokens only if not superadmin
         token = localStorage.getItem('token');
         userData = localStorage.getItem('user');
       }
@@ -68,10 +72,17 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // Superadmin can access everything - bypass role restrictions
+  if (user?.role === 'superadmin') {
+    return <>{children}</>;
+  }
+
+  // For non-superadmin users, check role restrictions
   if (allowedRoles.length > 0 && user && !allowedRoles.includes(user.role)) {
     return <Navigate to="/unauthorized" replace />;
   }
 
+  // Check tenant requirement (superadmin is already handled above)
   if (requireTenant && (!user?.tenantId || user.role === 'superadmin')) {
     return <Navigate to="/onboarding" replace />;
   }

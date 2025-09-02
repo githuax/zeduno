@@ -165,8 +165,6 @@ const superAdminSchema = new Schema<ISuperAdmin>(
     sessionTimeout: {
       type: Number,
       default: 480, // 8 hours in minutes
-      min: [30, 'Session timeout must be at least 30 minutes'],
-      max: [1440, 'Session timeout cannot exceed 24 hours']
     }
   },
   {
@@ -175,8 +173,6 @@ const superAdminSchema = new Schema<ISuperAdmin>(
 );
 
 // Indexes for performance
-superAdminSchema.index({ email: 1 });
-superAdminSchema.index({ username: 1 });
 superAdminSchema.index({ isActive: 1 });
 superAdminSchema.index({ lockedUntil: 1 });
 

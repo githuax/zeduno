@@ -9,22 +9,36 @@ import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getApiUrl } from '@/config/api';
 import { getAssetUrl } from '@/utils/url';
+import ChangePasswordModal from '@/components/auth/ChangePasswordModal';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [showPasswordChangeModal, setShowPasswordChangeModal] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { login } = useAuth();
+  const { login, user } = useAuth();
 
   useEffect(() => {
     // Fetch system logo
     const fetchLogo = async () => {
       try {
         const response = await fetch(getApiUrl('superadmin/settings/logo'));
-        const data = await response.json();
+        
+        if (!response.ok) {
+          console.warn('Logo fetch failed with status:', response.status);
+          return;
+        }
+
+        const text = await response.text();
+        if (!text.trim()) {
+          console.warn('Empty response from logo endpoint');
+          return;
+        }
+
+        const data = JSON.parse(text);
         
         if (data.success && data.logoUrl) {
           // Use utility function to get proper asset URL
@@ -32,6 +46,7 @@ const Login = () => {
         }
       } catch (error) {
         console.error('Error fetching logo:', error);
+        // Don't throw - just continue without logo
       }
     };
     
@@ -44,6 +59,20 @@ const Login = () => {
 
     try {
       await login(email, password);
+      
+      // Check if user must change password
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const userData = JSON.parse(userStr);
+        if (userData.mustChangePassword) {
+          setShowPasswordChangeModal(true);
+          toast({
+            title: 'Password Change Required',
+            description: 'You must change your password before continuing.',
+          });
+          return;
+        }
+      }
       
       toast({
         title: 'Login successful',
@@ -60,25 +89,57 @@ const Login = () => {
     }
   };
 
+  const handlePasswordChanged = () => {
+    setShowPasswordChangeModal(false);
+    toast({
+      title: 'Password changed successfully',
+      description: 'Redirecting to dashboard...',
+    });
+    
+    // Redirect based on user role
+    if (user) {
+      switch (user.role) {
+        case 'superadmin':
+          navigate('/superadmin/dashboard');
+          break;
+        case 'admin':
+          navigate('/dashboard');
+          break;
+        case 'manager':
+          navigate('/dashboard');
+          break;
+        case 'staff':
+          navigate('/orders');
+          break;
+        case 'user':
+          navigate('/orders');
+          break;
+        default:
+          navigate('/dashboard');
+      }
+    }
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-4">
-          {logoUrl ? (
-            <div className="flex justify-center">
-              <img 
-                src={logoUrl} 
-                alt="ZedUno Logo" 
-                className="h-48 object-contain"
-              />
-            </div>
-          ) : (
-            <CardTitle className="text-2xl font-bold text-center">Welcome to ZedUno</CardTitle>
-          )}
-          <CardDescription className="text-center">
-            Enter your credentials to access your account
-          </CardDescription>
-        </CardHeader>
+    <>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5">
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-4">
+            {logoUrl ? (
+              <div className="flex justify-center">
+                <img 
+                  src={logoUrl} 
+                  alt="ZedUno Logo" 
+                  className="h-48 object-contain"
+                />
+              </div>
+            ) : (
+              <CardTitle className="text-2xl font-bold text-center">Welcome to ZedUno</CardTitle>
+            )}
+            <CardDescription className="text-center">
+              Enter your credentials to access your account
+            </CardDescription>
+          </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -121,13 +182,19 @@ const Login = () => {
             <p>Demo Credentials:</p>
             <div className="space-y-1">
               <p>SuperAdmin: superadmin@zeduno.com / SuperAdmin@123</p>
-              <p>Joe's Admin: admin@joespizzapalace.com / JoesPizza@2024</p>
-              <p>Manager: manager@joespizzapalace.com / Manager@2024</p>
             </div>
           </div>
         </CardContent>
       </Card>
     </div>
+    
+    {/* Password Change Modal */}
+    <ChangePasswordModal
+      isOpen={showPasswordChangeModal}
+      email={email}
+      onPasswordChanged={handlePasswordChanged}
+    />
+    </>
   );
 };
 

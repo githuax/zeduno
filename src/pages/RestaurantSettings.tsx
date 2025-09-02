@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useRestaurantSettings, useUpdateRestaurantSettings } from "@/hooks/useSettings";
+import { useToast } from "@/components/ui/use-toast";
 import { BusinessHours } from "@/types/settings.types";
 import { 
   ArrowLeft,
@@ -32,6 +33,9 @@ const RestaurantSettings = () => {
   const navigate = useNavigate();
   const { data: settings, isLoading } = useRestaurantSettings();
   const updateSettings = useUpdateRestaurantSettings();
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [logoPreview, setLogoPreview] = useState<string>('');
   
   const [formData, setFormData] = useState({
     name: '',
@@ -66,6 +70,9 @@ const RestaurantSettings = () => {
       fontFamily: 'Inter',
       theme: 'light' as 'light' | 'dark' | 'auto'
     },
+    logo: '',
+    tagline: '',
+    displayName: '',
     operatingMode: 'all' as 'dine-in' | 'takeaway' | 'delivery' | 'all'
   });
 
@@ -79,15 +86,54 @@ const RestaurantSettings = () => {
       cuisine: settings.cuisine,
       capacity: settings.capacity,
       branding: settings.branding,
+      logo: settings.logo || '',
+      tagline: settings.tagline || '',
+      displayName: settings.displayName || '',
       operatingMode: settings.operatingMode
     });
   }
 
+  const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setLogoPreview(result);
+        setFormData({
+          ...formData,
+          logo: result
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    setLogoPreview('');
+    setFormData({
+      ...formData,
+      logo: ''
+    });
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleSave = async () => {
     try {
       await updateSettings.mutateAsync(formData);
+      toast({
+        title: "Success",
+        description: "Restaurant settings updated successfully!",
+      });
     } catch (error) {
       console.error('Failed to update settings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update settings. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -529,6 +575,107 @@ const RestaurantSettings = () => {
                 <CardDescription>Customize your restaurant's visual identity</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* Logo Upload Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Restaurant Logo & Identity</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="logo-upload">Restaurant Logo</Label>
+                        <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center">
+                          {(logoPreview || formData.logo) ? (
+                            <div className="space-y-4">
+                              <img 
+                                src={logoPreview || formData.logo} 
+                                alt="Restaurant Logo" 
+                                className="h-20 w-auto mx-auto object-contain"
+                              />
+                              <div className="flex justify-center gap-2">
+                                <Button 
+                                  type="button" 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => fileInputRef.current?.click()}
+                                >
+                                  <Upload className="h-4 w-4 mr-1" />
+                                  Change Logo
+                                </Button>
+                                <Button 
+                                  type="button" 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={handleRemoveLogo}
+                                >
+                                  Remove
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <Upload className="h-8 w-8 mx-auto text-gray-400" />
+                              <p className="text-sm text-gray-600">Upload your restaurant logo</p>
+                              <Button 
+                                type="button" 
+                                variant="outline" 
+                                onClick={() => fileInputRef.current?.click()}
+                              >
+                                Choose File
+                              </Button>
+                            </div>
+                          )}
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleLogoUpload}
+                            className="hidden"
+                          />
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          Recommended: PNG or JPG, max 2MB, transparent background preferred
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="display-name">Display Name</Label>
+                        <Input
+                          id="display-name"
+                          value={formData.displayName}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            displayName: e.target.value
+                          })}
+                          placeholder="Restaurant display name"
+                        />
+                        <p className="text-xs text-gray-500">
+                          Optional: Override the default restaurant name shown in the header
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="tagline">Tagline</Label>
+                        <Input
+                          id="tagline"
+                          value={formData.tagline}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            tagline: e.target.value
+                          })}
+                          placeholder="e.g., Authentic Italian Cuisine"
+                        />
+                        <p className="text-xs text-gray-500">
+                          A short phrase describing your restaurant
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium">Colors</h3>
                   

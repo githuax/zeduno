@@ -10,7 +10,13 @@ export const connectDB = async (): Promise<void> => {
       throw new Error('MongoDB URI is not defined in environment variables');
     }
 
-    await mongoose.connect(mongoUri);
+    // Add connection pooling and optimization options
+    await mongoose.connect(mongoUri, {
+      maxPoolSize: 10,
+      minPoolSize: 2,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+    });
 
     console.log('MongoDB connected successfully');
 

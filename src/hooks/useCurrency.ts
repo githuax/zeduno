@@ -5,7 +5,7 @@ export function useCurrency() {
   const { context } = useTenant();
   
   // Get current tenant's currency or default to USD
-  const currencyCode = context?.tenant?.settings?.currency || 'USD';
+  const currencyCode = context?.tenant?.settings?.currency || 'KES';
   
   return {
     currencyCode,

@@ -41,11 +41,22 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
 
     const { email, password } = req.body;
 
-    // Try real database authentication first
+    // Try real database authentication with optimized query
     const { User } = await import('../models/User');
-    const user = await User.findOne({ email }).populate('tenantId');
+    const user = await User.findOne({ email })
+      .select('+password')
+      .populate('tenantId', 'name _id isActive')
+      .lean({ virtuals: false });
     
-    if (user && await user.comparePassword(password)) {
+    if (user) {
+      // Use bcrypt directly for lean document
+      const bcrypt = await import('bcryptjs');
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      
+      if (!isPasswordValid) {
+        return res.status(401).json({ success: false, message: 'Invalid credentials' });
+      }
+      
       if (!user.isActive) {
         return res.status(401).json({ success: false, message: 'Account is inactive' });
       }
@@ -59,6 +70,7 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
         lastName: user.lastName,
         role: user.role,
         isActive: user.isActive,
+        mustChangePassword: user.mustChangePassword || false,
         tenantId: user.tenantId?._id,
         tenantName: user.tenantId && typeof user.tenantId === 'object' && 'name' in user.tenantId ? user.tenantId.name : null,
         tenant: user.tenantId // Include full tenant data
@@ -68,46 +80,13 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
         success: true,
         token,
         user: userResponse,
+        mustChangePassword: user.mustChangePassword || false,
         message: 'Login successful'
       });
       return;
     }
 
-    // Fallback to mock authentication for development
-    if ((email === 'admin@demo.com' && password === 'admin123') ||
-        (email === 'admin@joespizzapalace.com' && password === 'JoesPizza@2024')) {
-      
-      const mockUser = email === 'admin@joespizzapalace.com' ? {
-        _id: 'joe-pizza-admin-id',
-        email: 'admin@joespizzapalace.com',
-        firstName: 'Joe',
-        lastName: 'Pizza',
-        role: 'admin',
-        isActive: true,
-        tenantId: 'joe-pizza-tenant-1',
-        tenantName: "Joe's Pizza Palace"
-      } : {
-        _id: 'mock-user-id',
-        email: 'admin@demo.com',
-        firstName: 'Demo',
-        lastName: 'Admin',
-        role: 'admin',
-        isActive: true,
-        tenantId: '507f1f77bcf86cd799439011',
-        tenantName: 'Demo Restaurant'
-      };
-
-      const token = generateToken(mockUser._id);
-
-      res.json({
-        success: true,
-        token,
-        user: mockUser,
-        message: 'Login successful'
-      });
-      return;
-    }
-
+    // No fallback - only database authentication
     return res.status(401).json({ success: false, message: 'Invalid credentials' });
   } catch (error) {
     next(error);
@@ -160,7 +139,51 @@ export const updateProfile = async (req: Request, res: Response, next: NextFunct
 
 export const changePassword = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Mock response
+    const { currentPassword, newPassword } = req.body;
+    const userId = (req as any).user._id;
+
+    // Validate input
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Current password and new password are required'
+      });
+    }
+
+    // Get user from database
+    const { User } = await import('../models/User');
+    const user = await User.findById(userId).select('+password');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Verify current password
+    const isPasswordValid = await user.comparePassword(currentPassword);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Current password is incorrect'
+      });
+    }
+
+    // Check if new password is same as current
+    if (currentPassword === newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be different from current password'
+      });
+    }
+
+    // Update password (will be hashed by pre-save hook)
+    user.password = newPassword;
+    user.mustChangePassword = false;
+    user.passwordLastChanged = new Date();
+    await user.save();
+
     res.json({
       success: true,
       message: 'Password changed successfully',

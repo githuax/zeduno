@@ -153,7 +153,7 @@ export default function TakeawayOrders() {
             <h2>ITEMS:</h2>
             ${order.items.map(item => `
               <div class="item">
-                ${item.quantity}x ${typeof item.menuItem === 'object' ? item.menuItem.name : 'Item'} - ${formatPrice(item.price * item.quantity)}
+                ${item.quantity}x ${item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.name : 'Item'} - ${formatPrice(item.price * item.quantity)}
                 ${item.customizations?.map(c => `<br>&nbsp;&nbsp;+ ${c.option}`).join('') || ''}
                 ${item.specialInstructions ? `<br>&nbsp;&nbsp;Note: ${item.specialInstructions}` : ''}
               </div>

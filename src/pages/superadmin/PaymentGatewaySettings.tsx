@@ -296,7 +296,7 @@ export const PaymentGatewaySettings = () => {
                   <p className="text-sm text-muted-foreground">{selectedTenantData.email}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-medium">Currency: {selectedTenantData.settings.currency || 'USD'}</p>
+                  <p className="text-sm font-medium">Currency: {selectedTenantData.settings.currency || 'KES'}</p>
                   <Badge variant={selectedTenantData.status === 'active' ? 'default' : 'secondary'}>
                     {selectedTenantData.status}
                   </Badge>

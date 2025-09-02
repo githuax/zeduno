@@ -139,8 +139,8 @@ router.post('/items',
       .isBoolean(),
     body('spiceLevel')
       .optional()
-      .isIn(['mild', 'medium', 'hot', 'extra-hot'])
-      .withMessage('Spice level must be: mild, medium, hot, or extra-hot'),
+      .isIn(['none', 'mild', 'medium', 'hot', 'extra-hot'])
+      .withMessage('Spice level must be: none, mild, medium, hot, or extra-hot'),
     body('stockQuantity')
       .optional()
       .isInt({ min: 0 })
@@ -192,8 +192,8 @@ router.put('/items/:id',
       .withMessage('Preparation time must be between 0 and 480 minutes'),
     body('spiceLevel')
       .optional()
-      .isIn(['mild', 'medium', 'hot', 'extra-hot'])
-      .withMessage('Spice level must be: mild, medium, hot, or extra-hot')
+      .isIn(['none', 'mild', 'medium', 'hot', 'extra-hot'])
+      .withMessage('Spice level must be: none, mild, medium, hot, or extra-hot')
   ],
   updateMenuItem
 );

@@ -100,7 +100,7 @@ export function PrepTimeEstimator({ orders }: PrepTimeEstimatorProps) {
       const orderPrepTime = (new Date(order.completedAt!).getTime() - new Date(order.createdAt).getTime()) / (1000 * 60);
       
       order.items.forEach(item => {
-        const itemName = typeof item.menuItem === 'object' ? item.menuItem.name : 'Unknown Item';
+        const itemName = item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.name : 'Unknown Item';
         const estimatedTime = typeof item.menuItem === 'object' ? item.menuItem.preparationTime : 15;
         
         if (!itemStats.has(itemName)) {

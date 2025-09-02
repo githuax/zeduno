@@ -130,6 +130,20 @@ export function CreateOrderDialog({ open, onOpenChange, onSuccess, preselectedTa
       removeFromCart(menuItemId);
       return;
     }
+
+    // Find the menu item to check stock
+    const menuItem = menuItems?.find(item => item._id === menuItemId);
+    if (menuItem?.trackInventory && menuItem.amount !== undefined) {
+      if (quantity > menuItem.amount) {
+        toast({
+          title: "Insufficient Stock",
+          description: `Only ${menuItem.amount} units of ${menuItem.name} are available in stock.`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     setCart(cart.map(item => {
       if (item.menuItem._id === menuItemId) {
         const customizationPrice = item.customizations.reduce((sum, c) => sum + c.price, 0);
@@ -267,30 +281,30 @@ export function CreateOrderDialog({ open, onOpenChange, onSuccess, preselectedTa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh]">
+      <DialogContent className="w-full max-w-[95vw] sm:max-w-[90vw] lg:max-w-6xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle>Create New Order</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-base sm:text-lg">Create New Order</DialogTitle>
+          <DialogDescription className="text-xs sm:text-sm">
             Add items and customer details to create a new order
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="space-y-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          <div className="space-y-3 sm:space-y-4 order-2 lg:order-1">
             <div>
-              <Label>Order Type</Label>
+              <Label className="text-sm sm:text-base">Order Type</Label>
               <Tabs value={orderType} onValueChange={(v) => setOrderType(v as OrderType)}>
                 <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="dine-in">Dine In</TabsTrigger>
-                  <TabsTrigger value="takeaway">Takeaway</TabsTrigger>
-                  <TabsTrigger value="delivery">Delivery</TabsTrigger>
+                  <TabsTrigger value="dine-in" className="text-xs sm:text-sm">Dine In</TabsTrigger>
+                  <TabsTrigger value="takeaway" className="text-xs sm:text-sm">Takeaway</TabsTrigger>
+                  <TabsTrigger value="delivery" className="text-xs sm:text-sm">Delivery</TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <Label htmlFor="employee">Employee (Placing Order) *</Label>
+                <Label htmlFor="employee" className="text-xs sm:text-sm">Employee (Placing Order) *</Label>
                 <Select value={selectedEmployeeId} onValueChange={(value) => {
                   setSelectedEmployeeId(value);
                   const employee = employees.find(e => e._id === value);
@@ -394,12 +408,47 @@ export function CreateOrderDialog({ open, onOpenChange, onSuccess, preselectedTa
               />
             </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Order Summary</CardTitle>
+            {/* Mobile Order Summary */}
+            <Card className="lg:hidden">
+              <CardHeader className="p-4">
+                <CardTitle className="text-base">Order Summary</CardTitle>
               </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[200px] pr-4">
+              <CardContent className="p-4 pt-0">
+                <ScrollArea className="h-[120px] pr-2">
+                  {cart.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-4 text-sm">No items added</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {cart.map((item) => (
+                        <div key={item.menuItem._id} className="flex items-start justify-between text-sm">
+                          <div className="flex-1">
+                            <p className="font-medium">{item.menuItem.name}</p>
+                            <div className="flex items-center gap-1 mt-1">
+                              <span className="text-xs">Qty: {item.quantity}</span>
+                            </div>
+                          </div>
+                          <p className="font-medium">{formatPrice(item.totalPrice)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+                <div className="border-t pt-2 mt-2">
+                  <div className="flex justify-between text-sm font-semibold">
+                    <span>Total:</span>
+                    <span>{formatPrice(calculateTotal())}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Desktop Order Summary */}
+            <Card className="hidden lg:block">
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="text-base sm:text-lg">Order Summary</CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 sm:p-6 pt-0">
+                <ScrollArea className="h-[150px] sm:h-[200px] pr-2 sm:pr-4">
                   {cart.length === 0 ? (
                     <p className="text-muted-foreground text-center py-4">No items added</p>
                   ) : (
@@ -410,7 +459,7 @@ export function CreateOrderDialog({ open, onOpenChange, onSuccess, preselectedTa
                             <p className="font-medium">{item.menuItem.name}</p>
                             {item.customizations.length > 0 && (
                               <p className="text-xs text-muted-foreground">
-                                {item.customizations.map(c => c.option).join(', ')}
+                                {item.customizations.filter(c => c && c.option).map(c => c.option).join(', ')}
                               </p>
                             )}
                             {item.specialInstructions && (
@@ -454,8 +503,8 @@ export function CreateOrderDialog({ open, onOpenChange, onSuccess, preselectedTa
                     </div>
                   )}
                 </ScrollArea>
-                <div className="border-t pt-3 mt-3">
-                  <div className="flex justify-between text-lg font-semibold">
+                <div className="border-t pt-2 sm:pt-3 mt-2 sm:mt-3">
+                  <div className="flex justify-between text-base sm:text-lg font-semibold">
                     <span>Total:</span>
                     <span>{formatPrice(calculateTotal())}</span>
                   </div>
@@ -463,9 +512,9 @@ export function CreateOrderDialog({ open, onOpenChange, onSuccess, preselectedTa
               </CardContent>
             </Card>
 
-            <div className="flex gap-3">
+            <div className="flex gap-2 sm:gap-3">
               <Button
-                className="flex-1"
+                className="flex-1 text-xs sm:text-sm"
                 onClick={handleSubmit}
                 disabled={isSubmitting || cart.length === 0}
               >
@@ -475,27 +524,28 @@ export function CreateOrderDialog({ open, onOpenChange, onSuccess, preselectedTa
                 variant="outline"
                 onClick={() => onOpenChange(false)}
                 disabled={isSubmitting}
+                className="text-xs sm:text-sm"
               >
                 Cancel
               </Button>
             </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4 order-1 lg:order-2">
             <div>
               <div className="flex items-center justify-between mb-2">
-                <Label className="text-lg font-semibold">Menu Items</Label>
+                <Label className="text-base sm:text-lg font-semibold">Menu Items</Label>
                 {orderType === 'dine-in' && (
-                  <Badge variant="secondary" className="bg-restaurant-primary/10 text-restaurant-primary">
-                    <ChefHat className="h-3 w-3 mr-1" />
+                  <Badge variant="secondary" className="bg-restaurant-primary/10 text-restaurant-primary text-xs">
+                    <ChefHat className="h-3 w-3 mr-0.5 sm:mr-1" />
                     Dine-In Menu
                   </Badge>
                 )}
               </div>
               <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-                <TabsList className="w-full flex-wrap h-auto">
+                <TabsList className="w-full flex-wrap h-auto gap-1 p-1">
                   {categories.map(cat => (
-                    <TabsTrigger key={cat} value={cat} className="capitalize">
+                    <TabsTrigger key={cat} value={cat} className="capitalize text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-1.5">
                       {cat}
                     </TabsTrigger>
                   ))}
@@ -503,7 +553,7 @@ export function CreateOrderDialog({ open, onOpenChange, onSuccess, preselectedTa
               </Tabs>
             </div>
 
-            <ScrollArea className="h-[500px] pr-4">
+            <ScrollArea className="h-[300px] sm:h-[400px] lg:h-[500px] pr-2 sm:pr-4">
               <div className="grid grid-cols-1 gap-3">
                 {menuLoading ? (
                   <div className="flex items-center justify-center py-8">
@@ -528,31 +578,40 @@ export function CreateOrderDialog({ open, onOpenChange, onSuccess, preselectedTa
                   </div>
                 ) : filteredMenuItems.map((item) => (
                   <Card key={item._id} className="cursor-pointer hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 sm:p-4">
                       <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h4 className="font-semibold">{item.name}</h4>
-                          <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
-                          <div className="flex items-center gap-2 mt-2">
-                            <span className="font-semibold text-lg">{formatPrice(item.price)}</span>
+                        <div className="flex-1 pr-2">
+                          <h4 className="font-semibold text-sm sm:text-base">{item.name}</h4>
+                          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1 line-clamp-2">{item.description}</p>
+                          <div className="flex items-center gap-2 mt-1 sm:mt-2">
+                            <span className="font-semibold text-base sm:text-lg">{formatPrice(item.price)}</span>
                             {!item.isAvailable && (
-                              <Badge variant="secondary">Unavailable</Badge>
+                              <Badge variant="secondary" className="text-xs">Unavailable</Badge>
+                            )}
+                            {item.trackInventory && item.amount !== undefined && (
+                              <Badge 
+                                variant={item.amount <= (item.minStockLevel || 0) ? "destructive" : "outline"}
+                                className="text-xs"
+                              >
+                                {item.amount === 0 ? "Out of Stock" : `${item.amount} left`}
+                              </Badge>
                             )}
                           </div>
                         </div>
                         <Button
                           size="sm"
                           onClick={() => addToCart(item)}
-                          disabled={!item.isAvailable}
+                          disabled={!item.isAvailable || (item.trackInventory && item.amount === 0)}
+                          className="h-8 w-8 sm:h-9 sm:w-9 p-0"
                         >
-                          <Plus className="h-4 w-4" />
+                          <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
                         </Button>
                       </div>
                       
                       {cart.find(c => c.menuItem._id === item._id) && item.customizations && item.customizations.length > 0 && (
                         <div className="mt-3 pt-3 border-t">
                           <p className="text-sm font-medium mb-2">Customizations:</p>
-                          {item.customizations.map((custom) => (
+                          {item.customizations.filter(custom => custom && custom.option).map((custom) => (
                             <div key={custom.name} className="space-y-1">
                               <p className="text-xs font-medium">{custom.name}:</p>
                               <div className="flex flex-wrap gap-2">

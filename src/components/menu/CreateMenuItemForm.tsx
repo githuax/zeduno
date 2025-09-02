@@ -47,7 +47,11 @@ const CreateMenuItemForm: React.FC<CreateMenuItemFormProps> = ({
     isVegan: false,
     isGlutenFree: false,
     spiceLevel: '',
-    stockQuantity: ''
+    stockQuantity: '',
+    amount: '',
+    minStockLevel: '',
+    maxStockLevel: '',
+    trackInventory: true
   });
 
   const [customizationOptions, setCustomizationOptions] = useState<CustomizationOption[]>([]);
@@ -68,6 +72,7 @@ const CreateMenuItemForm: React.FC<CreateMenuItemFormProps> = ({
     if (!formData.price || parseFloat(formData.price) <= 0) newErrors.price = 'Valid price is required';
     if (!formData.categoryId) newErrors.categoryId = 'Category is required';
     if (formData.imageUrl && !isValidUrl(formData.imageUrl)) newErrors.imageUrl = 'Valid image URL is required';
+    if (formData.trackInventory && (!formData.amount || parseInt(formData.amount) < 0)) newErrors.amount = 'Valid stock amount is required when tracking inventory';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -138,6 +143,9 @@ const CreateMenuItemForm: React.FC<CreateMenuItemFormProps> = ({
         price: parseFloat(formData.price),
         preparationTime: formData.preparationTime ? parseInt(formData.preparationTime) : undefined,
         stockQuantity: formData.stockQuantity ? parseInt(formData.stockQuantity) : undefined,
+        amount: formData.amount ? parseInt(formData.amount) : 0,
+        minStockLevel: formData.minStockLevel ? parseInt(formData.minStockLevel) : 0,
+        maxStockLevel: formData.maxStockLevel ? parseInt(formData.maxStockLevel) : undefined,
         customizationOptions: customizationOptions.length > 0 ? customizationOptions : undefined,
         tags: tags.length > 0 ? tags : undefined,
         spiceLevel: formData.spiceLevel || undefined
@@ -233,11 +241,13 @@ const CreateMenuItemForm: React.FC<CreateMenuItemFormProps> = ({
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category._id} value={category._id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
+                    {categories
+                      .filter(category => category._id && category._id.trim() !== '')
+                      .map((category) => (
+                        <SelectItem key={category._id} value={category._id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
                 {errors.categoryId && <p className="text-red-500 text-sm mt-1">{errors.categoryId}</p>}
@@ -292,6 +302,70 @@ const CreateMenuItemForm: React.FC<CreateMenuItemFormProps> = ({
               </div>
             </div>
 
+            {/* Inventory Management Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Inventory Management</CardTitle>
+                <CardDescription>
+                  Manage stock levels and inventory tracking for this item
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="trackInventory"
+                    checked={formData.trackInventory}
+                    onCheckedChange={(checked) => handleInputChange('trackInventory', checked)}
+                  />
+                  <Label htmlFor="trackInventory">Track inventory for this item</Label>
+                </div>
+
+                {formData.trackInventory && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="amount">Current Stock *</Label>
+                      <Input
+                        id="amount"
+                        type="number"
+                        min="0"
+                        value={formData.amount}
+                        onChange={(e) => handleInputChange('amount', e.target.value)}
+                        placeholder="100"
+                        className={errors.amount ? 'border-red-500' : ''}
+                      />
+                      {errors.amount && <p className="text-sm text-red-500 mt-1">{errors.amount}</p>}
+                    </div>
+
+                    <div>
+                      <Label htmlFor="minStockLevel">Minimum Stock Level</Label>
+                      <Input
+                        id="minStockLevel"
+                        type="number"
+                        min="0"
+                        value={formData.minStockLevel}
+                        onChange={(e) => handleInputChange('minStockLevel', e.target.value)}
+                        placeholder="10"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">Alert when stock falls below this level</p>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="maxStockLevel">Maximum Stock Level</Label>
+                      <Input
+                        id="maxStockLevel"
+                        type="number"
+                        min="0"
+                        value={formData.maxStockLevel}
+                        onChange={(e) => handleInputChange('maxStockLevel', e.target.value)}
+                        placeholder="1000"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">Maximum inventory capacity (optional)</p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             <div>
               <Label htmlFor="spiceLevel">Spice Level</Label>
               <Select value={formData.spiceLevel} onValueChange={(value) => handleInputChange('spiceLevel', value)}>
@@ -299,7 +373,7 @@ const CreateMenuItemForm: React.FC<CreateMenuItemFormProps> = ({
                   <SelectValue placeholder="Select spice level" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   <SelectItem value="mild">Mild</SelectItem>
                   <SelectItem value="medium">Medium</SelectItem>
                   <SelectItem value="hot">Hot</SelectItem>

@@ -343,11 +343,11 @@ export function OrderDetailsDialog({ order, open, onOpenChange, onUpdate }: Orde
                           />
                           <div className="flex-1">
                             <p className="font-medium">
-                              {typeof item.menuItem === 'object' ? item.menuItem.name : 'Item'} x{item.quantity}
+                              {item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.name : 'Item'} x{item.quantity}
                             </p>
                             {item.customizations && item.customizations.length > 0 && (
                               <p className="text-sm text-muted-foreground">
-                                {item.customizations.map(c => c.option).join(', ')}
+                                {item.customizations.filter(c => c && c.option).map(c => c.option).join(', ')}
                               </p>
                             )}
                             {isInGroup && (
@@ -394,11 +394,11 @@ export function OrderDetailsDialog({ order, open, onOpenChange, onUpdate }: Orde
                       <div key={index} className="flex justify-between items-start pb-3 border-b last:border-0">
                         <div className="flex-1">
                           <p className="font-medium">
-                            {typeof item.menuItem === 'object' ? item.menuItem.name : 'Item'} x{item.quantity}
+                            {item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.name : 'Item'} x{item.quantity}
                           </p>
                           {item.customizations && item.customizations.length > 0 && (
                             <p className="text-sm text-muted-foreground">
-                              {item.customizations.map(c => `${c.option} (+${formatPrice(c.price)})`).join(', ')}
+                              {item.customizations.filter(c => c && c.option && c.price !== undefined).map(c => `${c.option} (+${formatPrice(c.price)})`).join(', ')}
                             </p>
                           )}
                           {item.specialInstructions && (
@@ -571,7 +571,7 @@ export function OrderDetailsDialog({ order, open, onOpenChange, onUpdate }: Orde
           amount: order.total,
           customerName: order.customerName,
           items: order.items.map(item => ({
-            name: typeof item.menuItem === 'object' ? item.menuItem.name : 'Item',
+            name: item.menuItem && typeof item.menuItem === 'object' ? item.menuItem.name : 'Item',
             quantity: item.quantity,
             price: item.price
           }))

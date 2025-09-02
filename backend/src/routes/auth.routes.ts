@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { body } from 'express-validator';
 import { authLimiter } from '../middleware/rateLimiter';
-import { register, login, logout, refreshToken } from '../controllers/auth.controller';
+import { register, login, logout, refreshToken, changePassword } from '../controllers/auth.controller';
 import { authenticate } from '../middleware/auth';
 
 const router = Router();
@@ -30,5 +30,6 @@ router.post(
 
 router.post('/logout', authenticate, logout);
 router.post('/refresh', refreshToken);
+router.post('/change-password', authenticate, changePassword);
 
 export default router;

@@ -426,6 +426,19 @@ export class PaymentGatewayController {
         });
       }
 
+
+      // Check M-Pesa KCB
+      // Note: For now, M-Pesa KCB is always available if the routes are configured
+      // In the future, this should check for actual KCB configuration in paymentConfig
+      availableMethods.push({
+        id: 'mpesa-kcb',
+        name: 'M-Pesa KCB',
+        type: 'digital_wallet',
+        provider: 'KCB Bank',
+        isEnabled: true,
+        processingFee: 0,
+        description: 'Pay using M-Pesa via KCB Bank',
+      });
       // Cash is always available if enabled
       if (tenant.paymentConfig.cash.enabled) {
         availableMethods.push({
@@ -731,7 +744,7 @@ export class PaymentGatewayController {
               paymentMethod: '$paymentMethod',
             },
             count: { $sum: 1 },
-            totalAmount: { $sum: '$amount' },
+            total: { $sum: '$amount' },
           },
         },
         {
@@ -741,11 +754,11 @@ export class PaymentGatewayController {
               $push: {
                 status: '$_id.status',
                 count: '$count',
-                totalAmount: '$totalAmount',
+                total: '$totalAmount',
               },
             },
             totalTransactions: { $sum: '$count' },
-            totalAmount: { $sum: '$totalAmount' },
+            total: { $sum: '$totalAmount' },
           },
         },
       ]);
@@ -754,6 +767,58 @@ export class PaymentGatewayController {
     } catch (error) {
       console.error('Error getting payment statistics:', error);
       res.status(500).json({ error: 'Failed to get payment statistics' });
+    }
+  }
+
+  // Process cash payment
+  async processCashPayment(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const { orderId, amount, customerInfo } = req.body;
+      const tenantId = req.user?.tenantId;
+
+      if (!tenantId) {
+        res.status(400).json({ error: 'Tenant ID is required' });
+        return;
+      }
+
+      // Get order
+      const order = await Order.findOne({ _id: orderId, tenantId: tenantId });
+      if (!order) {
+        res.status(404).json({ error: 'Order not found' });
+        return;
+      }
+
+      // Update order with cash payment
+      order.paymentStatus = 'paid';
+      order.paymentMethod = 'cash';
+      order.paidAt = new Date();
+      
+      if (amount) {
+        order.total = amount;
+      }
+
+      await order.save();
+
+      console.log(`✅ Cash payment processed for order ${orderId}:`, {
+        paymentStatus: order.paymentStatus,
+        paymentMethod: order.paymentMethod,
+        paidAt: order.paidAt
+      });
+
+      res.json({
+        success: true,
+        message: 'Cash payment processed successfully',
+        order: {
+          id: order._id,
+          paymentStatus: order.paymentStatus,
+          paymentMethod: order.paymentMethod,
+          paidAt: order.paidAt,
+          total: order.total
+        }
+      });
+    } catch (error) {
+      console.error('Error processing cash payment:', error);
+      res.status(500).json({ error: 'Failed to process cash payment' });
     }
   }
 }

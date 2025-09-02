@@ -9,64 +9,146 @@ import {
   PaymentProvider,
   Refund
 } from '@/types/payment.types';
+import { useAuth } from '@/contexts/AuthContext';
+import { getApiUrl } from '@/utils/api';
 
-// Mock data generators
+// Mock data generators - Updated to include M-Pesa KCB
 const generateMockPaymentMethods = (): PaymentMethod[] => [
   {
-    id: '1',
-    type: 'credit_card',
-    name: 'Credit Card',
+    id: 'mpesa',
+    type: 'digital_wallet',
+    name: 'M-Pesa',
     isEnabled: true,
-    processingFee: 2.9,
-    icon: 'credit-card',
-    provider: 'Stripe'
+    processingFee: 0,
+    icon: 'smartphone',
+    provider: 'Safaricom'
   },
   {
-    id: '2',
-    type: 'debit_card',
-    name: 'Debit Card',
+    id: 'mpesa-kcb',
+    type: 'digital_wallet',
+    name: 'M-Pesa KCB',
     isEnabled: true,
     processingFee: 1.5,
-    icon: 'credit-card',
-    provider: 'Square'
+    icon: 'building',
+    provider: 'KCB Bank'
   },
   {
-    id: '3',
+    id: 'cash',
     type: 'cash',
-    name: 'Cash',
+    name: 'Cash Payment',
     isEnabled: true,
     processingFee: 0,
     icon: 'banknote',
-    provider: 'In-house'
+    provider: 'Manual'
   },
   {
-    id: '4',
-    type: 'digital_wallet',
-    name: 'Digital Wallet',
-    isEnabled: true,
-    processingFee: 2.1,
-    icon: 'smartphone',
-    provider: 'PayPal'
-  },
-  {
-    id: '5',
-    type: 'bank_transfer',
-    name: 'Bank Transfer',
+    id: 'credit_card',
+    type: 'credit_card',
+    name: 'Credit Card',
     isEnabled: false,
-    processingFee: 0.8,
-    icon: 'building-2',
-    provider: 'ACH'
-  },
-  {
-    id: '6',
-    type: 'gift_card',
-    name: 'Gift Card',
-    isEnabled: true,
-    processingFee: 0,
-    icon: 'gift',
-    provider: 'In-house'
+    processingFee: 2.9,
+    icon: 'credit-card',
+    provider: 'Stripe'
   }
 ];
+
+// Helper function to get tenant ID from user data
+const getTenantId = () => {
+  try {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      const user = JSON.parse(userData);
+      return user.tenantId;
+    }
+  } catch (error) {
+    console.error('Error parsing user data:', error);
+  }
+  return null;
+};
+
+// Helper function to get auth token
+const getAuthToken = () => {
+  return localStorage.getItem('token');
+};
+
+// Custom hooks
+export const usePaymentMethods = () => {
+  const { user } = useAuth();
+  
+  // Get tenant ID from auth context or localStorage
+  const tenantId = user?.tenantId || getTenantId();
+
+  return useQuery({
+    queryKey: ['payment-methods', tenantId],
+    queryFn: async () => {
+      const token = getAuthToken();
+      
+      console.log('🔍 usePaymentMethods debug:');
+      console.log('  Token exists:', !!token);
+      console.log('  Tenant ID:', tenantId);
+      console.log('  User from auth:', user);
+      
+      if (!token) {
+        console.warn('No auth token found, using mock data with M-Pesa KCB');
+        return generateMockPaymentMethods();
+      }
+
+      if (!tenantId) {
+        console.warn('No tenant ID found, using mock data with M-Pesa KCB');
+        return generateMockPaymentMethods();
+      }
+
+      try {
+        // Use the correct API endpoint with tenant ID
+        const apiUrl = `${getApiUrl()}/payments/methods/${tenantId}`;
+        console.log('  API URL:', apiUrl);
+        
+        const response = await fetch(apiUrl, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        console.log('  Response status:', response.status);
+        console.log('  Response ok:', response.ok);
+        
+        if (!response.ok) {
+          console.error('Payment methods API failed:', response.status, response.statusText);
+          // Try to get error details
+          const errorText = await response.text();
+          console.error('Error details:', errorText);
+          // Fallback to mock data if API fails
+          return generateMockPaymentMethods();
+        }
+        
+        const data = await response.json();
+        console.log('  Payment methods from API:', data);
+        
+        // If the API returns an array, use it directly
+        if (Array.isArray(data)) {
+          return data;
+        }
+        
+        // If no payment methods are returned or empty array, show mock data as fallback
+        if (!data || (Array.isArray(data) && data.length === 0)) {
+          console.log('No payment methods configured, showing mock data with M-Pesa KCB');
+          return generateMockPaymentMethods();
+        }
+        
+        return data;
+      } catch (error) {
+        console.error('Error fetching payment methods:', error);
+        // Fallback to mock data on network error
+        return generateMockPaymentMethods();
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !!tenantId, // Only run query if we have a tenant ID
+    retry: 1, // Only retry once
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+  });
+};
 
 const generateMockTransactions = (): Transaction[] => {
   const paymentMethods = generateMockPaymentMethods();
@@ -81,7 +163,7 @@ const generateMockTransactions = (): Transaction[] => {
       id: `txn_${String(i + 1).padStart(6, '0')}`,
       orderId: `ord_${String(i + 1).padStart(4, '0')}`,
       amount,
-      currency: 'USD',
+      currency: 'KES',
       paymentMethod: paymentMethods[Math.floor(Math.random() * paymentMethods.length)],
       status: statuses[Math.floor(Math.random() * statuses.length)],
       timestamp: new Date(Date.now() - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000)),
@@ -130,7 +212,7 @@ const generateMockPaymentAnalytics = (): PaymentAnalytics => {
 
 const generateMockSettings = (): PaymentSettings => ({
   acceptedPaymentMethods: ['credit_card', 'debit_card', 'cash', 'digital_wallet'],
-  currency: 'USD',
+  currency: 'KES',
   taxRate: 8.5,
   tipOptions: [15, 18, 20, 25],
   minimumAmount: 1,
@@ -140,86 +222,70 @@ const generateMockSettings = (): PaymentSettings => ({
   requireReceipt: true
 });
 
-// Custom hooks
-export const usePaymentMethods = () => {
-  return useQuery({
-    queryKey: ['payment-methods'],
-    queryFn: async () => {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        console.warn('No auth token found, using mock data');
-        return generateMockPaymentMethods();
-      }
-
-      try {
-        const response = await fetch('http://localhost:5000/api/payments/methods', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-        
-        if (!response.ok) {
-          console.error('Payment methods API failed:', response.status, response.statusText);
-          // Fallback to mock data if API fails
-          return generateMockPaymentMethods();
-        }
-        
-        const data = await response.json();
-        console.log('Payment methods from API:', data);
-        
-        // If the API returns an array, use it directly
-        if (Array.isArray(data)) {
-          return data;
-        }
-        
-        // If no payment methods are returned or empty array, show mock data as fallback
-        if (!data || (Array.isArray(data) && data.length === 0)) {
-          console.log('No payment methods configured, showing mock data');
-          return generateMockPaymentMethods();
-        }
-        
-        return data;
-      } catch (error) {
-        console.error('Error fetching payment methods:', error);
-        // Fallback to mock data on network error
-        return generateMockPaymentMethods();
-      }
-    },
-    staleTime: 5 * 60 * 1000 // 5 minutes
-  });
-};
-
 export const useTransactions = (filters?: { status?: string; startDate?: Date; endDate?: Date }) => {
   return useQuery({
-    queryKey: ['transactions', filters],
-    queryFn: () => {
-      let transactions = generateMockTransactions();
+    queryKey: ["transactions", filters],
+    queryFn: async () => {
+      const token = getAuthToken();
       
-      if (filters?.status) {
-        transactions = transactions.filter(t => t.status === filters.status);
+      if (!token) {
+        throw new Error("Authentication required");
       }
-      
-      if (filters?.startDate) {
-        transactions = transactions.filter(t => t.timestamp >= filters.startDate!);
+
+      const params = new URLSearchParams();
+      if (filters?.status) params.append("status", filters.status);
+      if (filters?.startDate) params.append("startDate", filters.startDate.toISOString());
+      if (filters?.endDate) params.append("endDate", filters.endDate.toISOString());
+
+      const response = await fetch(`${getApiUrl("payment-gateway/transactions")}?${params}`, {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch transactions");
       }
-      
-      if (filters?.endDate) {
-        transactions = transactions.filter(t => t.timestamp <= filters.endDate!);
-      }
-      
-      return transactions.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+
+      const data = await response.json();
+      return data.transactions || [];
     },
     refetchInterval: 30000,
-    staleTime: 15000
+    staleTime: 15000,
+    retry: 1,
+    refetchOnWindowFocus: false,
   });
 };
 
 export const usePaymentAnalytics = () => {
   return useQuery({
-    queryKey: ['payment-analytics'],
-    queryFn: () => generateMockPaymentAnalytics(),
+    queryKey: ["payment-analytics"],
+    queryFn: async () => {
+      const token = getAuthToken();
+      
+      if (!token) {
+        throw new Error("Authentication required");
+      }
+
+      const response = await fetch(`${getApiUrl("payment-gateway/statistics")}`, {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch payment analytics");
+      }
+
+      const data = await response.json();
+      return data;
+    },
     refetchInterval: 60000,
-    staleTime: 30000
+    staleTime: 30000,
+    retry: 1,
+    refetchOnWindowFocus: false,
   });
 };
 
@@ -231,16 +297,99 @@ export const usePaymentSettings = () => {
   });
 };
 
+// 🔥 FIXED: Real payment processing with backend API calls
 export const useProcessPayment = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
     mutationFn: async (paymentIntent: PaymentIntent) => {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const token = getAuthToken();
       
-      // Simulate success/failure (90% success rate)
-      const success = Math.random() > 0.1;
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+
+      console.log('💰 Processing payment:', paymentIntent);
+
+      // For M-Pesa KCB payments, use the dedicated KCB endpoint
+      if (paymentIntent.paymentMethod === 'mpesa-kcb') {
+        console.log('🏦 Processing M-Pesa KCB payment...');
+        
+        const response = await fetch(`${getApiUrl()}/mpesa-kcb/initiate`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            orderId: paymentIntent.orderId,
+            amount: paymentIntent.amount,
+            currency: paymentIntent.currency,
+            customerInfo: paymentIntent.customerInfo,
+            metadata: paymentIntent.metadata
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to process M-Pesa KCB payment');
+        }
+
+        const result = await response.json();
+        console.log('✅ M-Pesa KCB payment initiated successfully:', result);
+
+        return {
+          id: result.transactionId || `kcb_${Date.now()}`,
+          status: 'completed' as const,
+          amount: paymentIntent.amount,
+          timestamp: new Date(),
+          paymentMethod: 'mpesa-kcb',
+          orderId: paymentIntent.orderId,
+          reference: result.reference
+        };
+      }
+
+      // For cash payments, use the dedicated cash payment endpoint
+      if (paymentIntent.paymentMethod === 'cash') {
+        console.log('💵 Processing cash payment...');
+        
+        const response = await fetch(`${getApiUrl()}/payments/cash/process`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            orderId: paymentIntent.orderId,
+            amount: paymentIntent.amount,
+            customerInfo: paymentIntent.customerInfo
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to process cash payment');
+        }
+
+        const result = await response.json();
+        console.log('✅ Cash payment processed successfully:', result);
+
+        return {
+          id: `cash_${Date.now()}`,
+          status: 'completed' as const,
+          amount: paymentIntent.amount,
+          timestamp: new Date(),
+          paymentMethod: 'cash',
+          orderId: paymentIntent.orderId
+        };
+      }
+      
+      // For other payment methods, you can add specific handling here
+      // For now, simulate processing
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Simulate success/failure (95% success rate for non-cash payments)
+      const success = Math.random() > 0.05;
       
       if (!success) {
         throw new Error('Payment failed. Please try again.');
@@ -248,14 +397,22 @@ export const useProcessPayment = () => {
       
       return {
         id: `txn_${Date.now()}`,
-        status: 'completed',
+        status: 'completed' as const,
         amount: paymentIntent.amount,
-        timestamp: new Date()
+        timestamp: new Date(),
+        paymentMethod: paymentIntent.paymentMethod,
+        orderId: paymentIntent.orderId
       };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('🎉 Payment processed successfully:', data);
+      // Invalidate related queries to refresh data
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['payment-analytics'] });
+      queryClient.invalidateQueries({ queryKey: ['orders'] }); // Refresh orders list
+    },
+    onError: (error) => {
+      console.error('❌ Payment processing failed:', error);
     }
   });
 };

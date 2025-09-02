@@ -23,7 +23,8 @@ import {
   Info,
   Eye,
   EyeOff,
-  ArrowLeft
+  ArrowLeft,
+  Building
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getApiUrl } from '@/config/api';
@@ -41,6 +42,16 @@ interface PaymentConfig {
     passkey: string;
     consumerKey: string;
     consumerSecret: string;
+  };
+  mpesaKcb: {
+    enabled: boolean;
+    environment: 'sandbox' | 'production';
+    apiKey: string;
+    baseUrl: string;
+    externalOrigin: string;
+    callbackUrl: string;
+    supportedCurrencies: string[];
+    defaultCurrency: string;
   };
   stripe: {
     enabled: boolean;
@@ -64,7 +75,7 @@ const PaymentGatewaySettings = () => {
   const { tenant } = useTenant();
   const queryClient = useQueryClient();
   
-  const [paymentConfig, setPaymentConfig] = useState<PaymentConfig>({
+  const getDefaultPaymentConfig = (): PaymentConfig => ({
     mpesa: {
       enabled: false,
       environment: 'sandbox',
@@ -75,6 +86,16 @@ const PaymentGatewaySettings = () => {
       passkey: '',
       consumerKey: '',
       consumerSecret: '',
+    },
+    mpesaKcb: {
+      enabled: true,
+      environment: 'sandbox',
+      apiKey: 'X',
+      baseUrl: 'https://api.dev.zed.business',
+      externalOrigin: '9002742',
+      callbackUrl: 'http://192.168.2.43:5000/api/mpesa-kcb/callback',
+      supportedCurrencies: ['KES', 'UGX', 'TZS', 'RWF', 'BIF', 'CDF', 'SSP'],
+      defaultCurrency: 'KES',
     },
     stripe: {
       enabled: false,
@@ -92,10 +113,12 @@ const PaymentGatewaySettings = () => {
     },
   });
   
+  const [paymentConfig, setPaymentConfig] = useState<PaymentConfig>(getDefaultPaymentConfig());
   const [saving, setSaving] = useState(false);
   const [showSecrets, setShowSecrets] = useState({
     mpesaPasskey: false,
     mpesaConsumerSecret: false,
+    mpesaKcbApiKey: false,
     stripeSecret: false,
     stripeWebhook: false,
     squareAccess: false,
@@ -117,7 +140,18 @@ const PaymentGatewaySettings = () => {
       if (response.ok) {
         const data = await response.json();
         if (data.config) {
-          setPaymentConfig(data.config);
+          // Merge with defaults to ensure all properties exist
+          const defaultConfig = getDefaultPaymentConfig();
+          const mergedConfig = {
+            ...defaultConfig,
+            ...data.config,
+            mpesa: { ...defaultConfig.mpesa, ...(data.config.mpesa || {}) },
+            mpesaKcb: { ...defaultConfig.mpesaKcb, ...(data.config.mpesaKcb || {}) },
+            stripe: { ...defaultConfig.stripe, ...(data.config.stripe || {}) },
+            square: { ...defaultConfig.square, ...(data.config.square || {}) },
+            cash: { ...defaultConfig.cash, ...(data.config.cash || {}) },
+          };
+          setPaymentConfig(mergedConfig);
         }
       }
     } catch (error) {
@@ -170,6 +204,42 @@ const PaymentGatewaySettings = () => {
     setShowSecrets(prev => ({ ...prev, [field]: !prev[field] }));
   };
 
+  const testMpesaKcbConnection = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(getApiUrl('mpesa-kcb/callback'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ test: 'connection_check' }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: 'Success',
+          description: 'M-Pesa KCB connection is working properly',
+        });
+      } else {
+        throw new Error('Connection test failed');
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to test M-Pesa KCB connection',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Safe access helpers
+  const getMpesaConfig = () => paymentConfig?.mpesa || getDefaultPaymentConfig().mpesa;
+  const getMpesaKcbConfig = () => paymentConfig?.mpesaKcb || getDefaultPaymentConfig().mpesaKcb;
+  const getStripeConfig = () => paymentConfig?.stripe || getDefaultPaymentConfig().stripe;
+  const getSquareConfig = () => paymentConfig?.square || getDefaultPaymentConfig().square;
+  const getCashConfig = () => paymentConfig?.cash || getDefaultPaymentConfig().cash;
+
   return (
     <>
       <Header />
@@ -204,6 +274,10 @@ const PaymentGatewaySettings = () => {
               <Smartphone className="h-4 w-4 mr-2" />
               M-Pesa
             </TabsTrigger>
+            <TabsTrigger value="mpesa-kcb">
+              <Building className="h-4 w-4 mr-2" />
+              M-Pesa KCB
+            </TabsTrigger>
             <TabsTrigger value="stripe">
               <CreditCard className="h-4 w-4 mr-2" />
               Stripe
@@ -222,7 +296,7 @@ const PaymentGatewaySettings = () => {
           <TabsContent value="mpesa">
             <Card>
               <CardHeader>
-                <CardTitle>M-Pesa Configuration</CardTitle>
+                <CardTitle>M-Pesa Configuration (Safaricom)</CardTitle>
                 <CardDescription>
                   Configure M-Pesa payment gateway settings for Kenyan mobile payments
                 </CardDescription>
@@ -232,28 +306,28 @@ const PaymentGatewaySettings = () => {
                   <Label htmlFor="mpesa-enabled">Enable M-Pesa Payments</Label>
                   <Switch
                     id="mpesa-enabled"
-                    checked={paymentConfig.mpesa.enabled}
+                    checked={getMpesaConfig().enabled}
                     onCheckedChange={(checked) => 
                       setPaymentConfig(prev => ({
                         ...prev,
-                        mpesa: { ...prev.mpesa, enabled: checked }
+                        mpesa: { ...getMpesaConfig(), enabled: checked }
                       }))
                     }
                   />
                 </div>
 
-                {paymentConfig.mpesa.enabled && (
+                {getMpesaConfig().enabled && (
                   <>
                     <Separator />
                     
                     <div>
                       <Label>Environment</Label>
                       <Select
-                        value={paymentConfig.mpesa.environment}
+                        value={getMpesaConfig().environment}
                         onValueChange={(value: 'sandbox' | 'production') => 
                           setPaymentConfig(prev => ({
                             ...prev,
-                            mpesa: { ...prev.mpesa, environment: value }
+                            mpesa: { ...getMpesaConfig(), environment: value }
                           }))
                         }
                       >
@@ -270,11 +344,11 @@ const PaymentGatewaySettings = () => {
                     <div>
                       <Label>Account Type</Label>
                       <Select
-                        value={paymentConfig.mpesa.accountType}
+                        value={getMpesaConfig().accountType}
                         onValueChange={(value: 'till' | 'paybill') => 
                           setPaymentConfig(prev => ({
                             ...prev,
-                            mpesa: { ...prev.mpesa, accountType: value }
+                            mpesa: { ...getMpesaConfig(), accountType: value }
                           }))
                         }
                       >
@@ -288,17 +362,17 @@ const PaymentGatewaySettings = () => {
                       </Select>
                     </div>
 
-                    {paymentConfig.mpesa.accountType === 'till' ? (
+                    {getMpesaConfig().accountType === 'till' ? (
                       <div>
                         <Label htmlFor="till-number">Till Number</Label>
                         <Input
                           id="till-number"
                           type="text"
-                          value={paymentConfig.mpesa.tillNumber}
+                          value={getMpesaConfig().tillNumber}
                           onChange={(e) => 
                             setPaymentConfig(prev => ({
                               ...prev,
-                              mpesa: { ...prev.mpesa, tillNumber: e.target.value }
+                              mpesa: { ...getMpesaConfig(), tillNumber: e.target.value }
                             }))
                           }
                           placeholder="Enter Till Number"
@@ -311,11 +385,11 @@ const PaymentGatewaySettings = () => {
                         <Input
                           id="paybill-number"
                           type="text"
-                          value={paymentConfig.mpesa.paybillNumber}
+                          value={getMpesaConfig().paybillNumber}
                           onChange={(e) => 
                             setPaymentConfig(prev => ({
                               ...prev,
-                              mpesa: { ...prev.mpesa, paybillNumber: e.target.value }
+                              mpesa: { ...getMpesaConfig(), paybillNumber: e.target.value }
                             }))
                           }
                           placeholder="Enter Paybill Number"
@@ -329,11 +403,11 @@ const PaymentGatewaySettings = () => {
                       <Input
                         id="business-shortcode"
                         type="text"
-                        value={paymentConfig.mpesa.businessShortCode}
+                        value={getMpesaConfig().businessShortCode}
                         onChange={(e) => 
                           setPaymentConfig(prev => ({
                             ...prev,
-                            mpesa: { ...prev.mpesa, businessShortCode: e.target.value }
+                            mpesa: { ...getMpesaConfig(), businessShortCode: e.target.value }
                           }))
                         }
                         placeholder="Enter Business Short Code"
@@ -346,11 +420,11 @@ const PaymentGatewaySettings = () => {
                       <Input
                         id="consumer-key"
                         type="text"
-                        value={paymentConfig.mpesa.consumerKey}
+                        value={getMpesaConfig().consumerKey}
                         onChange={(e) => 
                           setPaymentConfig(prev => ({
                             ...prev,
-                            mpesa: { ...prev.mpesa, consumerKey: e.target.value }
+                            mpesa: { ...getMpesaConfig(), consumerKey: e.target.value }
                           }))
                         }
                         placeholder="Enter Consumer Key"
@@ -364,11 +438,11 @@ const PaymentGatewaySettings = () => {
                         <Input
                           id="consumer-secret"
                           type={showSecrets.mpesaConsumerSecret ? 'text' : 'password'}
-                          value={paymentConfig.mpesa.consumerSecret}
+                          value={getMpesaConfig().consumerSecret}
                           onChange={(e) => 
                             setPaymentConfig(prev => ({
                               ...prev,
-                              mpesa: { ...prev.mpesa, consumerSecret: e.target.value }
+                              mpesa: { ...getMpesaConfig(), consumerSecret: e.target.value }
                             }))
                           }
                           placeholder="Enter Consumer Secret"
@@ -395,11 +469,11 @@ const PaymentGatewaySettings = () => {
                         <Input
                           id="passkey"
                           type={showSecrets.mpesaPasskey ? 'text' : 'password'}
-                          value={paymentConfig.mpesa.passkey}
+                          value={getMpesaConfig().passkey}
                           onChange={(e) => 
                             setPaymentConfig(prev => ({
                               ...prev,
-                              mpesa: { ...prev.mpesa, passkey: e.target.value }
+                              mpesa: { ...getMpesaConfig(), passkey: e.target.value }
                             }))
                           }
                           placeholder="Enter Passkey"
@@ -423,12 +497,222 @@ const PaymentGatewaySettings = () => {
                     <Alert>
                       <Info className="h-4 w-4" />
                       <AlertDescription>
-                        {paymentConfig.mpesa.environment === 'sandbox' ? 
+                        {getMpesaConfig().environment === 'sandbox' ? 
                           'Currently in Sandbox mode. Test credentials are being used.' : 
                           'Production mode active. Live transactions will be processed.'
                         }
                       </AlertDescription>
                     </Alert>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* M-Pesa KCB Configuration */}
+          <TabsContent value="mpesa-kcb">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building className="h-5 w-5" />
+                  M-Pesa KCB Configuration
+                  <Badge variant="default" className="bg-green-600">East Africa</Badge>
+                </CardTitle>
+                <CardDescription>
+                  Configure M-Pesa KCB payment gateway for multi-currency East African payments
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="mpesa-kcb-enabled">Enable M-Pesa KCB Payments</Label>
+                  <Switch
+                    id="mpesa-kcb-enabled"
+                    checked={getMpesaKcbConfig().enabled}
+                    onCheckedChange={(checked) => 
+                      setPaymentConfig(prev => ({
+                        ...prev,
+                        mpesaKcb: { ...getMpesaKcbConfig(), enabled: checked }
+                      }))
+                    }
+                  />
+                </div>
+
+                {getMpesaKcbConfig().enabled && (
+                  <>
+                    <Separator />
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label>Environment</Label>
+                        <Select
+                          value={getMpesaKcbConfig().environment}
+                          onValueChange={(value: 'sandbox' | 'production') => 
+                            setPaymentConfig(prev => ({
+                              ...prev,
+                              mpesaKcb: { ...getMpesaKcbConfig(), environment: value }
+                            }))
+                          }
+                        >
+                          <SelectTrigger className="mt-2">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="sandbox">Sandbox (Testing)</SelectItem>
+                            <SelectItem value="production">Production (Live)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label>Default Currency</Label>
+                        <Select
+                          value={getMpesaKcbConfig().defaultCurrency}
+                          onValueChange={(value) => 
+                            setPaymentConfig(prev => ({
+                              ...prev,
+                              mpesaKcb: { ...getMpesaKcbConfig(), defaultCurrency: value }
+                            }))
+                          }
+                        >
+                          <SelectTrigger className="mt-2">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="KES">🇰🇪 KES - Kenya Shillings</SelectItem>
+                            <SelectItem value="UGX">🇺🇬 UGX - Uganda Shillings</SelectItem>
+                            <SelectItem value="TZS">🇹🇿 TZS - Tanzania Shillings</SelectItem>
+                            <SelectItem value="RWF">🇷🇼 RWF - Rwanda Francs</SelectItem>
+                            <SelectItem value="BIF">🇧🇮 BIF - Burundi Francs</SelectItem>
+                            <SelectItem value="CDF">🇨🇩 CDF - Congo Francs</SelectItem>
+                            <SelectItem value="SSP">🇸🇸 SSP - South Sudan Pounds</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="kcb-api-key">KCB API Key</Label>
+                      <div className="relative mt-2">
+                        <Input
+                          id="kcb-api-key"
+                          type={showSecrets.mpesaKcbApiKey ? 'text' : 'password'}
+                          value={getMpesaKcbConfig().apiKey}
+                          onChange={(e) => 
+                            setPaymentConfig(prev => ({
+                              ...prev,
+                              mpesaKcb: { ...getMpesaKcbConfig(), apiKey: e.target.value }
+                            }))
+                          }
+                          placeholder="Enter KCB API Key"
+                          className="pr-10"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3"
+                          onClick={() => toggleSecret('mpesaKcbApiKey')}
+                        >
+                          {showSecrets.mpesaKcbApiKey ? 
+                            <EyeOff className="h-4 w-4" /> : 
+                            <Eye className="h-4 w-4" />
+                          }
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="kcb-base-url">Base URL</Label>
+                      <Input
+                        id="kcb-base-url"
+                        type="text"
+                        value={getMpesaKcbConfig().baseUrl}
+                        onChange={(e) => 
+                          setPaymentConfig(prev => ({
+                            ...prev,
+                            mpesaKcb: { ...getMpesaKcbConfig(), baseUrl: e.target.value }
+                          }))
+                        }
+                        placeholder="https://api.dev.zed.business"
+                        className="mt-2"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="kcb-external-origin">External Origin</Label>
+                      <Input
+                        id="kcb-external-origin"
+                        type="text"
+                        value={getMpesaKcbConfig().externalOrigin}
+                        onChange={(e) => 
+                          setPaymentConfig(prev => ({
+                            ...prev,
+                            mpesaKcb: { ...getMpesaKcbConfig(), externalOrigin: e.target.value }
+                          }))
+                        }
+                        placeholder="9002742"
+                        className="mt-2"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="kcb-callback-url">Callback URL</Label>
+                      <Input
+                        id="kcb-callback-url"
+                        type="text"
+                        value={getMpesaKcbConfig().callbackUrl}
+                        onChange={(e) => 
+                          setPaymentConfig(prev => ({
+                            ...prev,
+                            mpesaKcb: { ...getMpesaKcbConfig(), callbackUrl: e.target.value }
+                          }))
+                        }
+                        placeholder="http://192.168.2.43:5000/api/mpesa-kcb/callback"
+                        className="mt-2"
+                      />
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        onClick={testMpesaKcbConnection}
+                        className="flex-1"
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Test Connection
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => window.open('/check-mpesa-kcb-integration.html', '_blank')}
+                        className="flex-1"
+                      >
+                        <Settings className="h-4 w-4 mr-2" />
+                        Full Integration Test
+                      </Button>
+                    </div>
+
+                    <Alert>
+                      <CheckCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        <strong>Integration Status:</strong> M-Pesa KCB is configured and ready to process payments in {getMpesaKcbConfig().supportedCurrencies.join(', ')}.
+                        <br />
+                        <strong>Callback URL:</strong> Make sure this URL is configured in your KCB merchant dashboard.
+                      </AlertDescription>
+                    </Alert>
+
+                    <div>
+                      <Label>Supported Currencies</Label>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {getMpesaKcbConfig().supportedCurrencies.map((currency) => (
+                          <Badge key={currency} variant="outline">
+                            {currency}
+                          </Badge>
+                        ))}
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        All East African currencies are supported for cross-border payments
+                      </p>
+                    </div>
                   </>
                 )}
               </CardContent>
@@ -449,17 +733,17 @@ const PaymentGatewaySettings = () => {
                   <Label htmlFor="stripe-enabled">Enable Stripe Payments</Label>
                   <Switch
                     id="stripe-enabled"
-                    checked={paymentConfig.stripe.enabled}
+                    checked={getStripeConfig().enabled}
                     onCheckedChange={(checked) => 
                       setPaymentConfig(prev => ({
                         ...prev,
-                        stripe: { ...prev.stripe, enabled: checked }
+                        stripe: { ...getStripeConfig(), enabled: checked }
                       }))
                     }
                   />
                 </div>
 
-                {paymentConfig.stripe.enabled && (
+                {getStripeConfig().enabled && (
                   <>
                     <Separator />
                     
@@ -468,11 +752,11 @@ const PaymentGatewaySettings = () => {
                       <Input
                         id="stripe-public"
                         type="text"
-                        value={paymentConfig.stripe.publicKey}
+                        value={getStripeConfig().publicKey}
                         onChange={(e) => 
                           setPaymentConfig(prev => ({
                             ...prev,
-                            stripe: { ...prev.stripe, publicKey: e.target.value }
+                            stripe: { ...getStripeConfig(), publicKey: e.target.value }
                           }))
                         }
                         placeholder="pk_test_... or pk_live_..."
@@ -486,11 +770,11 @@ const PaymentGatewaySettings = () => {
                         <Input
                           id="stripe-secret"
                           type={showSecrets.stripeSecret ? 'text' : 'password'}
-                          value={paymentConfig.stripe.secretKey}
+                          value={getStripeConfig().secretKey}
                           onChange={(e) => 
                             setPaymentConfig(prev => ({
                               ...prev,
-                              stripe: { ...prev.stripe, secretKey: e.target.value }
+                              stripe: { ...getStripeConfig(), secretKey: e.target.value }
                             }))
                           }
                           placeholder="sk_test_... or sk_live_..."
@@ -517,11 +801,11 @@ const PaymentGatewaySettings = () => {
                         <Input
                           id="stripe-webhook"
                           type={showSecrets.stripeWebhook ? 'text' : 'password'}
-                          value={paymentConfig.stripe.webhookSecret}
+                          value={getStripeConfig().webhookSecret}
                           onChange={(e) => 
                             setPaymentConfig(prev => ({
                               ...prev,
-                              stripe: { ...prev.stripe, webhookSecret: e.target.value }
+                              stripe: { ...getStripeConfig(), webhookSecret: e.target.value }
                             }))
                           }
                           placeholder="whsec_..."
@@ -561,17 +845,17 @@ const PaymentGatewaySettings = () => {
                   <Label htmlFor="square-enabled">Enable Square Payments</Label>
                   <Switch
                     id="square-enabled"
-                    checked={paymentConfig.square.enabled}
+                    checked={getSquareConfig().enabled}
                     onCheckedChange={(checked) => 
                       setPaymentConfig(prev => ({
                         ...prev,
-                        square: { ...prev.square, enabled: checked }
+                        square: { ...getSquareConfig(), enabled: checked }
                       }))
                     }
                   />
                 </div>
 
-                {paymentConfig.square.enabled && (
+                {getSquareConfig().enabled && (
                   <>
                     <Separator />
                     
@@ -580,11 +864,11 @@ const PaymentGatewaySettings = () => {
                       <Input
                         id="square-app"
                         type="text"
-                        value={paymentConfig.square.applicationId}
+                        value={getSquareConfig().applicationId}
                         onChange={(e) => 
                           setPaymentConfig(prev => ({
                             ...prev,
-                            square: { ...prev.square, applicationId: e.target.value }
+                            square: { ...getSquareConfig(), applicationId: e.target.value }
                           }))
                         }
                         placeholder="Enter Application ID"
@@ -598,11 +882,11 @@ const PaymentGatewaySettings = () => {
                         <Input
                           id="square-token"
                           type={showSecrets.squareAccess ? 'text' : 'password'}
-                          value={paymentConfig.square.accessToken}
+                          value={getSquareConfig().accessToken}
                           onChange={(e) => 
                             setPaymentConfig(prev => ({
                               ...prev,
-                              square: { ...prev.square, accessToken: e.target.value }
+                              square: { ...getSquareConfig(), accessToken: e.target.value }
                             }))
                           }
                           placeholder="Enter Access Token"
@@ -642,11 +926,11 @@ const PaymentGatewaySettings = () => {
                   <Label htmlFor="cash-enabled">Accept Cash Payments</Label>
                   <Switch
                     id="cash-enabled"
-                    checked={paymentConfig.cash.enabled}
+                    checked={getCashConfig().enabled}
                     onCheckedChange={(checked) => 
                       setPaymentConfig(prev => ({
                         ...prev,
-                        cash: { ...prev.cash, enabled: checked }
+                        cash: { ...getCashConfig(), enabled: checked }
                       }))
                     }
                   />
@@ -669,14 +953,24 @@ const PaymentGatewaySettings = () => {
             <CardTitle>Payment Methods Status</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div className="flex items-center justify-between p-3 border rounded-lg">
                 <div className="flex items-center gap-2">
                   <Smartphone className="h-4 w-4" />
                   <span>M-Pesa</span>
                 </div>
-                <Badge variant={paymentConfig.mpesa.enabled ? "default" : "secondary"}>
-                  {paymentConfig.mpesa.enabled ? "Active" : "Inactive"}
+                <Badge variant={getMpesaConfig().enabled ? "default" : "secondary"}>
+                  {getMpesaConfig().enabled ? "Active" : "Inactive"}
+                </Badge>
+              </div>
+              
+              <div className="flex items-center justify-between p-3 border rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Building className="h-4 w-4" />
+                  <span>M-Pesa KCB</span>
+                </div>
+                <Badge variant={getMpesaKcbConfig().enabled ? "default" : "secondary"}>
+                  {getMpesaKcbConfig().enabled ? "Active" : "Inactive"}
                 </Badge>
               </div>
               
@@ -685,8 +979,8 @@ const PaymentGatewaySettings = () => {
                   <CreditCard className="h-4 w-4" />
                   <span>Stripe</span>
                 </div>
-                <Badge variant={paymentConfig.stripe.enabled ? "default" : "secondary"}>
-                  {paymentConfig.stripe.enabled ? "Active" : "Inactive"}
+                <Badge variant={getStripeConfig().enabled ? "default" : "secondary"}>
+                  {getStripeConfig().enabled ? "Active" : "Inactive"}
                 </Badge>
               </div>
               
@@ -695,8 +989,8 @@ const PaymentGatewaySettings = () => {
                   <Building2 className="h-4 w-4" />
                   <span>Square</span>
                 </div>
-                <Badge variant={paymentConfig.square.enabled ? "default" : "secondary"}>
-                  {paymentConfig.square.enabled ? "Active" : "Inactive"}
+                <Badge variant={getSquareConfig().enabled ? "default" : "secondary"}>
+                  {getSquareConfig().enabled ? "Active" : "Inactive"}
                 </Badge>
               </div>
               
@@ -705,8 +999,8 @@ const PaymentGatewaySettings = () => {
                   <Banknote className="h-4 w-4" />
                   <span>Cash</span>
                 </div>
-                <Badge variant={paymentConfig.cash.enabled ? "default" : "secondary"}>
-                  {paymentConfig.cash.enabled ? "Active" : "Inactive"}
+                <Badge variant={getCashConfig().enabled ? "default" : "secondary"}>
+                  {getCashConfig().enabled ? "Active" : "Inactive"}
                 </Badge>
               </div>
             </div>

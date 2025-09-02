@@ -113,16 +113,16 @@ export function OrderList({ orders, onOrderClick, onPrintKitchen, onPrintReceipt
               </div>
 
               <div className="flex gap-2 pt-2" onClick={(e) => e.stopPropagation()}>
-                {onEditOrder && ['pending', 'confirmed', 'preparing'].includes(order.status) && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onEditOrder(order)}
-                    title="Edit Order"
-                  >
-                    <Edit2 className="h-3 w-3" />
-                  </Button>
-                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => order.status === 'pending' ? onEditOrder?.(order) : null}
+                  title={order.status === 'pending' ? "Edit Order" : `Cannot edit ${order.status} order`}
+                  disabled={order.status !== 'pending' || !onEditOrder}
+                  className={order.status !== 'pending' ? 'opacity-50 cursor-not-allowed' : ''}
+                >
+                  <Edit2 className="h-3 w-3" />
+                </Button>
                 <Button
                   size="sm"
                   variant="outline"

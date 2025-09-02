@@ -12,27 +12,34 @@ const connectDB = async () => {
   }
 };
 
+// User schema (matches your User model)
+const userSchema = new mongoose.Schema({
+  email: { type: String, required: true, unique: true },
+  firstName: { type: String, required: true },
+  lastName: { type: String, required: true },
+  password: { type: String, required: true },
+  role: { type: String, enum: ['admin', 'manager', 'staff', 'superadmin'], default: 'staff' },
+  isActive: { type: Boolean, default: true },
+  tenantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant' },
+  mustChangePassword: { type: Boolean, default: false },
+  accountStatus: { 
+    type: String, 
+    enum: ['active', 'inactive', 'suspended', 'pending'], 
+    default: 'active' 
+  },
+  lastLogin: Date
+}, { 
+  timestamps: true
+});
+
+// Add comparePassword method
+userSchema.methods.comparePassword = async function(candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
+};
+
 const testSuperAdminLogin = async () => {
   try {
     await connectDB();
-    
-    // Use the same schema as in your User model
-    const userSchema = new mongoose.Schema({
-      email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-      password: { type: String, required: true },
-      firstName: { type: String, required: true },
-      lastName: { type: String, required: true },
-      role: { type: String, enum: ['superadmin', 'admin', 'manager', 'staff', 'customer'], default: 'customer' },
-      tenantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant' },
-      isActive: { type: Boolean, default: true },
-      mustChangePassword: { type: Boolean, default: false },
-      accountStatus: { type: String, enum: ['active', 'locked', 'suspended'], default: 'active' }
-    }, { timestamps: true });
-    
-    // Add comparePassword method
-    userSchema.methods.comparePassword = async function(candidatePassword) {
-      return bcrypt.compare(candidatePassword, this.password);
-    };
     
     const User = mongoose.model('User', userSchema);
     
@@ -43,38 +50,38 @@ const testSuperAdminLogin = async () => {
     });
     
     if (!superAdmin) {
-      console.log('❌ SuperAdmin not found!');
+      console.log('❌ SuperAdmin user not found');
       return;
     }
     
-    console.log('✅ SuperAdmin found:');
-    console.log('Email:', superAdmin.email);
-    console.log('Role:', superAdmin.role);
-    console.log('Active:', superAdmin.isActive);
-    console.log('Password hash (first 20 chars):', superAdmin.password.substring(0, 20) + '...');
+    console.log('✅ SuperAdmin user found:', {
+      email: superAdmin.email,
+      role: superAdmin.role,
+      isActive: superAdmin.isActive,
+      hasPassword: !!superAdmin.password,
+      passwordLength: superAdmin.password ? superAdmin.password.length : 0
+    });
     
     // Test password comparison
     const testPassword = 'SuperAdmin@123';
-    const isPasswordValid = await superAdmin.comparePassword(testPassword);
+    console.log('🔑 Testing password:', testPassword);
     
-    console.log('');
-    console.log('🔐 Password Test:');
-    console.log('Test password:', testPassword);
-    console.log('Password valid:', isPasswordValid);
-    
-    if (!isPasswordValid) {
-      console.log('');
-      console.log('🔧 Testing direct bcrypt comparison:');
-      const directCompare = await bcrypt.compare(testPassword, superAdmin.password);
-      console.log('Direct bcrypt compare:', directCompare);
+    try {
+      const isPasswordValid = await superAdmin.comparePassword(testPassword);
+      console.log('✅ Password comparison result:', isPasswordValid);
       
-      // Let's test with a known hash
-      console.log('');
-      console.log('🧪 Creating test hash:');
-      const testHash = await bcrypt.hash(testPassword, 10);
-      console.log('Test hash:', testHash);
-      const testCompare = await bcrypt.compare(testPassword, testHash);
-      console.log('Test hash comparison:', testCompare);
+      // Also test manual bcrypt comparison
+      const manualTest = await bcrypt.compare(testPassword, superAdmin.password);
+      console.log('✅ Manual bcrypt test:', manualTest);
+      
+      // Show hashed password for debugging
+      console.log('🔐 Stored password hash:', superAdmin.password.substring(0, 60) + '...');
+      
+      // Test if password is actually hashed
+      console.log('🔍 Is password hashed?:', superAdmin.password.startsWith('$2'));
+      
+    } catch (passwordError) {
+      console.error('❌ Password comparison error:', passwordError);
     }
     
   } catch (error) {

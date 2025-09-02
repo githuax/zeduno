@@ -239,7 +239,7 @@ const KitchenDisplay: React.FC = () => {
                   
                   {item.customizations && item.customizations.length > 0 && (
                     <div className="text-xs text-gray-600 mt-1">
-                      {item.customizations.map((custom, idx) => (
+                      {item.customizations.filter(custom => custom && custom.option).map((custom, idx) => (
                         <div key={idx}>• {custom.name}: {custom.value}</div>
                       ))}
                     </div>

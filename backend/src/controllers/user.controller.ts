@@ -1,24 +1,48 @@
 import { Request, Response, NextFunction } from 'express';
 import { User } from '../models/User';
+import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import AuditLog from '../models/AuditLog';
 
 interface AuthRequest extends Request {
-  user?: any;
+  user?: {
+    id: string;
+    tenantId?: string;
+    role: string;
+  };
 }
 
-export const getAllUsers = async (req: Request, res: Response, next: NextFunction) => {
+export const getAllUsers = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const users = await User.find().select('-password');
+    const { tenantId, role } = req.user || {};
+    
+    let query: any = {};
+    
+    // SuperAdmin can see all users, regular users only see their tenant users
+    if (role !== 'superadmin' && tenantId) {
+      query.tenantId = tenantId;
+    }
+    
+    const users = await User.find(query).select('-password');
     res.json({ success: true, data: users });
   } catch (error) {
     next(error);
   }
 };
 
-export const getUserById = async (req: Request, res: Response, next: NextFunction) => {
+export const getUserById = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const user = await User.findById(req.params.id).select('-password');
+    const { tenantId, role } = req.user || {};
+    const { id } = req.params;
+    
+    let query: any = { _id: id };
+    
+    // SuperAdmin can see any user, regular users only see users from their tenant
+    if (role !== 'superadmin' && tenantId) {
+      query.tenantId = tenantId;
+    }
+    
+    const user = await User.findOne(query).select('-password');
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
