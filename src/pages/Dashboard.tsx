@@ -18,7 +18,8 @@ import {
   UserCheck,
   Crown,
   Building,
-  Menu
+  Menu,
+  PackageSearch
 } from "lucide-react";
 
 const Dashboard = () => {
@@ -43,6 +44,14 @@ const Dashboard = () => {
       status: "active" as const,
       stats: statsLoading ? "Loading..." : `${stats?.menu?.available || 0} Items`,
       onClick: () => navigate("/menu")
+    },
+    {
+      title: "Inventory Management",
+      description: "Track ingredients, stock levels and supplies",
+      icon: PackageSearch,
+      status: "active" as const,
+      stats: statsLoading ? "Loading..." : `${stats?.inventory?.lowStock || 0} Low Stock`,
+      onClick: () => navigate("/inventory")
     },
     {
       title: "Dine-In Service",

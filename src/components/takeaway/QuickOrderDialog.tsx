@@ -17,6 +17,7 @@ import { useMenuItems } from '@/hooks/useMenuItems';
 import { CreateOrderInput, MenuItem, OrderItemCustomization } from '@/types/order.types';
 import { toast } from '@/hooks/use-toast';
 import { useCurrency } from '@/hooks/useCurrency';
+import { getApiUrl } from '@/config/api';
 
 interface QuickOrderDialogProps {
   open: boolean;
@@ -136,7 +137,7 @@ export function QuickOrderDialog({ open, onOpenChange, onSuccess }: QuickOrderDi
     };
 
     try {
-      const response = await fetch('/api/orders', {
+      const response = await fetch(getApiUrl('orders'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

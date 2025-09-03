@@ -18,6 +18,7 @@ import Index from "./pages/Index";
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const OrderManagement = lazy(() => import("./pages/OrderManagement"));
 const MenuManagement = lazy(() => import("./pages/MenuManagement"));
+const InventoryManagement = lazy(() => import("./pages/InventoryManagement"));
 const DineInService = lazy(() => import("./pages/DineInService"));
 const TakeawayOrders = lazy(() => import("./pages/TakeawayOrders"));
 const DeliveryService = lazy(() => import("./pages/DeliveryService"));
@@ -112,6 +113,11 @@ const App = () => (
             <Route path="/menu" element={
               <ProtectedRoute allowedRoles={['admin', 'manager', 'staff']}>
                 <MenuManagement />
+              </ProtectedRoute>
+            } />
+            <Route path="/inventory" element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <LazyRoute><InventoryManagement /></LazyRoute>
               </ProtectedRoute>
             } />
             <Route path="/dine-in" element={

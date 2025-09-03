@@ -171,7 +171,7 @@ const EditMenuItemForm: React.FC<EditMenuItemFormProps> = ({
         maxStockLevel: formData.maxStockLevel ? parseInt(formData.maxStockLevel) : undefined,
         customizationOptions: customizationOptions.length > 0 ? customizationOptions : undefined,
         tags: tags.length > 0 ? tags : undefined,
-        spiceLevel: (formData.spiceLevel && formData.spiceLevel.trim() !== "") ? formData.spiceLevel : "none"
+        spiceLevel: (formData.spiceLevel && formData.spiceLevel.trim() !== "" && formData.spiceLevel !== "none") ? formData.spiceLevel : undefined
       };
 
       console.log('Sending request data:', JSON.stringify(requestData, null, 2));

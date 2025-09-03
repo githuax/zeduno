@@ -20,6 +20,11 @@ import {
   // Utility Controllers
   getMenuOverview,
   
+  // Inventory Integration Controllers
+  getMenuItemInventoryStatus,
+  getLowStockMenuItems,
+  getMenuInventoryOverview,
+  
   // Legacy
   toggleAvailability
 } from '../controllers/menu.controller';
@@ -32,6 +37,7 @@ router.use(authenticate);
 
 // ===== MENU OVERVIEW =====
 router.get('/overview', authorize('admin', 'manager'), getMenuOverview);
+router.get('/inventory-overview', authorize('admin', 'manager'), getMenuInventoryOverview);
 
 // ===== MENU ITEM ROUTES =====
 
@@ -316,6 +322,22 @@ router.patch('/items/:id/toggle-availability',
     param('id').isMongoId().withMessage('Menu item ID must be valid')
   ],
   toggleAvailability
+);
+
+// ===== INVENTORY INTEGRATION ROUTES =====
+
+// Get inventory status for a specific menu item
+router.get('/items/:id/inventory-status',
+  [
+    param('id').isMongoId().withMessage('Menu item ID must be valid')
+  ],
+  getMenuItemInventoryStatus
+);
+
+// Get all menu items with low stock
+router.get('/low-stock',
+  authorize('admin', 'manager'),
+  getLowStockMenuItems
 );
 
 export default router;

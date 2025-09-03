@@ -1,6 +1,9 @@
 import mongoose from 'mongoose';
 import { MenuItem } from '../models/MenuItem';
 import { Category } from '../models/Category';
+import { Recipe } from '../models/Recipe';
+import { Ingredient } from '../models/Ingredient';
+import { inventoryCache } from '../utils/cache';
 
 export interface MenuQueryParams {
   category?: string;
@@ -232,5 +235,182 @@ export class MenuService {
     }
 
     return category;
+  }
+
+  /**
+   * Check ingredient availability for a menu item (with caching)
+   */
+  static async checkMenuItemIngredientAvailability(menuItemId: string, tenantId: string): Promise<{
+    isAvailable: boolean;
+    unavailableIngredients: string[];
+    recipe?: any;
+  }> {
+    // Create cache key
+    const cacheKey = `item-availability-${tenantId}-${menuItemId}`;
+    
+    // Check cache first (30 second TTL for individual items)
+    const cached = inventoryCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    try {
+      const recipe = await Recipe.findOne({
+        menuItemId: new mongoose.Types.ObjectId(menuItemId),
+        tenantId: new mongoose.Types.ObjectId(tenantId)
+      }).populate('ingredients.ingredientId', 'name currentStock minStockLevel unit');
+
+      if (!recipe) {
+        // If no recipe exists, consider it available (manual tracking)
+        const result = {
+          isAvailable: true,
+          unavailableIngredients: [],
+          recipe: null
+        };
+        // Cache for 30 seconds
+        inventoryCache.set(cacheKey, result, 30);
+        return result;
+      }
+
+      const unavailableIngredients: string[] = [];
+
+      for (const recipeIngredient of recipe.ingredients) {
+        const ingredient = recipeIngredient.ingredientId as any;
+        if (!ingredient || ingredient.currentStock < recipeIngredient.quantity) {
+          unavailableIngredients.push(ingredient?.name || 'Unknown ingredient');
+        }
+      }
+
+      const result = {
+        isAvailable: unavailableIngredients.length === 0,
+        unavailableIngredients,
+        recipe
+      };
+
+      // Cache for 30 seconds
+      inventoryCache.set(cacheKey, result, 30);
+      
+      return result;
+    } catch (error) {
+      console.error('Error checking ingredient availability:', error);
+      return {
+        isAvailable: true, // Default to available on error
+        unavailableIngredients: [],
+        recipe: null
+      };
+    }
+  }
+
+  /**
+   * Get menu items with inventory availability information (with caching)
+   */
+  static async getMenuItemsWithInventory(params: MenuQueryParams): Promise<MenuQueryResult> {
+    // Create cache key based on params
+    const cacheKey = `menu-inventory-${params.tenantId}-${JSON.stringify(params)}`;
+    
+    // Check cache first (60 second TTL)
+    const cached = inventoryCache.get(cacheKey);
+    if (cached) {
+      console.log('Menu inventory data served from cache');
+      return cached;
+    }
+
+    // Fetch fresh data
+    const result = await this.getMenuItems(params);
+    
+    if (!params.tenantId) {
+      return result;
+    }
+
+    // Add inventory availability to each item
+    const itemsWithInventory = await Promise.all(
+      result.items.map(async (item) => {
+        const availability = await this.checkMenuItemIngredientAvailability(
+          item._id.toString(),
+          params.tenantId!
+        );
+
+        return {
+          ...item,
+          inventoryAvailable: availability.isAvailable,
+          unavailableIngredients: availability.unavailableIngredients,
+          hasRecipe: !!availability.recipe
+        };
+      })
+    );
+
+    const finalResult = {
+      ...result,
+      items: itemsWithInventory
+    };
+
+    // Cache the result for 60 seconds
+    inventoryCache.set(cacheKey, finalResult, 60);
+    console.log('Menu inventory data cached for 60 seconds');
+
+    return finalResult;
+  }
+
+  /**
+   * Get single menu item with inventory information
+   */
+  static async getMenuItemByIdWithInventory(id: string, tenantId?: string, isPublic: boolean = false): Promise<any> {
+    const menuItem = await this.getMenuItemById(id, tenantId, isPublic);
+    
+    if (!menuItem || !tenantId || isPublic) {
+      return menuItem;
+    }
+
+    const availability = await this.checkMenuItemIngredientAvailability(id, tenantId);
+
+    return {
+      ...menuItem,
+      inventoryAvailable: availability.isAvailable,
+      unavailableIngredients: availability.unavailableIngredients,
+      hasRecipe: !!availability.recipe,
+      recipe: availability.recipe
+    };
+  }
+
+  /**
+   * Get low stock menu items (items with recipes that have insufficient ingredients)
+   */
+  static async getLowStockMenuItems(tenantId: string): Promise<any[]> {
+    try {
+      const recipes = await Recipe.find({
+        tenantId: new mongoose.Types.ObjectId(tenantId)
+      }).populate('menuItemId', 'name price').populate('ingredients.ingredientId', 'name currentStock minStockLevel unit');
+
+      const lowStockItems = [];
+
+      for (const recipe of recipes) {
+        const unavailableIngredients = [];
+        
+        for (const recipeIngredient of recipe.ingredients) {
+          const ingredient = recipeIngredient.ingredientId as any;
+          if (!ingredient || ingredient.currentStock < recipeIngredient.quantity) {
+            unavailableIngredients.push({
+              name: ingredient?.name || 'Unknown',
+              required: recipeIngredient.quantity,
+              available: ingredient?.currentStock || 0,
+              unit: ingredient?.unit || 'units'
+            });
+          }
+        }
+
+        if (unavailableIngredients.length > 0) {
+          lowStockItems.push({
+            menuItem: recipe.menuItemId,
+            recipe: recipe,
+            unavailableIngredients
+          });
+        }
+      }
+
+      return lowStockItems;
+    } catch (error) {
+      console.error('Error getting low stock menu items:', error);
+      return [];
+    }
   }
 }

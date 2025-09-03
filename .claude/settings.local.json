@@ -39,7 +39,8 @@
       "Bash(git commit:*)",
       "Bash(npx kill-port:*)",
       "Bash(pm2 status:*)",
-      "Read(/etc/**)"
+      "Read(/etc/**)",
+      "Bash(pm2 restart:*)"
     ],
     "deny": [],
     "ask": [],

@@ -5,6 +5,8 @@ import { MenuItem } from '../models/MenuItem';
 import { validationResult } from 'express-validator';
 import mongoose from 'mongoose';
 import { OrderService } from '../services/order.service';
+import { Recipe } from '../models/Recipe';
+import { InventoryService } from '../services/inventory.service';
 
 interface AuthRequest extends Request {
   user?: {
@@ -130,27 +132,80 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
         return res.status(400).json({ message: `Menu item ${item.menuItem} not found` });
       }
       
-      // Check stock availability if inventory tracking is enabled
-      if (menuItem.trackInventory && !menuItem.checkStockAvailable(item.quantity)) {
+      // Check stock availability - first check recipe/ingredients, then fall back to menu item stock
+      let hasStock = true;
+      let stockMessage = '';
+      
+      // Check if there's a recipe for this menu item
+      const recipe = await Recipe.findOne({ 
+        menuItemId: menuItem._id, 
+        tenantId: orderData.tenantId 
+      }).populate('ingredients.ingredientId');
+      
+      if (recipe) {
+        // Check ingredient-based stock through recipe
+        const availabilityCheck = await InventoryService.checkOrderInventory(
+          [{ menuItem: menuItem._id, quantity: item.quantity }], 
+          orderData.tenantId
+        );
+        
+        if (!availabilityCheck.available) {
+          hasStock = false;
+          stockMessage = availabilityCheck.unavailableItems?.[0]?.reason || 
+            `Insufficient ingredients for ${menuItem.name}`;
+        }
+      } else if (menuItem.trackInventory) {
+        // Fall back to menu item's own stock tracking
+        if (!menuItem.checkStockAvailable(item.quantity)) {
+          hasStock = false;
+          stockMessage = `Insufficient stock for ${menuItem.name}. Available: ${menuItem.amount}, Requested: ${item.quantity}`;
+        }
+      }
+      
+      if (!hasStock) {
         // Rollback any stock changes made so far
         for (const update of stockUpdates) {
           await MenuItem.findByIdAndUpdate(update.itemId, { $inc: { amount: update.quantity } });
         }
         return res.status(400).json({ 
           success: false,
-          message: `Insufficient stock for ${menuItem.name}. Available: ${menuItem.amount}, Requested: ${item.quantity}` 
+          message: stockMessage
         });
       }
       
-      // Reduce stock if inventory tracking is enabled
-      if (menuItem.trackInventory) {
+      // Reduce stock - use ingredients if recipe exists, otherwise use menu item stock
+      if (recipe) {
+        // Consume ingredients through recipe
         try {
-          await menuItem.reduceStock(item.quantity);
-          stockUpdates.push({ itemId: menuItem._id, quantity: item.quantity });
+          // Note: Full order inventory consumption will be handled after order creation
+          stockUpdates.push({ itemId: menuItem._id, quantity: item.quantity, isRecipe: true });
         } catch (error) {
           // Rollback any stock changes made so far
           for (const update of stockUpdates) {
-            await MenuItem.findByIdAndUpdate(update.itemId, { $inc: { amount: update.quantity } });
+            if (update.isRecipe) {
+              // Note: Recipe rollback would need proper order object
+            } else {
+              await MenuItem.findByIdAndUpdate(update.itemId, { $inc: { amount: update.quantity } });
+            }
+          }
+          return res.status(400).json({ 
+            success: false,
+            message: error.message 
+          });
+        }
+      } else if (menuItem.trackInventory) {
+        // Use menu item's own stock tracking
+        try {
+          await menuItem.reduceStock(item.quantity);
+          stockUpdates.push({ itemId: menuItem._id, quantity: item.quantity, isRecipe: false });
+        } catch (error) {
+          // Rollback any stock changes made so far
+          for (const update of stockUpdates) {
+            if (update.isRecipe) {
+              // Note: Recipe rollback would need proper order object
+            } else {
+              await MenuItem.findByIdAndUpdate(update.itemId, { $inc: { amount: update.quantity } });
+            }
           }
           return res.status(400).json({ 
             success: false,

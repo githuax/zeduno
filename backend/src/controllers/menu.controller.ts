@@ -18,22 +18,34 @@ interface AuthRequest extends Request {
 export const getMenuItems = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { tenantId, role } = req.user!;
-    const { category, search, available, page = 1, limit = 50, sortBy = 'name', order = 'asc' } = req.query;
+    const { category, search, available, page = 1, limit = 50, sortBy = 'name', order = 'asc', includeInventory = 'true' } = req.query;
 
     // SuperAdmin can see all data, regular users only see their tenant data
     const filterTenantId = role === 'superadmin' ? undefined : tenantId;
 
-    const result = await MenuService.getMenuItems({
-      category: category as string,
-      search: search as string,
-      available: available as string,
-      page: parseInt(page as string),
-      limit: parseInt(limit as string),
-      sortBy: sortBy as string,
-      order: order as string,
-      tenantId: filterTenantId,
-      isPublic: false
-    });
+    const result = includeInventory === 'true' ? 
+      await MenuService.getMenuItemsWithInventory({
+        category: category as string,
+        search: search as string,
+        available: available as string,
+        page: parseInt(page as string),
+        limit: parseInt(limit as string),
+        sortBy: sortBy as string,
+        order: order as string,
+        tenantId: filterTenantId,
+        isPublic: false
+      }) :
+      await MenuService.getMenuItems({
+        category: category as string,
+        search: search as string,
+        available: available as string,
+        page: parseInt(page as string),
+        limit: parseInt(limit as string),
+        sortBy: sortBy as string,
+        order: order as string,
+        tenantId: filterTenantId,
+        isPublic: false
+      });
 
     res.json({
       success: true,
@@ -54,8 +66,12 @@ export const getMenuItem = async (req: AuthRequest, res: Response, next: NextFun
   try {
     const { tenantId } = req.user!;
     const { id } = req.params;
+    const { includeInventory = 'true' } = req.query;
 
-    const menuItem = await MenuService.getMenuItemById(id, tenantId, false);
+    const menuItem = includeInventory === 'true' ?
+      await MenuService.getMenuItemByIdWithInventory(id, tenantId, false) :
+      await MenuService.getMenuItemById(id, tenantId, false);
+    
     if (!menuItem) {
       return res.status(404).json({ success: false, message: 'Menu item not found' });
     }
@@ -484,6 +500,97 @@ export const getMenuOverview = async (req: AuthRequest, res: Response, next: Nex
       unavailableItems: menuStats?.unavailableItems || 0,
       totalCategories: totalCategories || 0
     };
+
+    res.json({
+      success: true,
+      data: overview
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ===== INVENTORY INTEGRATION CONTROLLERS =====
+
+export const getMenuItemInventoryStatus = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { tenantId } = req.user!;
+    const { id } = req.params;
+
+    const availability = await MenuService.checkMenuItemIngredientAvailability(id, tenantId);
+
+    res.json({
+      success: true,
+      data: {
+        menuItemId: id,
+        inventoryAvailable: availability.isAvailable,
+        unavailableIngredients: availability.unavailableIngredients,
+        hasRecipe: !!availability.recipe
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getLowStockMenuItems = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { tenantId } = req.user!;
+
+    const lowStockItems = await MenuService.getLowStockMenuItems(tenantId);
+
+    res.json({
+      success: true,
+      data: lowStockItems,
+      count: lowStockItems.length
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getMenuInventoryOverview = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { tenantId } = req.user!;
+    
+    // Get basic menu stats
+    const [menuStats] = await MenuItem.aggregate([
+      {
+        $match: {
+          tenantId: new mongoose.Types.ObjectId(tenantId),
+          isActive: true
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalItems: { $sum: 1 },
+          availableItems: {
+            $sum: { $cond: [{ $eq: ['$isAvailable', true] }, 1, 0] }
+          }
+        }
+      }
+    ]);
+
+    // Get low stock items count
+    const lowStockItems = await MenuService.getLowStockMenuItems(tenantId);
+
+    const overview = {
+      totalItems: menuStats?.totalItems || 0,
+      availableItems: menuStats?.availableItems || 0,
+      lowStockItems: lowStockItems.length,
+      itemsWithRecipes: 0 // Will be calculated
+    };
+
+    // Count items with recipes
+    const itemsWithRecipes = await MenuService.getMenuItemsWithInventory({
+      tenantId,
+      page: 1,
+      limit: 1000,
+      isPublic: false
+    });
+
+    overview.itemsWithRecipes = itemsWithRecipes.items.filter(item => item.hasRecipe).length;
 
     res.json({
       success: true,

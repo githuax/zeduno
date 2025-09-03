@@ -23,6 +23,7 @@ import { useCurrency } from '@/hooks/useCurrency';
 import { useEmployees } from '@/hooks/useEmployees';
 import { CreateOrderInput, MenuItem, OrderItemCustomization, OrderType } from '@/types/order.types';
 import { toast } from '@/hooks/use-toast';
+import { getApiUrl } from '@/config/api';
 
 interface CreateOrderDialogProps {
   open: boolean;
@@ -215,13 +216,28 @@ export function CreateOrderDialog({ open, onOpenChange, onSuccess, preselectedTa
       return;
     }
 
+    // If no employee is selected, use the current user's ID from the token
+    let staffId = selectedEmployeeId;
+    if (!staffId) {
+      // Try to get user info from localStorage or token
+      const userInfo = localStorage.getItem('userInfo');
+      if (userInfo) {
+        try {
+          const user = JSON.parse(userInfo);
+          staffId = user.id || user._id;
+        } catch (e) {
+          console.error('Failed to parse user info:', e);
+        }
+      }
+    }
+
     setIsSubmitting(true);
 
     const orderData: CreateOrderInput = {
       orderType,
       customerName,
       customerPhone,
-      staffId: selectedEmployeeId, // Link the employee who placed the order (backend expects staffId)
+      staffId: staffId || undefined, // Use staffId if available, otherwise let backend handle it
       tableId: orderType === 'dine-in' ? tableId : undefined,
       deliveryAddress: orderType === 'delivery' ? deliveryAddress : undefined,
       items: cart.map(item => ({
@@ -233,8 +249,10 @@ export function CreateOrderDialog({ open, onOpenChange, onSuccess, preselectedTa
       notes,
     };
 
+    console.log('Submitting order data:', JSON.stringify(orderData, null, 2));
+
     try {
-      const response = await fetch('/api/orders', {
+      const response = await fetch(getApiUrl('orders'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -251,12 +269,15 @@ export function CreateOrderDialog({ open, onOpenChange, onSuccess, preselectedTa
         onSuccess();
         resetForm();
       } else {
-        throw new Error('Failed to create order');
+        const errorData = await response.json();
+        console.error('Order creation error:', errorData);
+        throw new Error(errorData.message || 'Failed to create order');
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Order submission error:', error);
       toast({
         title: 'Error',
-        description: 'Failed to create order',
+        description: error.message || 'Failed to create order',
         variant: 'destructive',
       });
     } finally {

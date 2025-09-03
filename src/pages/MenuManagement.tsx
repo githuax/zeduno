@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Search } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, AlertTriangle, CheckCircle, Package } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,6 +11,7 @@ import AddMenuItemModal from '@/components/menu/AddMenuItemModal';
 import AddCategoryModal from '@/components/menu/AddCategoryModal';
 import EditMenuItemModal from '@/components/menu/EditMenuItemModal';
 import EditCategoryModal from '@/components/menu/EditCategoryModal';
+import CreateRecipeModal from '@/components/menu/CreateRecipeModal';
 import { useCurrency } from '@/hooks/useCurrency';
 
 interface MenuOverview {
@@ -18,6 +19,8 @@ interface MenuOverview {
   availableItems: number;
   unavailableItems: number;
   totalCategories: number;
+  lowStockItems?: number;
+  itemsWithRecipes?: number;
 }
 
 interface MenuItem {
@@ -44,6 +47,10 @@ interface MenuItem {
     carbs?: number;
     fat?: number;
   };
+  // Inventory integration fields
+  inventoryAvailable?: boolean;
+  unavailableIngredients?: string[];
+  hasRecipe?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -71,6 +78,8 @@ const MenuManagement = () => {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isEditItemModalOpen, setIsEditItemModalOpen] = useState(false);
   const [isEditCategoryModalOpen, setIsEditCategoryModalOpen] = useState(false);
+  const [creatingRecipeFor, setCreatingRecipeFor] = useState<MenuItem | null>(null);
+  const [isCreateRecipeModalOpen, setIsCreateRecipeModalOpen] = useState(false);
   const { toast } = useToast();
   const { format: formatPrice } = useCurrency();
 
@@ -78,7 +87,7 @@ const MenuManagement = () => {
   const fetchOverview = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(getApiUrl('menu/overview'), {
+      const response = await fetch(getApiUrl('menu/inventory-overview'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -116,7 +125,7 @@ const MenuManagement = () => {
     setItemsLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(getApiUrl('menu/items'), {
+      const response = await fetch(getApiUrl('menu/items?includeInventory=true'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -174,6 +183,12 @@ const MenuManagement = () => {
   const handleEditItem = (item: MenuItem) => {
     setEditingItem(item);
     setIsEditItemModalOpen(true);
+  };
+
+  // Handle creating recipe for menu item
+  const handleCreateRecipe = (item: MenuItem) => {
+    setCreatingRecipeFor(item);
+    setIsCreateRecipeModalOpen(true);
   };
 
   // Handle deleting menu item
@@ -319,6 +334,28 @@ const MenuManagement = () => {
               <div className="text-2xl font-bold">{overview.totalCategories}</div>
             </CardContent>
           </Card>
+          {overview.lowStockItems !== undefined && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Low Stock Items</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-orange-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-600">{overview.lowStockItems}</div>
+              </CardContent>
+            </Card>
+          )}
+          {overview.itemsWithRecipes !== undefined && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Items with Recipes</CardTitle>
+                <Package className="h-4 w-4 text-blue-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600">{overview.itemsWithRecipes}</div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 
@@ -391,10 +428,36 @@ const MenuManagement = () => {
                               <Badge variant={item.isAvailable ? "default" : "secondary"}>
                                 {item.isAvailable ? "Available" : "Unavailable"}
                               </Badge>
+                              {/* Inventory status indicators */}
+                              {item.hasRecipe ? (
+                                item.inventoryAvailable ? (
+                                  <Badge variant="outline" className="text-green-600 border-green-600">
+                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                    Stock OK
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-red-600 border-red-600">
+                                    <AlertTriangle className="h-3 w-3 mr-1" />
+                                    Low Stock
+                                  </Badge>
+                                )
+                              ) : (
+                                <Badge variant="outline" className="text-gray-500 border-gray-500">
+                                  <Package className="h-3 w-3 mr-1" />
+                                  No Recipe
+                                </Badge>
+                              )}
                               <span className="text-lg font-bold text-green-600">{formatPrice(item.price)}</span>
                             </div>
                             {item.description && (
                               <p className="text-gray-600 mb-2">{item.description}</p>
+                            )}
+                            {/* Show unavailable ingredients if any */}
+                            {item.unavailableIngredients && item.unavailableIngredients.length > 0 && (
+                              <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded text-sm">
+                                <p className="text-red-700 font-medium mb-1">Missing ingredients:</p>
+                                <p className="text-red-600">{item.unavailableIngredients.join(', ')}</p>
+                              </div>
                             )}
                             <div className="flex items-center gap-4 text-sm text-gray-500">
                               {item.categoryId && (
@@ -419,6 +482,17 @@ const MenuManagement = () => {
                             </div>
                           </div>
                           <div className="flex gap-2">
+                            {!item.hasRecipe && (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleCreateRecipe(item)}
+                                title="Create recipe"
+                                className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                              >
+                                <Package className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button 
                               variant="outline" 
                               size="sm"
@@ -546,6 +620,16 @@ const MenuManagement = () => {
         }}
         category={editingCategory}
         onSuccess={refreshData}
+      />
+
+      <CreateRecipeModal
+        isOpen={isCreateRecipeModalOpen}
+        onClose={() => {
+          setIsCreateRecipeModalOpen(false);
+          setCreatingRecipeFor(null);
+        }}
+        menuItem={creatingRecipeFor!}
+        onRecipeCreated={refreshData}
       />
     </div>
   );
