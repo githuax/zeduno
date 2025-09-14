@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
-import { User } from '../models/User';
+
 import { SuperAdmin } from '../models/SuperAdmin';
 import { Tenant } from '../models/Tenant';
+import { User } from '../models/User';
 
 const checkMigratedData = async (): Promise<void> => {
   try {

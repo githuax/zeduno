@@ -1,11 +1,3 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { useAuth } from '@/contexts/AuthContext';
-import { getApiUrl } from '@/config/api';
-import { getAssetUrl } from '@/utils/url';
 import {
   Building2,
   Users,
@@ -18,13 +10,22 @@ import {
   Home,
   CreditCard
 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { getApiUrl } from '@/config/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import { getAssetUrl } from '@/utils/url';
 
 interface SuperAdminLayoutProps {
   children: React.ReactNode;
@@ -98,7 +99,7 @@ const SuperAdminLayout = ({ children }: SuperAdminLayoutProps) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
+      <header className="bg-white border-b border-gray-200 px-6 py-3 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Button
@@ -114,10 +115,10 @@ const SuperAdminLayout = ({ children }: SuperAdminLayoutProps) => {
                 <img 
                   src={logoUrl} 
                   alt="ZedUno Logo" 
-                  className="h-16 object-contain"
+                  className="h-10 sm:h-12 md:h-14 lg:h-16 xl:h-20 object-contain"
                 />
               ) : (
-                <Shield className="h-8 w-8 text-[#032541]" />
+                <Shield className="h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 lg:h-16 lg:w-16 xl:h-20 xl:w-20 text-[#032541]" />
               )}
               <div>
                 <h1 className="text-xl font-bold text-gray-900">ZedUno SuperAdmin</h1>

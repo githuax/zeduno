@@ -1,12 +1,13 @@
-import { useState } from 'react';
 import { Route, MapPin, Clock, Truck, Zap, Calculator, Save } from 'lucide-react';
+import { useState } from 'react';
+
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Delivery, Driver } from '@/types/delivery.types';
 import { toast } from '@/hooks/use-toast';
+import { Delivery, Driver } from '@/types/delivery.types';
 
 interface RouteOptimizerProps {
   deliveries: Delivery[];

@@ -1,16 +1,3 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { getApiUrl } from '@/config/api';
-import { Badge } from '@/components/ui/badge';
-import { formatCurrency } from '../../utils/currency';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -21,8 +8,22 @@ import {
   Calendar,
   Server
 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+
 import SuperAdminLayout from '@/components/layout/SuperAdminLayout';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { useToast } from '@/components/ui/use-toast';
+import { getApiUrl } from '@/config/api';
+import { formatCurrency } from '@/utils/currency';
 
 interface SystemStats {
   totalTenants: number;

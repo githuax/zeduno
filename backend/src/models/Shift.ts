@@ -85,14 +85,14 @@ const ShiftSchema: Schema = new Schema(
 // Calculate total hours and pay when shift is completed
 ShiftSchema.pre('save', function(next) {
   if (this.status === 'completed' && this.actualStartTime && this.actualEndTime) {
-    const startTime = new Date(this.actualStartTime);
-    const endTime = new Date(this.actualEndTime);
+    const startTime = new Date(this.actualStartTime as Date);
+    const endTime = new Date(this.actualEndTime as Date);
     const totalMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60);
-    const breakMinutes = this.actualBreakDuration || this.breakDuration;
-    const workMinutes = totalMinutes - breakMinutes;
+    const breakMinutes = (this.actualBreakDuration as number) || (this.breakDuration as number);
+    const workMinutes = totalMinutes - (breakMinutes || 0);
     
     this.totalHours = Math.max(0, workMinutes / 60);
-    this.totalPay = this.totalHours * this.hourlyRate;
+    this.totalPay = (this.totalHours as number) * (this.hourlyRate as number);
   }
   next();
 });

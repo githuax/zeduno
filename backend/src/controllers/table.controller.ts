@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
-import Table from '../models/Table';
-import Order from '../models/Order';
 import mongoose from 'mongoose';
+
+import Order from '../models/Order';
+import Table from '../models/Table';
 
 interface AuthRequest extends Request {
   user?: {
@@ -16,7 +17,7 @@ export const getTables = async (req: AuthRequest, res: Response) => {
   try {
     const { status, floor, section } = req.query;
     
-    let query: any = {};
+    const query: any = {};
     if (status) query.status = status;
     if (floor) query.floor = parseInt(floor as string);
     if (section) query.section = section;

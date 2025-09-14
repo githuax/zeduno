@@ -1,7 +1,3 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Transaction } from "@/types/payment.types";
 import { 
   CheckCircle, 
   Clock, 
@@ -11,6 +7,12 @@ import {
   Receipt,
   CreditCard
 } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Transaction } from "@/types/payment.types";
+
 
 interface PaymentStatusCardProps {
   transaction: Transaction;

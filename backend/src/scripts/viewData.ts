@@ -1,9 +1,10 @@
-import mongoose from 'mongoose';
-import { User } from '../models/User';
-import { Tenant } from '../models/Tenant';
-import { MenuItem } from '../models/MenuItem';
-import { Category } from '../models/Category';
 import dotenv from 'dotenv';
+import mongoose from 'mongoose';
+
+import { Category } from '../models/Category';
+import { MenuItem } from '../models/MenuItem';
+import { Tenant } from '../models/Tenant';
+import { User } from '../models/User';
 
 dotenv.config();
 

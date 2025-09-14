@@ -1,8 +1,10 @@
+import crypto from 'crypto';
+
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
+
 import { Tenant } from '../models/Tenant';
 import { User } from '../models/User';
-import mongoose from 'mongoose';
-import crypto from 'crypto';
 
 interface AuthRequest extends Request {
   user?: any;

@@ -1,7 +1,8 @@
-import mongoose from 'mongoose';
-import { User } from '../models/User';
-import { Tenant } from '../models/Tenant';
 import { config } from 'dotenv';
+import mongoose from 'mongoose';
+
+import { Tenant } from '../models/Tenant';
+import { User } from '../models/User';
 
 config();
 

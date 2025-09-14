@@ -1,12 +1,11 @@
-import axios from 'axios';
 import { ITenant } from '../models/Tenant';
 
-// Zed Business API Configuration - Updated with correct endpoints
+// Zed Business API Configuration (externalized)
 const ZED_BUSINESS_CONFIG = {
-  apiKey: 'X-Authorization',
-  baseUrl: 'https://api.dev.zed.business',
-  externalOrigin: '9002742',
-  authToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub2IiOnsidmFsdWUiOjUwLCJzdGF0ZSI6ZmFsc2V9LCJ2b2NiIjpmYWxzZSwidXNlcklkIjoiNjQ5ZDJlMTc2MmFlMjJkZjg2ZjAxNjk3IiwiaWQiOiI2NDlkMmUxNzYyYWUyMmRmODZmMDE2OTciLCJlbWFpbCI6ImtpbWF0aGljaHJpczEzK2RhaWx5aG90ZWxAZ21haWwuY29tIiwidXNlck5hbWUiOiJCcmlhbkdpdGh1YSIsImdyb3VwIjoiTWVyY2hhbnQiLCJiaWQiOiI5MDAyNzQyIiwiYmlkU3RyaW5nIjoiNjhiMTQ4MjM4MDRlNWRmNzA5ZGU2MWM3IiwiY3VzdG9tZXJJZCI6IjY2MjY1ZmYzZDg5Njc1YTk3NTY1ZGRkYSIsImJ1c2luZXNzTmFtZSI6IkRhaWx5IEhvdGVsIiwiYnVzaW5lc3NPd25lclBob25lIjoiKzI1NDU0NTQ1NDU0NCIsImJ1c2luZXNzT3duZXJBZGRyZXNzIjoiTmFpcm9iaSwgS2VueWEiLCJidWxrVGVybWluYWxzIjpbXSwic2Vzc2lvbkV4cGlyeSI6IjIwMjUtMDgtMzBUMDY6MjY6NDUuMjM5WiIsIlRpbGwiOiIiLCJQYXliaWxsIjoiIiwiVm9vbWEiOiIiLCJFcXVpdGVsIjoiIiwic3RvcmVOYW1lIjoibnVsbCIsImxvY2FsQ3VycmVuY3kiOiJLRVMiLCJ4ZXJvQWNjb3VudGluZ0VuYWJsZWQiOiJmYWxzZSIsInF1aWNrYm9va3NBY2NvdW50aW5nRW5hYmxlZCI6ImZhbHNlIiwiem9ob0FjY291bnRpbmdFbmFibGVkIjoiZmFsc2UiLCJpYXQiOjE3NTY0NDg4MDUsImV4cCI6MTc1NjUzNTIwNX0.4LrMoetiZiTSc7HzeCGuAaxnEk1tP7e3F05ccxxxtwc'
+  apiKeyHeader: process.env.ZED_API_KEY_HEADER || 'X-Authorization',
+  baseUrl: process.env.ZED_API_BASE_URL || '',
+  externalOrigin: process.env.ZED_EXTERNAL_ORIGIN || '',
+  authToken: process.env.ZED_AUTH_TOKEN || ''
 };
 
 export interface MPesaCredentials {
@@ -156,7 +155,7 @@ export class MPesaService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Authorization': ZED_BUSINESS_CONFIG.authToken, // Use X-Authorization as per docs
+          [ZED_BUSINESS_CONFIG.apiKeyHeader]: ZED_BUSINESS_CONFIG.authToken,
           'Accept': 'application/json'
         },
         body: JSON.stringify(zedPayload)
@@ -259,7 +258,7 @@ export class MPesaService {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${ZED_BUSINESS_CONFIG.authToken}`,
-          [ZED_BUSINESS_CONFIG.apiKey]: ZED_BUSINESS_CONFIG.authToken,
+          [ZED_BUSINESS_CONFIG.apiKeyHeader]: ZED_BUSINESS_CONFIG.authToken,
           'Accept': 'application/json'
         }
       });

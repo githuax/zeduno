@@ -1,8 +1,7 @@
 import { Router } from 'express';
 import { body } from 'express-validator';
 import multer from 'multer';
-import { authLimiter } from '../middleware/rateLimiter';
-import { authenticateSuperAdmin } from '../middleware/auth';
+
 import { 
   superAdminLogin, 
   getTenants, 
@@ -21,6 +20,8 @@ import {
   uploadSystemLogo,
   getSystemLogo
 } from '../controllers/superadmin.controller';
+import { authenticateSuperAdmin } from '../middleware/auth';
+import { authLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 

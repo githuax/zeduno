@@ -1,0 +1,49 @@
+Windows PowerShell
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+Install the latest PowerShell for new features and improvements! https://aka.ms/PSWindows
+
+PS C:\Users\githu> tailscale status
+100.92.188.34   githuax              githuairungu@ windows -
+100.75.138.26   oneplus-cph2649      githuairungu@ android offline
+100.69.143.43   osbui-0.tailc62f1e.ts.net mwilualexx@  linux   -
+100.119.0.65    osbui-169            githuairungu@ linux   idle, tx 120404 rx 124676
+100.65.111.66   rbslumi.tailcac7f8.ts.net riverbanksolutionsai@ linux   offline
+PS C:\Users\githu> ssh osbui@100.119.0.65
+osbui@osbui-169:~$ ll
+total 381412
+drwxr-x--- 14 osbui osbui      4096 Sep 12 08:54 ./
+drwxr-xr-x  3 root  root       4096 Mar 28 18:50 ../
+-rw-------  1 osbui osbui       330 Sep 12 08:54 .Xauthority
+-rw-------  1 osbui osbui     69656 Sep  3 17:22 .bash_history
+-rw-r--r--  1 osbui osbui       220 Mar  5  2025 .bash_logout
+-rw-r--r--  1 osbui osbui      4174 Aug 26 19:01 .bashrc
+drwx------  8 osbui osbui      4096 Sep  2 18:55 .cache/
+drwxrwxr-x 10 osbui osbui      4096 Sep  3 09:43 .claude/
+-rw-rw-r--  1 osbui osbui    196207 Sep  3 16:27 .claude.json
+-rw-rw-r--  1 osbui osbui    195788 Sep  3 16:27 .claude.json.backup
+drwxrwxr-x  3 osbui osbui      4096 Sep  1 15:31 .config/
+drwx------  3 osbui osbui      4096 Aug  4 16:25 .docker/
+-rw-------  1 osbui osbui        68 Sep  3 16:26 .git-credentials
+-rw-rw-r--  1 osbui osbui        84 Sep  2 18:16 .gitconfig
+-rw-------  1 osbui osbui        20 Aug 29 18:35 .lesshst
+drwxrwxr-x  5 osbui osbui      4096 Sep  2 18:55 .local/
+drwx------  3 osbui osbui      4096 Aug 26 18:41 .mongodb/
+drwxrwxr-x  5 osbui osbui      4096 Aug  5 08:19 .npm/
+drwxrwxr-x  8 osbui osbui      4096 Aug  5 13:24 .nvm/
+drwxrwxr-x  5 osbui osbui      4096 Aug 29 07:40 .pm2/
+-rw-r--r--  1 osbui osbui       807 Mar  5  2025 .profile
+drwx------  2 osbui osbui      4096 Sep  1 09:30 .ssh/
+-rw-r--r--  1 osbui osbui         0 Mar 28 18:57 .sudo_as_admin_successful
+-rw-------  1 osbui osbui     13185 Aug  4 19:10 .viminfo
+-rw-rw-r--  1 osbui osbui       215 Aug 26 17:23 .wget-hsts
+-rw-rw-r--  1 osbui osbui         0 Sep  3 12:57 .zeduno_token
+drwxrwxr-x  7 osbui osbui      4096 Aug 27 17:33 applications/
+-rw-rw-r--  1 osbui osbui     44552 Aug  6 13:58 auto-pull.log
+-rwxrwxr-x  1 osbui osbui       462 Aug  6 07:06 auto-pull.sh*
+-rwxrwxr-x  1 osbui osbui      8296 Jul 22 10:24 install_nomad.sh*
+-rw-r--r--  1 root  root        417 Jul 23 16:27 int.java.sh
+-rw-r--r--  1 root  root  167613956 Mar 12  2024 jdk-22.0.1_linux-x64_bin.deb
+-rw-rw-r--  1 osbui osbui 167396788 Jun  4  2024 jdk-22.0.2_linux-x64_bin.deb
+-rw-r--r--  1 root  root   54896779 Jul  9 00:18 nomad_1.10.3_linux_amd64.zip
+drwxrwxr-x  5 osbui osbui      4096 Sep  2 18:55 superclaude_env/

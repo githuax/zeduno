@@ -1,4 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+import { useAuth } from '@/contexts/AuthContext';
 import { 
   Transaction, 
   PaymentMethod, 
@@ -9,7 +11,6 @@ import {
   PaymentProvider,
   Refund
 } from '@/types/payment.types';
-import { useAuth } from '@/contexts/AuthContext';
 import { getApiUrl } from '@/utils/api';
 
 // Mock data generators - Updated to include M-Pesa KCB

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { getApiUrl } from '../config/api';
+
+import { getApiUrl } from '@/config/api';
 
 interface DashboardStats {
   orders: {
@@ -10,6 +11,12 @@ interface DashboardStats {
     totalToday: number;
     takeaway: number;
     delivery: number;
+    deliveryStatus?: {
+      preparing: number;
+      ready: number;
+      outForDelivery: number;
+      deliveredToday: number;
+    };
   };
   tables: {
     total: number;
@@ -23,10 +30,18 @@ interface DashboardStats {
     available: number;
     outOfStock: number;
   };
+  inventory?: {
+    lowStock: number;
+    expiringSoon?: number;
+  };
   staff: {
     total: number;
     active: number;
     onShift: number;
+  };
+  branches?: {
+    total: number;
+    active: number;
   };
   revenue: {
     today: number;

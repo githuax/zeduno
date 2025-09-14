@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
 import { ShoppingCart, X, Plus, Minus, ArrowRight, Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
 import { useCart } from '@/contexts/CartContext';
-import { useNavigate } from 'react-router-dom';
 import { useCurrency } from '@/hooks/useCurrency';
 
 interface ShoppingCartProps {

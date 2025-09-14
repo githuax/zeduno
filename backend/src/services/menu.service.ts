@@ -1,8 +1,9 @@
 import mongoose from 'mongoose';
-import { MenuItem } from '../models/MenuItem';
+
 import { Category } from '../models/Category';
-import { Recipe } from '../models/Recipe';
 import { Ingredient } from '../models/Ingredient';
+import { MenuItem } from '../models/MenuItem';
+import { Recipe } from '../models/Recipe';
 import { inventoryCache } from '../utils/cache';
 
 export interface MenuQueryParams {
@@ -36,7 +37,7 @@ export class MenuService {
   static buildMenuItemsQuery(params: MenuQueryParams): any {
     const { category, available, search, tenantId, isPublic } = params;
     
-    let query: any = { isActive: true };
+    const query: any = { isActive: true };
 
     // For public access, only show available items
     if (isPublic) {
@@ -158,7 +159,7 @@ export class MenuService {
    * Build categories query
    */
   static buildCategoriesQuery(tenantId?: string, isPublic: boolean = false): any {
-    let query: any = { isActive: true };
+    const query: any = { isActive: true };
 
     if (isPublic) {
       // For public, only show categories that have available items
@@ -174,7 +175,7 @@ export class MenuService {
         { $unwind: '$category' },
         { $match: { 'category.isActive': true } },
         { $replaceRoot: { newRoot: '$category' } },
-        { $sort: { displayOrder: 1, name: 1 } }
+        { $sort: { displayOrder: 1 as 1, name: 1 as 1 } }
       ]);
     } else if (tenantId) {
       query.tenantId = new mongoose.Types.ObjectId(tenantId);

@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
 import { MapPin, Navigation, Clock, Phone, RefreshCw, Truck, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
-import { Delivery, Driver, DeliveryStatus } from '@/types/delivery.types';
 import { cn } from '@/lib/utils';
+import { Delivery, Driver, DeliveryStatus } from '@/types/delivery.types';
 
 interface DeliveryTrackingProps {
   deliveries: Delivery[];

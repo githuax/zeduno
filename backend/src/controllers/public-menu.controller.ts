@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
 import mongoose from 'mongoose';
-import { MenuItem } from '../models/MenuItem';
+
 import { Category } from '../models/Category';
+import { MenuItem } from '../models/MenuItem';
 import { MenuService } from '../services/menu.service';
 
 // ===== PUBLIC MENU ITEM CONTROLLERS (No Authentication Required) =====

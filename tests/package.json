@@ -1,0 +1,54 @@
+{
+  "name": "dine-serve-hub-report-tests",
+  "version": "1.0.0",
+  "description": "Comprehensive testing suite for the DineServe Hub report generation system",
+  "main": "run-all-tests.js",
+  "scripts": {
+    "test": "node run-all-tests.js",
+    "test:api": "node api/report.api.test.js",
+    "test:frontend": "npm run test -- tests/frontend/reports.integration.test.js",
+    "test:email": "node email/email.delivery.test.js",
+    "test:templates": "node templates/handlebars.template.test.js",
+    "test:scheduled": "node scheduled/scheduled.reports.test.js",
+    "test:e2e": "node e2e/reports.e2e.test.js",
+    "test:performance": "node performance/performance.test.js",
+    "test:security": "node security/security.test.js",
+    "test:quick": "RUN_PERFORMANCE_TESTS=false node run-all-tests.js",
+    "test:ci": "node run-all-tests.js",
+    "clean": "rm -rf test-results/",
+    "setup": "mkdir -p test-results && echo 'Test environment ready'",
+    "validate-env": "node -e \"console.log('TEST_TOKEN:', process.env.TEST_TOKEN ? 'Set' : 'Missing'); console.log('API_BASE_URL:', process.env.API_BASE_URL || 'Using default'); console.log('TEST_EMAIL:', process.env.TEST_EMAIL || 'Using default');\""
+  },
+  "keywords": [
+    "testing",
+    "reports",
+    "api",
+    "e2e",
+    "performance",
+    "security",
+    "email",
+    "templates"
+  ],
+  "author": "DineServe Hub Team",
+  "license": "MIT",
+  "dependencies": {
+    "node-fetch": "^2.6.7",
+    "handlebars": "^4.7.8"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/jest-dom": "^5.16.5",
+    "@testing-library/user-event": "^14.4.3"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-org/dine-serve-hub.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/dine-serve-hub/issues"
+  },
+  "homepage": "https://github.com/your-org/dine-serve-hub#readme"
+}

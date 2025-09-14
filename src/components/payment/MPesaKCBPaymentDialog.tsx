@@ -1,13 +1,3 @@
-import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   Building,
   Smartphone, 
@@ -19,9 +9,20 @@ import {
   Globe,
   Clock
 } from "lucide-react";
-import { useCurrency } from '@/hooks/useCurrency';
-import { useToast } from '@/hooks/use-toast';
+import { useState, useEffect } from 'react';
+
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { getApiUrl } from '@/config/api';
+import { useToast } from '@/hooks/use-toast';
+import { useCurrency } from '@/hooks/useCurrency';
 import { usePaymentStatus } from '@/hooks/useSocket';
 
 interface MPesaKCBPaymentDialogProps {
@@ -92,13 +93,12 @@ export const MPesaKCBPaymentDialog = ({
   }, [paymentStatus, paymentStep]);
 
   const supportedCurrencies = [
-    { code: 'KES', name: 'Kenya Shillings', flag: '🇰🇪' },
-    { code: 'UGX', name: 'Uganda Shillings', flag: '🇺🇬' },
-    { code: 'TZS', name: 'Tanzania Shillings', flag: '🇹🇿' },
-    { code: 'RWF', name: 'Rwanda Francs', flag: '🇷🇼' },
-    { code: 'BIF', name: 'Burundi Francs', flag: '🇧🇮' },
-    { code: 'CDF', name: 'Congo Francs', flag: '🇨🇩' },
-    { code: 'SSP', name: 'South Sudan Pounds', flag: '🇸🇸' }
+    { code: 'KES', name: 'Kenyan Shilling', flag: '🇰🇪' },
+    { code: 'UGX', name: 'Ugandan Shilling', flag: '🇺🇬' },
+    { code: 'TZS', name: 'Tanzanian Shilling', flag: '🇹🇿' },
+    { code: 'RWF', name: 'Rwandan Franc', flag: '🇷🇼' },
+    { code: 'BIF', name: 'Burundian Franc', flag: '🇧🇮' },
+    { code: 'SSP', name: 'South Sudanese Pound', flag: '🇸🇸' }
   ];
 
   const formatPhoneNumber = (phone: string) => {

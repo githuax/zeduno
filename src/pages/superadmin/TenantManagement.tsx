@@ -1,11 +1,10 @@
+import { Building2, Plus, Edit, Trash2, Users, Calendar, Search, Filter, Smartphone, Eye, EyeOff, ExternalLink } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { getApiUrl } from '@/config/api';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+
+import SuperAdminLayout from '@/components/layout/SuperAdminLayout';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/components/ui/use-toast';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -15,6 +14,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
 import {
   Table,
   TableBody,
@@ -23,19 +34,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Building2, Plus, Edit, Trash2, Users, Calendar, Search, Filter, Smartphone, Eye, EyeOff, ExternalLink } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
-import SuperAdminLayout from '@/components/layout/SuperAdminLayout';
+import { useToast } from '@/components/ui/use-toast';
+import { getApiUrl } from '@/config/api';
 import { getAllCurrencies, getCurrencyName } from '@/utils/currency';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface Tenant {
   _id: string;
@@ -72,6 +74,7 @@ const TenantManagement = () => {
     mpesaPasskey: false,
     mpesaConsumerSecret: false
   });
+  const [generatedAdminPassword, setGeneratedAdminPassword] = useState<string | null>(null);
   
   // Form states
   const [formData, setFormData] = useState({
@@ -88,6 +91,7 @@ const TenantManagement = () => {
     adminPassword: '',
     adminFirstName: '',
     adminLastName: '',
+    generateAdminTempPassword: true,
     // M-Pesa configuration
     mpesaEnabled: false,
     mpesaEnvironment: 'sandbox',
@@ -152,7 +156,7 @@ const TenantManagement = () => {
           },
           admin: {
             email: formData.adminEmail,
-            password: formData.adminPassword,
+            ...(formData.generateAdminTempPassword ? {} : { password: formData.adminPassword }),
             firstName: formData.adminFirstName,
             lastName: formData.adminLastName
           },
@@ -176,10 +180,41 @@ const TenantManagement = () => {
       });
 
       if (response.ok) {
-        toast({
-          title: 'Success',
-          description: 'Tenant created successfully'
-        });
+        let data: any = null;
+        try {
+          data = await response.json();
+        } catch {}
+
+        let initialPasswordHandled = false;
+        if (data?.initialPassword) {
+          try {
+            await navigator.clipboard.writeText(data.initialPassword);
+            initialPasswordHandled = true;
+            toast({
+              title: 'Tenant created',
+              description: 'Temporary admin password generated and copied to clipboard.'
+            });
+          } catch {
+            toast({
+              title: 'Tenant created',
+              description: `Temporary admin password: ${data.initialPassword}`
+            });
+          }
+          // Show inline banner with password and keep dialog open
+          setGeneratedAdminPassword(data.initialPassword);
+          // Refresh list in background
+          fetchTenants();
+          setIsLoading(false);
+          return;
+        }
+
+        if (!initialPasswordHandled && !data?.initialPassword) {
+          toast({
+            title: 'Success',
+            description: 'Tenant created successfully'
+          });
+        }
+
         setIsCreateOpen(false);
         resetForm();
         fetchTenants();
@@ -366,6 +401,7 @@ const TenantManagement = () => {
       adminPassword: '',
       adminFirstName: '',
       adminLastName: '',
+      generateAdminTempPassword: true,
       // M-Pesa configuration
       mpesaEnabled: false,
       mpesaEnvironment: 'sandbox',
@@ -453,6 +489,41 @@ const TenantManagement = () => {
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              {generatedAdminPassword ? (
+                <div className="space-y-6">
+                  <DialogHeader>
+                    <DialogTitle>Tenant Created</DialogTitle>
+                    <DialogDescription>
+                      A secure temporary password has been generated for the tenant admin. Share it securely and ask them to change it on first login.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <Alert>
+                    <AlertDescription>
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <div className="text-sm text-muted-foreground">Temporary Admin Password</div>
+                          <div className="mt-1 font-mono break-all text-foreground">{generatedAdminPassword}</div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button type="button" variant="outline" onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(generatedAdminPassword!);
+                              toast({ title: 'Copied', description: 'Password copied to clipboard' });
+                            } catch {
+                              toast({ title: 'Copy failed', description: 'Please copy manually', variant: 'destructive' });
+                            }
+                          }}>Copy</Button>
+                          <Button type="button" onClick={() => {
+                            setGeneratedAdminPassword(null);
+                            setIsCreateOpen(false);
+                            resetForm();
+                          }} className="bg-[#032541] hover:bg-[#021a2e]">Close</Button>
+                        </div>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                </div>
+              ) : (
               <form onSubmit={handleCreateTenant}>
                 <DialogHeader>
                   <DialogTitle>Create New Tenant</DialogTitle>
@@ -607,15 +678,29 @@ const TenantManagement = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="adminPassword">Admin Password *</Label>
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="adminPassword">Admin Password (optional)</Label>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">Generate temporary</span>
+                            <Switch
+                              checked={formData.generateAdminTempPassword}
+                              onCheckedChange={(checked) => setFormData({...formData, generateAdminTempPassword: checked})}
+                            />
+                          </div>
+                        </div>
                         <Input
                           id="adminPassword"
                           type="password"
                           value={formData.adminPassword}
                           onChange={(e) => setFormData({...formData, adminPassword: e.target.value})}
-                          required
+                          required={!formData.generateAdminTempPassword}
                           minLength={8}
+                          disabled={formData.generateAdminTempPassword}
+                          placeholder={formData.generateAdminTempPassword ? 'A secure temporary password will be generated' : 'Enter admin password'}
                         />
+                        <p className="text-xs text-muted-foreground">
+                          If left empty, a secure temporary password will be generated and the admin will be required to change it on first login.
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -785,6 +870,7 @@ const TenantManagement = () => {
                   </Button>
                 </DialogFooter>
               </form>
+              )}
             </DialogContent>
           </Dialog>
         </div>

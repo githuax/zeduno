@@ -1,7 +1,8 @@
 import { Users, Clock, Utensils } from 'lucide-react';
-import { Table } from '@/types/order.types';
-import { cn } from '@/lib/utils';
+
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+import { Table } from '@/types/order.types';
 
 interface TableGridProps {
   tables: Table[];

@@ -1,6 +1,7 @@
 import express from 'express';
-import { authenticate, authorize } from '../middleware/auth.middleware';
+
 import * as inventoryController from '../controllers/inventory.controller';
+import { authenticate, authorize } from '../middleware/auth.middleware';
 
 const router = express.Router();
 

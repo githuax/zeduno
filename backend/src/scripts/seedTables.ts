@@ -1,6 +1,7 @@
-import mongoose from 'mongoose';
-import Table from '../models/Table';
 import { config } from 'dotenv';
+import mongoose from 'mongoose';
+
+import Table from '../models/Table';
 
 config();
 

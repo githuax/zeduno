@@ -1,11 +1,12 @@
+import { Building, Crown, Users, Calendar } from "lucide-react";
 import React from 'react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
+
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTenant } from "@/contexts/TenantContext";
 import { useTenants, useSwitchTenant } from "@/hooks/useTenant";
-import { Building, Crown, Users, Calendar } from "lucide-react";
 
 const TenantSwitcher = () => {
   const { context, switchTenant } = useTenant();

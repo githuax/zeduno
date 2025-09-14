@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+
 import { Room } from '../models/Room';
 
 export const getAllRooms = async (req: Request, res: Response, next: NextFunction) => {

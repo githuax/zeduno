@@ -1,6 +1,7 @@
-import mongoose from 'mongoose';
-import { MenuItem } from '../models/MenuItem';
 import { config } from 'dotenv';
+import mongoose from 'mongoose';
+
+import { MenuItem } from '../models/MenuItem';
 
 config();
 

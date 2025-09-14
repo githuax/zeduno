@@ -1,4 +1,8 @@
 import { Bell, Settings, User, Shield, LogOut, ExternalLink, ArrowLeft } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -6,11 +10,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
-import { useEffect, useState } from "react";
-import { Badge } from "@/components/ui/badge";
+
+
 
 const Header = () => {
   const navigate = useNavigate();

@@ -1,0 +1,79 @@
+🤔 Discovery Questions for Sub-Tenant Architecture:
+
+  Let me explore your multi-tenancy needs to understand the best approach:
+
+  🔍 Current Understanding
+
+  Your system has a single-level tenant structure (Tenant → Users). You're considering adding sub-tenants, which would create a hierarchy.
+
+  💡 Key Questions to Shape the Solution:
+
+  1. Business Model Context
+
+  - What's the use case? Are you thinking:
+    - 🏢 Franchise model? (Parent company → Individual franchise locations)
+    - 🏬 Multi-branch restaurants? (Restaurant chain → Individual branches)
+    - 🏨 Hotel chains? (Hotel group → Individual properties)
+    - 🤝 Reseller/White-label? (Partner → Their clients)
+	
+ Answer:🏬 Multi-branch restaurants? (Restaurant chain → Individual branches)
+ 
+  2. Data & Feature Isolation
+
+  - How independent should sub-tenants be?
+    - Share parent's menu/pricing or have their own?
+    - Separate inventory or shared pool?
+    - Independent payment configs or inherit parent's?
+    - Own branding or parent branding?
+	
+ Answer:sub-tenants will their own menu and pricing
+		they will have a separate inventory
+		they will have separate menu/pricing
+		
+
+  3. Administrative Control
+
+  - Who manages what?
+    - Can parent tenant admin create/manage sub-tenants?
+    - Should sub-tenants have their own admins?
+    - Billing - consolidated to parent or separate?
+    - Can parent see all sub-tenant data?
+
+  4. Technical Considerations
+
+  - Current constraints?
+    - How many sub-tenants per parent expected?
+    - Need real-time data aggregation across sub-tenants?
+    - Separate domains/subdomains per sub-tenant?
+
+  🎯 Potential Approaches:
+
+  Option A: Hierarchical Tenant Model
+  Restaurant Chain (Parent)
+  ├── Downtown Branch (Sub-tenant)
+  ├── Airport Branch (Sub-tenant)
+  └── Mall Branch (Sub-tenant)
+
+  Option B: Shared Resources Model
+  Parent Tenant
+  ├── Shared: Menu, Pricing, Suppliers
+  └── Independent: Orders, Inventory, Staff
+
+  Option C: Franchise Model
+  Franchisor
+  ├── Franchisee A (Semi-independent)
+  └── Franchisee B (Semi-independent)
+
+  📝 What Would Help Me Design This:
+
+  1. Primary goal: Why do you need sub-tenants?
+  2. Relationship type: How connected are parent/sub operations?
+  3. Scale: How many levels deep? How many sub-tenants?
+  4. Critical features: What must be shared vs. separated?
+
+  Quick Example Scenarios:
+  - "I run 5 pizza shops under one brand, need separate inventory but shared menu"
+  - "I want to let other businesses use my platform under their brand"
+  - "I need department-level separation within one restaurant"
+
+  What's your specific scenario? This will help me design the right solution! 🎯

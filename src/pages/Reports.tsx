@@ -1,13 +1,3 @@
-import { useState } from 'react';
-import { useNavigate } from "react-router-dom";
-import Header from "@/components/layout/Header";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { DatePickerWithRange } from "@/components/ui/date-range-picker";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useAnalytics } from "@/hooks/useAnalytics";
 import { 
   Download, 
   FileText, 
@@ -19,7 +9,29 @@ import {
   Users,
   ShoppingCart
 } from "lucide-react";
+import { useState } from 'react';
 import { DateRange } from "react-day-picker";
+import { useNavigate } from "react-router-dom";
+
+import Header from "@/components/layout/Header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DatePickerWithRange } from "@/components/ui/date-range-picker";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  useGenerateReport, 
+  useReportTypes, 
+  useUserBranches, 
+  useDownloadReport,
+  mapTemplateToReportType,
+  buildReportRequest,
+  handleReportError,
+  type ReportFormat
+} from "@/hooks/useReports";
+import ScheduledReportsTab from "@/components/reports/ScheduledReportsTab";
 
 interface ReportTemplate {
   id: string;
@@ -34,11 +46,25 @@ const Reports = () => {
   const navigate = useNavigate();
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
-  const [selectedFormat, setSelectedFormat] = useState<'pdf' | 'excel' | 'csv'>('pdf');
+  const [selectedFormat, setSelectedFormat] = useState<ReportFormat>('pdf');
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [selectedBranch, setSelectedBranch] = useState<string>('');
+  const [reportError, setReportError] = useState<string>('');
 
-  const { data: analytics } = useAnalytics();
+  // API hooks
+  const generateReportMutation = useGenerateReport();
+  const downloadReportMutation = useDownloadReport();
+  const { data: reportTypesData } = useReportTypes();
+  const { data: branchesData } = useUserBranches();
+
+  // Get analytics data for quick stats (keep existing mock for now)
+  const mockAnalytics = {
+    totalRevenue: 12450.50,
+    totalOrders: 89,
+    averageOrderValue: 139.90,
+    customerSatisfaction: 4.6
+  };
 
   const reportTemplates: ReportTemplate[] = [
     {
@@ -108,37 +134,44 @@ const Reports = () => {
   };
 
   const handleGenerateReport = async () => {
+    if (!selectedTemplate || selectedFields.length === 0) {
+      setReportError('Please select a report template and at least one field.');
+      return;
+    }
+
     setIsGenerating(true);
+    setReportError('');
     
-    // Simulate report generation
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // In a real implementation, this would call an API to generate the report
-    const template = reportTemplates.find(t => t.id === selectedTemplate);
-    const fileName = `${template?.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.${selectedFormat}`;
-    
-    // Create a simple data structure for download
-    const reportData = {
-      template: template?.name,
-      dateRange: dateRange ? `${dateRange.from?.toDateString()} - ${dateRange.to?.toDateString()}` : 'All time',
-      format: selectedFormat,
-      fields: selectedFields,
-      generatedAt: new Date().toISOString(),
-      data: analytics
-    };
-    
-    // Create and download file
-    const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    
-    setIsGenerating(false);
+    try {
+      const reportType = mapTemplateToReportType(selectedTemplate);
+      const reportRequest = buildReportRequest(
+        selectedTemplate,
+        dateRange,
+        selectedFormat,
+        selectedFields,
+        selectedBranch || undefined
+      );
+
+      // Generate the report
+      const response = await generateReportMutation.mutateAsync({
+        type: reportType,
+        data: reportRequest
+      });
+
+      if (response.success && response.data?.fileName) {
+        // Automatically download the generated report
+        await downloadReportMutation.mutateAsync(response.data.fileName);
+      } else {
+        throw new Error(response.error || 'Failed to generate report');
+      }
+
+    } catch (error) {
+      const errorMessage = handleReportError(error);
+      setReportError(errorMessage);
+      console.error('Report generation failed:', error);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -148,9 +181,9 @@ const Reports = () => {
       <main className="p-6">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Reports Generator</h1>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Reports</h1>
             <p className="text-muted-foreground">
-              Generate comprehensive reports for your restaurant operations
+              Generate reports and manage automated scheduling
             </p>
           </div>
           
@@ -163,6 +196,20 @@ const Reports = () => {
             View Analytics
           </Button>
         </div>
+
+        <Tabs defaultValue="generate" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 max-w-md">
+            <TabsTrigger value="generate" className="flex items-center space-x-2">
+              <FileText className="h-4 w-4" />
+              <span>Generate Reports</span>
+            </TabsTrigger>
+            <TabsTrigger value="scheduled" className="flex items-center space-x-2">
+              <Calendar className="h-4 w-4" />
+              <span>Scheduled Reports</span>
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="generate" className="mt-6">
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Report Templates */}
@@ -257,7 +304,7 @@ const Reports = () => {
                 {/* Format Selection */}
                 <div className="space-y-2">
                   <Label>Export Format</Label>
-                  <Select value={selectedFormat} onValueChange={(value: 'pdf' | 'excel' | 'csv') => setSelectedFormat(value)}>
+                  <Select value={selectedFormat} onValueChange={(value: ReportFormat) => setSelectedFormat(value)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -268,6 +315,33 @@ const Reports = () => {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Branch Selection */}
+                {branchesData?.success && branchesData.branches.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Branch (Optional)</Label>
+                    <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All branches" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">All branches</SelectItem>
+                        {branchesData.branches.map((branch) => (
+                          <SelectItem key={branch._id} value={branch._id}>
+                            {branch.name} ({branch.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Error Display */}
+                {reportError && (
+                  <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+                    <p className="text-sm text-destructive">{reportError}</p>
+                  </div>
+                )}
 
                 {/* Selected Fields Preview */}
                 {selectedTemplate && (
@@ -293,10 +367,12 @@ const Reports = () => {
                 <Button 
                   className="w-full" 
                   onClick={handleGenerateReport}
-                  disabled={!selectedTemplate || selectedFields.length === 0 || isGenerating}
+                  disabled={!selectedTemplate || selectedFields.length === 0 || isGenerating || generateReportMutation.isPending || downloadReportMutation.isPending}
                 >
                   <Download className="h-4 w-4 mr-2" />
-                  {isGenerating ? 'Generating...' : 'Generate Report'}
+                  {isGenerating || generateReportMutation.isPending ? 'Generating...' : 
+                   downloadReportMutation.isPending ? 'Downloading...' : 
+                   'Generate Report'}
                 </Button>
               </CardContent>
             </Card>
@@ -309,19 +385,19 @@ const Reports = () => {
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Today's Revenue</span>
-                  <span className="text-sm font-medium">${analytics?.totalRevenue.toFixed(2) || '0.00'}</span>
+                  <span className="text-sm font-medium">${mockAnalytics.totalRevenue.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Total Orders</span>
-                  <span className="text-sm font-medium">{analytics?.totalOrders || 0}</span>
+                  <span className="text-sm font-medium">{mockAnalytics.totalOrders}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Avg Order Value</span>
-                  <span className="text-sm font-medium">${analytics?.averageOrderValue.toFixed(2) || '0.00'}</span>
+                  <span className="text-sm font-medium">${mockAnalytics.averageOrderValue.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Customer Satisfaction</span>
-                  <span className="text-sm font-medium">{analytics?.customerSatisfaction || 0}/5</span>
+                  <span className="text-sm font-medium">{mockAnalytics.customerSatisfaction}/5</span>
                 </div>
               </CardContent>
             </Card>
@@ -360,6 +436,12 @@ const Reports = () => {
             </div>
           </CardContent>
         </Card>
+          </TabsContent>
+          
+          <TabsContent value="scheduled" className="mt-6">
+            <ScheduledReportsTab />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );

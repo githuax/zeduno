@@ -1,0 +1,40 @@
+hwo do ichnage to using soonet or opus 4 ?
+
+● To change your Claude Code model to Sonnet or Opus 4, you can use these commands:
+
+  Change Model Commands
+
+  Switch to Claude 3.5 Sonnet (Latest)
+
+  claude config set model claude-3-5-sonnet-20241022
+
+  Switch to Claude 3.5 Sonnet (Previous)
+
+  claude config set model claude-3-5-sonnet-20240620
+
+  Switch to Claude 3 Opus
+
+  claude config set model claude-3-opus-20240229
+
+  Switch to Claude 3 Haiku (Fastest)
+
+  claude config set model claude-3-haiku-20240307
+
+  Check Current Configuration
+
+  claude config list
+
+  Verify Model Change
+
+  claude --version
+  claude config get model
+
+  Notes:
+
+  - Sonnet 3.5 is the newest and most capable model (currently what you're using - Sonnet 4)
+  - Opus 3 is the most powerful reasoning model but slower
+  - Haiku 3 is the fastest but less capable
+  - Model changes apply immediately to new conversations
+  - Your current conversation will continue with the same model until you start a new session
+
+  The latest Sonnet model (which you're currently using as "Sonnet 4") is typically the best balance of capability and speed for most development tasks.

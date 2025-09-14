@@ -1,13 +1,3 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import SuperAdminLayout from "@/components/layout/SuperAdminLayout";
-import { useAuth } from "@/contexts/AuthContext";
-import { getApiUrl } from "@/config/api";
 import { 
   Building, 
   Users, 
@@ -18,6 +8,17 @@ import {
   AlertCircle,
   Shield
 } from "lucide-react";
+import { useState, useEffect } from 'react';
+import { useNavigate } from "react-router-dom";
+
+import SuperAdminLayout from "@/components/layout/SuperAdminLayout";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { getApiUrl } from "@/config/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Tenant {
   _id: string;

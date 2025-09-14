@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{title}}</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            line-height: 1.6;
+        }
+        .report-header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #6f42c1;
+            padding-bottom: 20px;
+        }
+        .report-title {
+            color: #6f42c1;
+            font-size: 28px;
+            font-weight: bold;
+            margin: 0;
+        }
+        .report-subtitle {
+            color: #666;
+            font-size: 14px;
+            margin: 10px 0 0 0;
+        }
+        .company-info {
+            margin-bottom: 15px;
+        }
+        .company-name {
+            font-size: 20px;
+            font-weight: bold;
+            color: #6f42c1;
+        }
+        .report-period {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 30px;
+            border-left: 5px solid #6f42c1;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .summary-card {
+            background: linear-gradient(135deg, #6f42c1 0%, #8e44ad 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        .summary-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100px;
+            height: 100px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+        }
+        .summary-card h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .summary-card .value {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 0;
+            position: relative;
+            z-index: 1;
+        }
+        .financial-breakdown {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 25px;
+            border-radius: 10px;
+            margin: 30px 0;
+            border-left: 5px solid #6f42c1;
+        }
+        .breakdown-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #dee2e6;
+            font-size: 16px;
+        }
+        .breakdown-row:last-child {
+            border-bottom: 2px solid #6f42c1;
+            font-weight: bold;
+            font-size: 18px;
+            color: #6f42c1;
+        }
+        .breakdown-label {
+            font-weight: 500;
+        }
+        .breakdown-value {
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
+        .positive { color: #28a745; }
+        .negative { color: #dc3545; }
+        .neutral { color: #6c757d; }
+        .section {
+            margin-bottom: 40px;
+            page-break-inside: avoid;
+        }
+        .section-title {
+            font-size: 20px;
+            color: #6f42c1;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        th {
+            background-color: #6f42c1;
+            color: white;
+            padding: 15px 10px;
+            text-align: left;
+            font-weight: bold;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        tr:hover {
+            background-color: #f3e5f5;
+        }
+        .number {
+            text-align: right;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+        .currency {
+            color: #28a745;
+        }
+        .percentage {
+            color: #17a2b8;
+        }
+        .payment-method-card {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .payment-method-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .payment-method-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #6f42c1;
+        }
+        .success-rate {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .success-high { background-color: #d4edda; color: #155724; }
+        .success-medium { background-color: #fff3cd; color: #856404; }
+        .success-low { background-color: #f8d7da; color: #721c24; }
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        .metric-item {
+            text-align: center;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        .metric-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #6f42c1;
+            display: block;
+        }
+        .metric-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            margin-top: 5px;
+        }
+        .tax-breakdown, .discount-analysis {
+            background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .analysis-title {
+            color: #6f42c1;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        .analysis-title::before {
+            content: '📊';
+            margin-right: 10px;
+        }
+        
+        @media print {
+            body { margin: 0; }
+            .page-break { page-break-before: always; }
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="report-header">
+        <div class="company-info">
+            <div class="company-name">{{companyInfo.name}}</div>
+            {{#if companyInfo.address}}
+            <div>{{companyInfo.address}}</div>
+            {{/if}}
+        </div>
+        <h1 class="report-title">{{title}}</h1>
+        {{#if subtitle}}
+        <p class="report-subtitle">{{subtitle}}</p>
+        {{/if}}
+    </div>
+
+    <div class="report-period">
+        <strong>Report Period:</strong> {{formatDate data.filters.startDate}} to {{formatDate data.filters.endDate}}
+        <br>
+        <strong>Generated:</strong> {{formattedGeneratedAt}}
+        <br>
+        <strong>Generated by:</strong> {{generatedBy.userName}} ({{generatedBy.userRole}})
+    </div>
+
+    <!-- Financial Summary Cards -->
+    <div class="section">
+        <h2 class="section-title">Financial Overview</h2>
+        <div class="summary-grid">
+            <div class="summary-card">
+                <h3>Gross Revenue</h3>
+                <p class="value">{{formatCurrency data.summary.grossRevenue}}</p>
+            </div>
+            <div class="summary-card">
+                <h3>Net Revenue</h3>
+                <p class="value">{{formatCurrency data.summary.netRevenue}}</p>
+            </div>
+            <div class="summary-card">
+                <h3>Operating Revenue</h3>
+                <p class="value">{{formatCurrency data.summary.operatingRevenue}}</p>
+            </div>
+            <div class="summary-card">
+                <h3>Total Transactions</h3>
+                <p class="value">{{formatNumber data.summary.totalTransactions}}</p>
+            </div>
+            <div class="summary-card">
+                <h3>Avg Transaction</h3>
+                <p class="value">{{formatCurrency data.summary.avgTransactionValue}}</p>
+            </div>
+            <div class="summary-card">
+                <h3>Total Tax Collected</h3>
+                <p class="value">{{formatCurrency data.summary.totalTax}}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Financial Breakdown -->
+    <div class="section">
+        <h2 class="section-title">Revenue Breakdown</h2>
+        <div class="financial-breakdown">
+            <div class="breakdown-row">
+                <span class="breakdown-label">Gross Revenue (Total Sales)</span>
+                <span class="breakdown-value positive">{{formatCurrency data.summary.grossRevenue}}</span>
+            </div>
+            <div class="breakdown-row">
+                <span class="breakdown-label">(-) Taxes</span>
+                <span class="breakdown-value negative">{{formatCurrency data.summary.totalTax}}</span>
+            </div>
+            <div class="breakdown-row">
+                <span class="breakdown-label">(=) Net Revenue</span>
+                <span class="breakdown-value positive">{{formatCurrency data.summary.netRevenue}}</span>
+            </div>
+            <div class="breakdown-row">
+                <span class="breakdown-label">(-) Discounts Given</span>
+                <span class="breakdown-value negative">{{formatCurrency data.summary.totalDiscounts}}</span>
+            </div>
+            <div class="breakdown-row">
+                <span class="breakdown-label">(-) Refunds Processed</span>
+                <span class="breakdown-value negative">{{formatCurrency data.summary.totalRefunds}}</span>
+            </div>
+            <div class="breakdown-row">
+                <span class="breakdown-label">(+) Service Charges</span>
+                <span class="breakdown-value positive">{{formatCurrency data.summary.totalServiceCharges}}</span>
+            </div>
+            <div class="breakdown-row">
+                <span class="breakdown-label">(+) Tips Received</span>
+                <span class="breakdown-value positive">{{formatCurrency data.summary.totalTips}}</span>
+            </div>
+            <div class="breakdown-row">
+                <span class="breakdown-label"><strong>Operating Revenue</strong></span>
+                <span class="breakdown-value">{{formatCurrency data.summary.operatingRevenue}}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Revenue by Period -->
+    {{#if data.byPeriod}}
+    <div class="section page-break">
+        <h2 class="section-title">Financial Performance by Period</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Period</th>
+                    <th>Gross Revenue</th>
+                    <th>Net Revenue</th>
+                    <th>Tax</th>
+                    <th>Discounts</th>
+                    <th>Transactions</th>
+                    <th>Avg Transaction</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.byPeriod}}
+                <tr>
+                    <td><strong>{{this.period}}</strong></td>
+                    <td class="number currency">{{formatCurrency this.grossRevenue}}</td>
+                    <td class="number currency">{{formatCurrency this.netRevenue}}</td>
+                    <td class="number">{{formatCurrency this.totalTax}}</td>
+                    <td class="number negative">{{formatCurrency this.totalDiscounts}}</td>
+                    <td class="number">{{formatNumber this.totalTransactions}}</td>
+                    <td class="number currency">{{formatCurrency this.avgTransactionValue}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+    {{/if}}
+
+    <!-- Revenue by Branch -->
+    {{#if data.byBranch}}
+    <div class="section">
+        <h2 class="section-title">Financial Performance by Branch</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Branch</th>
+                    <th>Gross Revenue</th>
+                    <th>Net Revenue</th>
+                    <th>Contribution %</th>
+                    <th>Transactions</th>
+                    <th>Avg Transaction</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.byBranch}}
+                <tr>
+                    <td><strong>{{this.branchName}}</strong></td>
+                    <td class="number currency">{{formatCurrency this.metrics.grossRevenue}}</td>
+                    <td class="number currency">{{formatCurrency this.metrics.netRevenue}}</td>
+                    <td class="number percentage">{{formatPercent this.contribution}}</td>
+                    <td class="number">{{formatNumber this.metrics.totalTransactions}}</td>
+                    <td class="number currency">{{formatCurrency this.metrics.avgTransactionValue}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+    {{/if}}
+
+    <!-- Payment Methods Analysis -->
+    {{#if data.paymentMethods}}
+    <div class="section">
+        <h2 class="section-title">Payment Methods Analysis</h2>
+        {{#each data.paymentMethods}}
+        <div class="payment-method-card">
+            <div class="payment-method-header">
+                <div class="payment-method-name">💳 {{this.paymentMethod}}</div>
+                <div class="success-rate {{#if (gt this.successRate 90)}}success-high{{else}}{{#if (gt this.successRate 70)}}success-medium{{else}}success-low{{/if}}{{/if}}">
+                    {{formatPercent this.successRate}} Success Rate
+                </div>
+            </div>
+            <div class="metric-grid">
+                <div class="metric-item">
+                    <span class="metric-value">{{formatNumber this.transactionCount}}</span>
+                    <span class="metric-label">Transactions</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-value">{{formatCurrency this.totalAmount}}</span>
+                    <span class="metric-label">Total Amount</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-value">{{formatPercent this.percentage}}</span>
+                    <span class="metric-label">Revenue Share</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-value">{{formatCurrency this.avgTransactionValue}}</span>
+                    <span class="metric-label">Avg Transaction</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-value">{{formatPercent this.failureRate}}</span>
+                    <span class="metric-label">Failure Rate</span>
+                </div>
+            </div>
+        </div>
+        {{/each}}
+    </div>
+    {{/if}}
+
+    <!-- Tax Breakdown -->
+    {{#if data.taxBreakdown}}
+    <div class="section">
+        <h2 class="section-title">Tax Analysis</h2>
+        <div class="tax-breakdown">
+            <div class="analysis-title">Tax Breakdown by Rate</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tax Type</th>
+                        <th>Amount Collected</th>
+                        <th>Percentage of Total Tax</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each data.taxBreakdown}}
+                    <tr>
+                        <td><strong>{{this.taxType}}</strong></td>
+                        <td class="number currency">{{formatCurrency this.amount}}</td>
+                        <td class="number percentage">{{formatPercent this.percentage}}</td>
+                    </tr>
+                    {{/each}}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {{/if}}
+
+    <!-- Discount Analysis -->
+    {{#if data.discountAnalysis}}
+    <div class="section">
+        <h2 class="section-title">Discount Impact Analysis</h2>
+        <div class="discount-analysis">
+            <div class="analysis-title">Discount Breakdown by Type</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Discount Type</th>
+                        <th>Total Discount</th>
+                        <th>Orders Count</th>
+                        <th>Avg Discount/Order</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each data.discountAnalysis}}
+                    <tr>
+                        <td><strong>{{this.discountType}}</strong></td>
+                        <td class="number negative">{{formatCurrency this.totalDiscount}}</td>
+                        <td class="number">{{formatNumber this.orderCount}}</td>
+                        <td class="number">{{formatCurrency this.avgDiscountPerOrder}}</td>
+                    </tr>
+                    {{/each}}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {{/if}}
+
+    <!-- Key Financial Insights -->
+    <div class="section">
+        <h2 class="section-title">💡 Financial Insights & Recommendations</h2>
+        <div style="background: linear-gradient(135deg, #f3e5f5 0%, #e8f5e8 100%); padding: 25px; border-radius: 10px; border-left: 5px solid #6f42c1;">
+            <h4 style="color: #6f42c1; margin-top: 0;">Key Performance Indicators:</h4>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin: 20px 0;">
+                <div>
+                    <h5 style="color: #155724;">💰 Revenue Health:</h5>
+                    <ul style="color: #155724; line-height: 1.8;">
+                        <li><strong>Revenue Efficiency:</strong> {{formatPercent (divide data.summary.netRevenue data.summary.grossRevenue)}} of gross revenue retained after taxes</li>
+                        <li><strong>Average Transaction:</strong> {{formatCurrency data.summary.avgTransactionValue}} per customer</li>
+                        <li><strong>Tax Burden:</strong> {{formatPercent (divide data.summary.totalTax data.summary.grossRevenue)}} of gross revenue</li>
+                    </ul>
+                </div>
+                <div>
+                    <h5 style="color: #155724;">📊 Business Efficiency:</h5>
+                    <ul style="color: #155724; line-height: 1.8;">
+                        <li><strong>Discount Impact:</strong> {{formatPercent (divide data.summary.totalDiscounts data.summary.grossRevenue)}} revenue reduction from discounts</li>
+                        <li><strong>Service Revenue:</strong> {{formatCurrency data.summary.totalServiceCharges}} additional from service charges</li>
+                        <li><strong>Customer Tips:</strong> {{formatCurrency data.summary.totalTips}} in gratuities received</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h4 style="color: #6f42c1; margin-top: 25px;">Strategic Recommendations:</h4>
+            <div style="background: rgba(255,255,255,0.7); padding: 20px; border-radius: 8px; margin-top: 15px;">
+                <h5 style="color: #721c24;">🎯 Revenue Optimization:</h5>
+                <ul style="color: #721c24; line-height: 1.8;">
+                    {{#if (gt (divide data.summary.totalDiscounts data.summary.grossRevenue) 0.1)}}
+                    <li><strong>Discount Strategy Review:</strong> High discount rate ({{formatPercent (divide data.summary.totalDiscounts data.summary.grossRevenue)}}) - evaluate promotional effectiveness</li>
+                    {{/if}}
+                    {{#if data.paymentMethods}}
+                    {{#each data.paymentMethods}}
+                    {{#if (lt this.successRate 85)}}
+                    <li><strong>{{this.paymentMethod}} Integration:</strong> Low success rate ({{formatPercent this.successRate}}) - technical review needed</li>
+                    {{/if}}
+                    {{/each}}
+                    {{/if}}
+                    <li><strong>Transaction Value:</strong> Focus on increasing average transaction value through upselling</li>
+                    <li><strong>Payment Efficiency:</strong> Promote higher-success-rate payment methods</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer" style="margin-top: 40px; text-align: center; color: #666; font-size: 12px; border-top: 1px solid #dee2e6; padding-top: 20px;">
+        <p>This report was generated on {{formattedGeneratedAt}} by {{generatedBy.userName}}</p>
+        <p>{{companyInfo.name}} - Financial Summary Report</p>
+        <p><strong>Confidential Financial Information</strong> - For Internal Use Only</p>
+        {{#if companyInfo.email}}
+        <p>Contact: {{companyInfo.email}}</p>
+        {{/if}}
+    </div>
+</body>
+</html>

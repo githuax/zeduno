@@ -1,4 +1,5 @@
 import axios from 'axios';
+
 import { ITenant } from '../models/Tenant';
 
 // Direct M-Pesa Configuration (Safaricom)

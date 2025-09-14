@@ -1,6 +1,7 @@
-import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
+
 import restaurantHero from "@/assets/restaurant-hero.jpg";
+import { Button } from "@/components/ui/button";
 
 const HeroSection = () => {
   return null; // Hidden component

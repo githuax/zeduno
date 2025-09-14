@@ -6,16 +6,17 @@
  * Get the base URL for API calls
  */
 export const getBaseUrl = (): string => {
-  return import.meta.env.VITE_API_URL || window.location.origin;
+  // Always use window.location.origin for proper URL construction
+  return window.location.origin;
 };
 
 /**
  * Get the base URL for assets (uploads, images, etc.)
- * This removes /api from the end if it exists since assets are served from root
+ * Assets are served from the root domain, not from /api
  */
 export const getAssetBaseUrl = (): string => {
-  const baseUrl = getBaseUrl();
-  return baseUrl.replace(/\/api$/, '');
+  // Always use the origin for assets to avoid file:// issues
+  return window.location.origin;
 };
 
 /**

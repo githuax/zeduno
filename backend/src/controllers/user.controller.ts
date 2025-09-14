@@ -1,8 +1,11 @@
-import { Request, Response, NextFunction } from 'express';
-import { User } from '../models/User';
-import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import { Request, Response, NextFunction } from 'express';
+import mongoose from 'mongoose';
+
 import AuditLog from '../models/AuditLog';
+import { Tenant } from '../models/Tenant';
+import { User } from '../models/User';
+import { emailService } from '../services/email.service';
 
 interface AuthRequest extends Request {
   user?: {
@@ -16,7 +19,7 @@ export const getAllUsers = async (req: AuthRequest, res: Response, next: NextFun
   try {
     const { tenantId, role } = req.user || {};
     
-    let query: any = {};
+    const query: any = {};
     
     // SuperAdmin can see all users, regular users only see their tenant users
     if (role !== 'superadmin' && tenantId) {
@@ -35,7 +38,7 @@ export const getUserById = async (req: AuthRequest, res: Response, next: NextFun
     const { tenantId, role } = req.user || {};
     const { id } = req.params;
     
-    let query: any = { _id: id };
+    const query: any = { _id: id };
     
     // SuperAdmin can see any user, regular users only see users from their tenant
     if (role !== 'superadmin' && tenantId) {
@@ -84,7 +87,7 @@ export const deleteUser = async (req: Request, res: Response, next: NextFunction
 
 export const getProfile = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const user = await User.findById(req.user.id).select('-password').populate('tenant', 'name');
+    const user = await User.findById(req.user.id).select('-password').populate('tenantId', 'name');
     
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
@@ -100,7 +103,7 @@ export const getProfile = async (req: AuthRequest, res: Response, next: NextFunc
       firstName: user.firstName,
       lastName: user.lastName,
       role: user.role,
-      tenantName: user.tenant ? (user.tenant as any).name : undefined,
+      tenantName: user.tenantId ? (user.tenantId as any).name : undefined,
       passwordLastChanged: user.passwordLastChanged || user.createdAt,
       passwordExpiryDate,
       lastLogin: user.lastLogin,
@@ -174,6 +177,39 @@ export const createUser = async (req: AuthRequest, res: Response, next: NextFunc
     });
 
     await newUser.save();
+
+    // Send welcome email if role is customer or staff
+    try {
+      if (['customer', 'staff'].includes(role)) {
+        const tenant = await Tenant.findById(newUser.tenantId);
+        if (tenant) {
+          await emailService.sendEmail({
+            tenantId: newUser.tenantId,
+            to: newUser.email,
+            toName: `${newUser.firstName} ${newUser.lastName}`,
+            templateSlug: 'welcome-user',
+            templateData: {
+              customerName: `${newUser.firstName} ${newUser.lastName}`,
+              restaurantName: tenant.name,
+              menuUrl: `${process.env.FRONTEND_URL || 'http://localhost:8080'}/menu`,
+              supportEmail: tenant.email || 'support@dineservehub.com',
+              restaurantPhone: tenant.phone || '',
+              currentYear: new Date().getFullYear()
+            },
+            category: 'user',
+            type: 'welcome',
+            priority: 'normal',
+            metadata: {
+              userId: newUser._id.toString(),
+              role: newUser.role
+            }
+          });
+        }
+      }
+    } catch (emailError) {
+      console.error('Error sending welcome email:', emailError);
+      // Don't fail user creation if email fails
+    }
 
     // Return user without password
     const userResponse = {

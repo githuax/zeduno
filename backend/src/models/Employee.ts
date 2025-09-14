@@ -160,7 +160,8 @@ EmployeeSchema.pre('save', function(next) {
 
 // Index for better performance
 EmployeeSchema.index({ employeeId: 1 });
-EmployeeSchema.index({ email: 1 });
+// Email already has unique: true which creates an index automatically
+// EmployeeSchema.index({ email: 1 }); // REMOVED: Redundant - unique constraint creates index
 EmployeeSchema.index({ role: 1, status: 1 });
 
 export default mongoose.model<IEmployee>('Employee', EmployeeSchema);

@@ -1,5 +1,5 @@
-import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
+import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IUser extends Document {
   email: string;
@@ -8,7 +8,14 @@ export interface IUser extends Document {
   lastName: string;
   role: 'superadmin' | 'admin' | 'manager' | 'staff' | 'customer';
   tenantId?: mongoose.Types.ObjectId;
-  tenant?: mongoose.Types.ObjectId;
+  
+  // Branch Management
+  assignedBranches?: mongoose.Types.ObjectId[];
+  currentBranch?: mongoose.Types.ObjectId;
+  canSwitchBranches?: boolean;
+  defaultBranch?: mongoose.Types.ObjectId;
+  branchRole?: 'branch_manager' | 'branch_staff' | 'multi_branch';
+  
   isActive: boolean;
   mustChangePassword: boolean;
   passwordLastChanged?: Date;
@@ -55,11 +62,32 @@ const userSchema = new Schema<IUser>(
       required: function() {
         return this.role !== 'superadmin';
       },
+      // index: true - REMOVED: Compound indexes below provide better performance
     },
-    tenant: {
+    
+    // Branch Management Fields
+    assignedBranches: [{
       type: Schema.Types.ObjectId,
-      ref: 'Tenant',
+      ref: 'Branch',
+    }],
+    currentBranch: {
+      type: Schema.Types.ObjectId,
+      ref: 'Branch',
     },
+    canSwitchBranches: {
+      type: Boolean,
+      default: false,
+    },
+    defaultBranch: {
+      type: Schema.Types.ObjectId,
+      ref: 'Branch',
+    },
+    branchRole: {
+      type: String,
+      enum: ['branch_manager', 'branch_staff', 'multi_branch'],
+      default: 'branch_staff',
+    },
+    
     isActive: {
       type: Boolean,
       default: true,
@@ -166,5 +194,19 @@ userSchema.post('findOneAndUpdate', async function(doc) {
     }
   }
 });
+
+// Create indexes for optimal query performance
+userSchema.index({ tenantId: 1, role: 1 });
+userSchema.index({ tenantId: 1, isActive: 1 });
+userSchema.index({ assignedBranches: 1 });
+userSchema.index({ currentBranch: 1 });
+// Compound index for efficient multi-tenant email lookups
+// Note: email field has unique:true which creates its own index,
+// but this compound index optimizes queries like: 
+// User.findOne({ email: 'user@example.com', tenantId: tenantId })
+// This is essential for multi-tenant systems where we often need to find
+// users by email within a specific tenant context for performance
+userSchema.index({ email: 1, tenantId: 1 }, { name: 'email_tenant_lookup' });
+userSchema.index({ tenantId: 1, branchRole: 1 });
 
 export const User = mongoose.model<IUser>('User', userSchema);

@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import { body } from 'express-validator';
-import { authLimiter } from '../middleware/rateLimiter';
+
 import { register, login, logout, refreshToken, changePassword } from '../controllers/auth.controller';
 import { authenticate } from '../middleware/auth';
+import { authLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 

@@ -1,5 +1,6 @@
-import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import mongoose from 'mongoose';
+
 import { User } from '../models/User';
 
 const resetManagerPassword = async (): Promise<void> => {

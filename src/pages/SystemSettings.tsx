@@ -1,13 +1,3 @@
-import { useState } from 'react';
-import { useNavigate } from "react-router-dom";
-import Header from "@/components/layout/Header";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { useSystemHealth } from "@/hooks/useSettings";
-import { useIsTenantAdmin, PermissionGate } from "@/contexts/TenantContext";
-import TenantSwitcher from "@/components/tenant/TenantSwitcher";
 import { 
   Settings, 
   Shield, 
@@ -27,6 +17,17 @@ import {
   Wifi,
   Building
 } from "lucide-react";
+import { useState } from 'react';
+import { useNavigate } from "react-router-dom";
+
+import Header from "@/components/layout/Header";
+import TenantSwitcher from "@/components/tenant/TenantSwitcher";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useIsTenantAdmin, PermissionGate } from "@/contexts/TenantContext";
+import { useSystemHealth } from "@/hooks/useSettings";
 
 const SystemSettings = () => {
   const navigate = useNavigate();

@@ -141,7 +141,7 @@ const DeliverySchema: Schema = new Schema(
 // Automatically add tracking update when status changes
 DeliverySchema.pre('save', function(next) {
   if (this.isModified('status')) {
-    this.trackingUpdates.push({
+    (this.trackingUpdates as ITrackingUpdate[]).push({
       status: this.status,
       timestamp: new Date(),
     } as ITrackingUpdate);

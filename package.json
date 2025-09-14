@@ -17,7 +17,26 @@
     "docker:down": "docker-compose down",
     "k8s:deploy": "cd k8s && sh deploy.sh",
     "dev:full": "concurrently \"cd backend && npm run dev\" \"npm run dev\"",
-    "setup:dev": "./dev-setup.sh"
+    "setup:dev": "./dev-setup.sh",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:chromium": "playwright test --project=chromium",
+    "test:e2e:firefox": "playwright test --project=firefox",
+    "test:e2e:webkit": "playwright test --project=webkit",
+    "test:e2e:mobile": "playwright test --project=\"Mobile Chrome\" --project=\"Mobile Safari\"",
+    "test:e2e:auth": "playwright test tests/e2e/01-authentication.spec.ts",
+    "test:e2e:tenants": "playwright test tests/e2e/02-tenant-management.spec.ts",
+    "test:e2e:branches": "playwright test tests/e2e/03-branch-management.spec.ts",
+    "test:e2e:users": "playwright test tests/e2e/04-user-management.spec.ts",
+    "test:e2e:orders": "playwright test tests/e2e/05-order-workflow.spec.ts",
+    "test:e2e:performance": "playwright test tests/e2e/06-performance-accessibility.spec.ts",
+    "test:e2e:report": "playwright show-report",
+    "playwright:install": "playwright install",
+    "playwright:install-deps": "playwright install-deps"
   },
   "dependencies": {
     "@emotion/react": "^11.11.4",
@@ -56,6 +75,7 @@
     "@radix-ui/react-tooltip": "^1.2.7",
     "@tanstack/react-query": "^5.83.0",
     "@types/leaflet": "^1.9.20",
+    "@types/react-window": "^1.8.8",
     "axios": "^1.11.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -76,6 +96,8 @@
     "react-leaflet": "^4.2.1",
     "react-resizable-panels": "^2.1.9",
     "react-router-dom": "^6.30.1",
+    "react-window": "^2.1.0",
+    "react-window-infinite-loader": "^1.0.10",
     "recharts": "^2.15.4",
     "socket.io-client": "^4.8.1",
     "sonner": "^1.7.4",
@@ -86,6 +108,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
+    "@playwright/test": "^1.40.0",
     "@tailwindcss/typography": "^0.5.16",
     "@types/node": "^22.16.5",
     "@types/react": "^18.3.23",
@@ -94,6 +117,8 @@
     "autoprefixer": "^10.4.21",
     "concurrently": "^8.2.2",
     "eslint": "^9.32.0",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
@@ -103,6 +128,7 @@
     "terser": "^5.43.1",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
-    "vite": "^5.4.19"
+    "vite": "^5.4.19",
+    "vitest": "^1.0.0"
   }
 }

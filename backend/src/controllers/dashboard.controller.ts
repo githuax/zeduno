@@ -1,8 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
+
+import { MenuItem } from '../models/MenuItem';
 import Order from '../models/Order';
 import Table from '../models/Table';
-import { MenuItem } from '../models/MenuItem';
 import { User } from '../models/User';
+import { Branch } from '../models/Branch';
+import { Ingredient } from '../models/Ingredient';
 
 interface AuthRequest extends Request {
   user?: {
@@ -49,7 +52,21 @@ export const getDashboardStats = async (req: AuthRequest, res: Response, next: N
       activeStaff,
       
       // Revenue stats (today)
-      todayRevenue
+      todayRevenue,
+
+      // Branch stats
+      totalBranches,
+      activeBranches,
+
+      // Inventory low stock and expiring counts
+      lowStockCount,
+      expiringSoonCount,
+
+      // Delivery status splits
+      deliveryPreparing,
+      deliveryReady,
+      deliveryOutForDelivery,
+      deliveryDeliveredToday
     ] = await Promise.all([
       // Order queries
       Order.countDocuments({ 
@@ -105,7 +122,40 @@ export const getDashboardStats = async (req: AuthRequest, res: Response, next: N
             totalRevenue: { $sum: '$total' }
           }
         }
-      ]).then(result => result[0]?.totalRevenue || 0)
+      ]).then(result => result[0]?.totalRevenue || 0),
+
+      // Branch queries
+      Branch.countDocuments({ tenantId }),
+      Branch.countDocuments({ tenantId, isActive: true, status: 'active' }),
+
+      // Inventory low stock: currentStock <= minStockLevel
+      Ingredient.countDocuments({
+        tenantId,
+        isActive: true,
+        $expr: { $lte: ['$currentStock', '$minStockLevel'] }
+      }),
+      // Expiring soon (next 7 days)
+      (async () => {
+        const now = new Date();
+        const future = new Date();
+        future.setDate(future.getDate() + 7);
+        return Ingredient.countDocuments({
+          tenantId,
+          isActive: true,
+          expiryDate: { $gte: now, $lte: future }
+        });
+      })(),
+
+      // Delivery splits
+      Order.countDocuments({ tenantId, orderType: 'delivery', status: 'preparing' }),
+      Order.countDocuments({ tenantId, orderType: 'delivery', status: 'ready' }),
+      Order.countDocuments({ tenantId, orderType: 'delivery', status: 'out-for-delivery' }),
+      Order.countDocuments({
+        tenantId,
+        orderType: 'delivery',
+        status: 'delivered',
+        createdAt: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) }
+      })
     ]);
 
     // Debug logging for staff count
@@ -146,7 +196,17 @@ export const getDashboardStats = async (req: AuthRequest, res: Response, next: N
           ready: readyOrders,
           totalToday: totalOrdersToday,
           takeaway: takeawayOrders,
-          delivery: deliveryOrders
+          delivery: deliveryOrders,
+          deliveryStatus: {
+            preparing: deliveryPreparing,
+            ready: deliveryReady,
+            outForDelivery: deliveryOutForDelivery,
+            deliveredToday: deliveryDeliveredToday
+          }
+        },
+        inventory: {
+          lowStock: lowStockCount,
+          expiringSoon: expiringSoonCount
         },
         tables: {
           total: totalTables,
@@ -164,6 +224,10 @@ export const getDashboardStats = async (req: AuthRequest, res: Response, next: N
           total: totalStaff,
           active: activeStaff,
           onShift: activeStaff // For now, assuming active = on shift
+        },
+        branches: {
+          total: totalBranches,
+          active: activeBranches
         },
         revenue: {
           today: Math.round(todayRevenue * 100) / 100 // Round to 2 decimal places

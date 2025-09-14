@@ -1,11 +1,12 @@
 import { Router } from 'express';
-import { authenticate, authorize } from '../middleware/auth';
+
 import {
   getShifts,
   createShift,
   updateShift,
   deleteShift
 } from '../controllers/shift.controller';
+import { authenticate, authorize } from '../middleware/auth';
 
 const router = Router();
 

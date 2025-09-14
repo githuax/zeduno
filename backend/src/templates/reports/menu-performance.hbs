@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{title}}</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            line-height: 1.6;
+        }
+        .report-header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #28a745;
+            padding-bottom: 20px;
+        }
+        .report-title {
+            color: #28a745;
+            font-size: 28px;
+            font-weight: bold;
+            margin: 0;
+        }
+        .report-subtitle {
+            color: #666;
+            font-size: 14px;
+            margin: 10px 0 0 0;
+        }
+        .company-info {
+            margin-bottom: 15px;
+        }
+        .company-name {
+            font-size: 20px;
+            font-weight: bold;
+            color: #28a745;
+        }
+        .report-period {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 30px;
+            border-left: 5px solid #28a745;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .summary-card {
+            background: linear-gradient(135deg, #28a745 0%, #34ce57 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .summary-card h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .summary-card .value {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 0;
+        }
+        .section {
+            margin-bottom: 40px;
+            page-break-inside: avoid;
+        }
+        .section-title {
+            font-size: 20px;
+            color: #28a745;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        th {
+            background-color: #28a745;
+            color: white;
+            padding: 15px 10px;
+            text-align: left;
+            font-weight: bold;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        tr:hover {
+            background-color: #e8f5e8;
+        }
+        .number {
+            text-align: right;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+        .currency {
+            color: #28a745;
+        }
+        .popularity-bar {
+            background-color: #e9ecef;
+            height: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+        .popularity-fill {
+            background: linear-gradient(90deg, #28a745, #34ce57);
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+        .alert-low-stock {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+        .alert-out-stock {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .category-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+        }
+        .category-title {
+            color: #28a745;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        .item-performance {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .item-performance:last-child {
+            border-bottom: none;
+        }
+        .performance-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        .performance-excellent { background-color: #28a745; }
+        .performance-good { background-color: #17a2b8; }
+        .performance-average { background-color: #ffc107; }
+        .performance-poor { background-color: #dc3545; }
+        
+        @media print {
+            body { margin: 0; }
+            .page-break { page-break-before: always; }
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="report-header">
+        <div class="company-info">
+            <div class="company-name">{{companyInfo.name}}</div>
+            {{#if companyInfo.address}}
+            <div>{{companyInfo.address}}</div>
+            {{/if}}
+        </div>
+        <h1 class="report-title">{{title}}</h1>
+        {{#if subtitle}}
+        <p class="report-subtitle">{{subtitle}}</p>
+        {{/if}}
+    </div>
+
+    <div class="report-period">
+        <strong>Report Period:</strong> {{formatDate data.filters.startDate}} to {{formatDate data.filters.endDate}}
+        <br>
+        <strong>Generated:</strong> {{formattedGeneratedAt}}
+        <br>
+        <strong>Generated by:</strong> {{generatedBy.userName}} ({{generatedBy.userRole}})
+    </div>
+
+    <!-- Summary Section -->
+    <div class="section">
+        <h2 class="section-title">Menu Performance Summary</h2>
+        <div class="summary-grid">
+            <div class="summary-card">
+                <h3>Total Menu Items</h3>
+                <p class="value">{{formatNumber data.summary.totalMenuItems}}</p>
+            </div>
+            <div class="summary-card">
+                <h3>Total Categories</h3>
+                <p class="value">{{formatNumber data.summary.totalCategories}}</p>
+            </div>
+            <div class="summary-card">
+                <h3>Items Ordered</h3>
+                <p class="value">{{formatNumber data.summary.totalOrderedItems}}</p>
+            </div>
+            {{#if data.summary.topSellingItem}}
+            <div class="summary-card">
+                <h3>Top Seller</h3>
+                <p class="value" style="font-size: 16px;">{{data.summary.topSellingItem.itemName}}</p>
+            </div>
+            {{/if}}
+        </div>
+        
+        {{#if data.summary.topSellingItem}}
+        <div style="background-color: #d4edda; padding: 15px; border-radius: 5px; margin-top: 20px;">
+            <h4 style="margin: 0 0 10px 0; color: #155724;">🏆 Best Performing Item</h4>
+            <p style="margin: 0;"><strong>{{data.summary.topSellingItem.itemName}}</strong> - {{data.summary.topSellingItem.categoryName}}</p>
+            <p style="margin: 5px 0 0 0;">Ordered {{formatNumber data.summary.topSellingItem.totalOrdered}} times, generating {{formatCurrency data.summary.topSellingItem.totalRevenue}} in revenue</p>
+        </div>
+        {{/if}}
+    </div>
+
+    <!-- Top Performing Items -->
+    {{#if data.topPerformingItems}}
+    <div class="section">
+        <h2 class="section-title">Top Performing Menu Items</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Item Name</th>
+                    <th>Category</th>
+                    <th>Times Ordered</th>
+                    <th>Revenue</th>
+                    <th>Avg Price</th>
+                    <th>Performance</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.topPerformingItems}}
+                <tr>
+                    <td class="number">{{@index}}</td>
+                    <td><strong>{{this.itemName}}</strong></td>
+                    <td>{{this.categoryName}}</td>
+                    <td class="number">{{formatNumber this.totalOrdered}}</td>
+                    <td class="number currency">{{formatCurrency this.totalRevenue}}</td>
+                    <td class="number currency">{{formatCurrency this.avgPrice}}</td>
+                    <td>
+                        <div class="popularity-bar">
+                            <div class="popularity-fill" style="width: {{divide this.popularity 100}}%;"></div>
+                        </div>
+                    </td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+    {{/if}}
+
+    <!-- Category Performance -->
+    {{#if data.categoryPerformance}}
+    <div class="section page-break">
+        <h2 class="section-title">Category Performance Analysis</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Category Name</th>
+                    <th>Items Ordered</th>
+                    <th>Revenue</th>
+                    <th>Avg Items/Order</th>
+                    <th>Popularity Score</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.categoryPerformance}}
+                <tr>
+                    <td><strong>{{this.categoryName}}</strong></td>
+                    <td class="number">{{formatNumber this.totalOrdered}}</td>
+                    <td class="number currency">{{formatCurrency this.totalRevenue}}</td>
+                    <td class="number">{{this.avgItemsPerOrder}}</td>
+                    <td class="number">{{formatNumber this.popularityScore}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+    {{/if}}
+
+    <!-- Items by Category -->
+    {{#if data.itemsByCategory}}
+    <div class="section">
+        <h2 class="section-title">Detailed Performance by Category</h2>
+        {{#each data.itemsByCategory}}
+        <div class="category-section">
+            <div class="category-title">📂 {{this.categoryName}}</div>
+            {{#each this.items}}
+            <div class="item-performance">
+                <div style="display: flex; align-items: center; flex: 1;">
+                    <div class="performance-indicator {{#if (gt this.totalOrdered 100)}}performance-excellent{{else}}{{#if (gt this.totalOrdered 50)}}performance-good{{else}}{{#if (gt this.totalOrdered 10)}}performance-average{{else}}performance-poor{{/if}}{{/if}}{{/if}}"></div>
+                    <div>
+                        <div><strong>{{this.itemName}}</strong></div>
+                        <div style="font-size: 12px; color: #666;">{{formatCurrency this.avgPrice}} avg price</div>
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <div><strong>{{formatNumber this.totalOrdered}} orders</strong></div>
+                    <div style="font-size: 12px; color: #666;">{{formatCurrency this.totalRevenue}} revenue</div>
+                </div>
+            </div>
+            {{/each}}
+        </div>
+        {{/each}}
+    </div>
+    {{/if}}
+
+    <!-- Underperforming Items -->
+    {{#if data.underperformingItems}}
+    <div class="section">
+        <h2 class="section-title">⚠️ Items Needing Attention</h2>
+        <p style="color: #666; margin-bottom: 20px;">These items had no orders or very low performance during the reporting period.</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Item Name</th>
+                    <th>Category</th>
+                    <th>Current Price</th>
+                    <th>Times Ordered</th>
+                    <th>Recommendation</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.underperformingItems}}
+                <tr style="background-color: #fff3cd;">
+                    <td><strong>{{this.itemName}}</strong></td>
+                    <td>{{this.categoryName}}</td>
+                    <td class="number currency">{{formatCurrency this.avgPrice}}</td>
+                    <td class="number">{{formatNumber this.totalOrdered}}</td>
+                    <td style="color: #856404; font-size: 12px;">
+                        {{#if (eq this.totalOrdered 0)}}
+                        Consider promotion or review pricing
+                        {{else}}
+                        Monitor closely, consider menu placement
+                        {{/if}}
+                    </td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+    {{/if}}
+
+    <!-- Stock Alerts -->
+    {{#if data.stockAlerts}}
+    <div class="section">
+        <h2 class="section-title">📦 Inventory Alerts</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Item Name</th>
+                    <th>Current Stock</th>
+                    <th>Min Level</th>
+                    <th>Status</th>
+                    <th>Action Required</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.stockAlerts}}
+                <tr class="{{#if (eq this.status 'out')}}alert-out-stock{{else}}alert-low-stock{{/if}}">
+                    <td><strong>{{this.itemName}}</strong></td>
+                    <td class="number">{{formatNumber this.currentStock}}</td>
+                    <td class="number">{{formatNumber this.minStockLevel}}</td>
+                    <td>
+                        {{#if (eq this.status 'out')}}
+                        <span style="color: #721c24; font-weight: bold;">OUT OF STOCK</span>
+                        {{else}}
+                        <span style="color: #856404; font-weight: bold;">LOW STOCK</span>
+                        {{/if}}
+                    </td>
+                    <td>
+                        {{#if (eq this.status 'out')}}
+                        <strong>Immediate restock required</strong>
+                        {{else}}
+                        Restock soon
+                        {{/if}}
+                    </td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+    {{/if}}
+
+    <!-- Recommendations Section -->
+    <div class="section">
+        <h2 class="section-title">💡 Menu Optimization Recommendations</h2>
+        <div style="background-color: #e8f5e8; padding: 20px; border-radius: 8px; border-left: 5px solid #28a745;">
+            <h4 style="color: #155724; margin-top: 0;">Based on performance analysis:</h4>
+            <ul style="color: #155724; line-height: 1.8;">
+                {{#if data.topPerformingItems}}
+                <li><strong>Promote top performers:</strong> Feature your best-selling items more prominently in menus and marketing</li>
+                {{/if}}
+                {{#if data.underperformingItems}}
+                <li><strong>Review underperformers:</strong> {{data.underperformingItems.length}} items need attention - consider pricing, presentation, or removal</li>
+                {{/if}}
+                {{#if data.stockAlerts}}
+                <li><strong>Inventory management:</strong> {{data.stockAlerts.length}} items have stock issues - implement better inventory tracking</li>
+                {{/if}}
+                <li><strong>Category balance:</strong> Ensure well-performing categories have adequate menu representation</li>
+                <li><strong>Seasonal adjustments:</strong> Consider seasonal menu updates based on item performance trends</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="footer" style="margin-top: 40px; text-align: center; color: #666; font-size: 12px; border-top: 1px solid #dee2e6; padding-top: 20px;">
+        <p>This report was generated on {{formattedGeneratedAt}} by {{generatedBy.userName}}</p>
+        <p>{{companyInfo.name}} - Menu Performance Analysis Report</p>
+        {{#if companyInfo.email}}
+        <p>Contact: {{companyInfo.email}}</p>
+        {{/if}}
+    </div>
+</body>
+</html>
