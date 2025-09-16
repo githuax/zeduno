@@ -1,23 +1,23 @@
-import { useState, useEffect } from 'react';
 import { Plus, Truck, MapPin, Clock, Users, Route, Navigation, RefreshCw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
+import { useState, useEffect } from 'react';
+
 import { DeliveryOrderList } from '@/components/delivery/DeliveryOrderList';
+import { DeliveryTracking } from '@/components/delivery/DeliveryTracking';
 import { DriverManagement } from '@/components/delivery/DriverManagement';
 import { RouteOptimizer } from '@/components/delivery/RouteOptimizer';
-import { DeliveryTracking } from '@/components/delivery/DeliveryTracking';
-import { CreateOrderDialog } from '@/components/orders/CreateOrderDialog';
-import { OrderDetailsDialog } from '@/components/orders/OrderDetailsDialog';
-import { useOrders } from '@/hooks/useOrders';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CreateOrderDialog, OrderDetailsDialog } from '@/features/orders';
+import { useOrders } from '@/features/orders';
+import { toast } from '@/hooks/use-toast';
 import { useDeliveries } from '@/hooks/useDeliveries';
 import { useDrivers } from '@/hooks/useDrivers';
-import { Order, OrderStatus } from '@/types/order.types';
 import { DeliveryStatus } from '@/types/delivery.types';
-import { toast } from '@/hooks/use-toast';
+import { Order, OrderStatus } from '@/types/order.types';
 
 export default function DeliveryService() {
   const [selectedStatus, setSelectedStatus] = useState<DeliveryStatus | 'all'>('all');

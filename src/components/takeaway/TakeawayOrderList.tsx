@@ -1,10 +1,11 @@
 import { Clock, Phone, Package, Bell, Receipt, CheckCircle, AlertCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Order, OrderStatus } from '@/types/order.types';
 import { cn } from '@/lib/utils';
+import { Order, OrderStatus } from '@/types/order.types';
 
 interface TakeawayOrderListProps {
   orders: Order[];

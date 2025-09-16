@@ -1,17 +1,3 @@
-import { useState } from 'react';
-import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Progress } from "@/components/ui/progress";
-import { useSubscriptionPlans, useCreateTenant } from "@/hooks/useTenant";
-import { SubscriptionPlan, Tenant } from "@/types/tenant.types";
-import AddressMapWorking from "@/components/AddressMapWorking";
 import { 
   ArrowRight,
   ArrowLeft,
@@ -29,6 +15,21 @@ import {
   Shield,
   Star
 } from "lucide-react";
+import { useState } from 'react';
+import { useNavigate } from "react-router-dom";
+
+import AddressMapWorking from "@/components/AddressMapWorking";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import { useSubscriptionPlans, useCreateTenant } from "@/hooks/useTenant";
+import { SubscriptionPlan, Tenant } from "@/types/tenant.types";
 
 interface OnboardingData {
   // Business Information

@@ -1,12 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
-import Order, { IOrder } from '../models/Order';
-import Table from '../models/Table';
-import { MenuItem } from '../models/MenuItem';
 import { validationResult } from 'express-validator';
 import mongoose from 'mongoose';
-import { OrderService } from '../services/order.service';
+
+import { MenuItem } from '../models/MenuItem';
+import Order, { IOrder } from '../models/Order';
 import { Recipe } from '../models/Recipe';
+import Table from '../models/Table';
+import { Tenant } from '../models/Tenant';
+import { emailService } from '../services/email.service';
 import { InventoryService } from '../services/inventory.service';
+import { OrderService } from '../services/order.service';
 
 interface AuthRequest extends Request {
   user?: {
@@ -247,6 +250,51 @@ export const createOrder = async (req: AuthRequest, res: Response, next: NextFun
       .populate('items.menuItem')
       .populate('staffId', 'firstName lastName');
     
+    // Send order confirmation email
+    try {
+      if (orderData.customerEmail) {
+        const tenant = await Tenant.findById(orderData.tenantId);
+        if (tenant) {
+          await emailService.sendEmail({
+            tenantId: orderData.tenantId,
+            to: orderData.customerEmail,
+            toName: orderData.customerName || 'Valued Customer',
+            templateSlug: 'order-confirmation',
+            templateData: {
+              customerName: orderData.customerName || 'Valued Customer',
+              orderNumber: order.orderNumber,
+              orderTime: new Date().toLocaleString(),
+              estimatedTime: new Date(Date.now() + 30 * 60 * 1000).toLocaleString(), // 30 mins from now
+              deliveryType: orderData.orderType === 'delivery' ? 'delivery' : orderData.orderType === 'dine-in' ? 'service' : 'pickup',
+              deliveryAddress: orderData.deliveryAddress || '',
+              orderItems: populatedOrder.items.map(item => ({
+                name: (item.menuItem as any).name,
+                quantity: item.quantity,
+                price: `$${item.price.toFixed(2)}`
+              })),
+              orderTotal: `$${order.total.toFixed(2)}`,
+              trackingUrl: `${process.env.FRONTEND_URL || 'http://localhost:8080'}/orders/${order._id}`,
+              restaurantName: tenant.name,
+              restaurantPhone: tenant.phone || '',
+              supportEmail: tenant.email || 'support@dineservehub.com',
+              currentYear: new Date().getFullYear()
+            },
+            category: 'order',
+            type: 'order_confirmation',
+            priority: 'high',
+            metadata: {
+              orderId: order._id.toString(),
+              orderNumber: order.orderNumber,
+              customerEmail: orderData.customerEmail
+            }
+          });
+        }
+      }
+    } catch (emailError) {
+      console.error('Error sending order confirmation email:', emailError);
+      // Don't fail order creation if email fails
+    }
+    
     res.status(201).json(populatedOrder);
   } catch (error) {
     console.error('Create order error:', error);
@@ -319,23 +367,82 @@ export const updateOrder = async (req: AuthRequest, res: Response, next: NextFun
 export const updateOrderStatus = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, notes } = req.body;
     const tenantId = req.user?.tenantId;
+    const userId = req.user?.id || req.user?._id;
     
-    const order = await OrderService.updateOrderStatus(id, status, tenantId);
+    console.log(`📝 Updating order ${id} status to ${status} for tenant ${tenantId}`);
+    
+    const order = await OrderService.updateOrderStatus(id, status, tenantId, {
+      notes: notes || `Status updated to ${status} at ${new Date().toLocaleTimeString()}`,
+      updatedBy: userId
+    });
     
     if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'Order not found' 
+      });
     }
+    
+    console.log(`✅ Order ${order.orderNumber} status updated to ${status}`);
     
     // Update table status
     if (status === 'completed' && order.tableId) {
       await OrderService.updateTableAvailability(order.tableId.toString(), true);
     }
     
-    res.json(order);
+    // Send status update email for ready/completed orders
+    try {
+      if (['ready', 'completed'].includes(status) && order.customerEmail) {
+        const tenant = await Tenant.findById(order.tenantId);
+        if (tenant && status === 'ready') {
+          await emailService.sendEmail({
+            tenantId: order.tenantId,
+            to: order.customerEmail,
+            toName: order.customerName || 'Valued Customer',
+            templateSlug: 'order-ready',
+            templateData: {
+              customerName: order.customerName || 'Valued Customer',
+              orderNumber: order.orderNumber,
+              isDelivery: order.orderType === 'delivery',
+              estimatedDelivery: order.orderType === 'delivery' ? new Date(Date.now() + 15 * 60 * 1000).toLocaleString() : undefined,
+              deliveryAddress: order.deliveryAddress || '',
+              restaurantAddress: tenant.address || '',
+              pickupHours: '9:00 AM - 9:00 PM',
+              trackingUrl: `${process.env.FRONTEND_URL || 'http://localhost:8080'}/orders/${order._id}`,
+              restaurantName: tenant.name,
+              restaurantPhone: tenant.phone || '',
+              currentYear: new Date().getFullYear()
+            },
+            category: 'order',
+            type: 'order_ready',
+            priority: 'high',
+            metadata: {
+              orderId: order._id.toString(),
+              orderNumber: order.orderNumber,
+              orderStatus: status
+            }
+          });
+        }
+      }
+    } catch (emailError) {
+      console.error('Error sending order status email:', emailError);
+      // Don't fail status update if email fails
+    }
+    
+    res.json({
+      success: true,
+      order,
+      message: `Order status updated to ${status}`
+    });
   } catch (error) {
-    res.status(400).json({ message: 'Error updating order status', error });
+    console.error('❌ Error updating order status:', error);
+    res.status(400).json({ 
+      success: false,
+      message: 'Error updating order status', 
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 };
 

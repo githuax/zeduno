@@ -1,4 +1,5 @@
 import { Router } from 'express';
+
 import mpesaKCBController from '../controllers/mpesa-kcb.controller';
 
 const router = Router();

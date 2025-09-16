@@ -21,6 +21,29 @@ export interface OrderStatusUpdate {
   message?: string;
 }
 
+export interface KitchenOrderUpdate {
+  orderId: string;
+  orderNumber: string;
+  orderType: 'dine-in' | 'takeaway' | 'delivery';
+  status: 'confirmed' | 'preparing' | 'ready';
+  priority: 'low' | 'normal' | 'high' | 'urgent';
+  tableNumber?: string;
+  customerName: string;
+  items: Array<{
+    name: string;
+    quantity: number;
+    customizations?: Array<{ name: string; value: string; }>;
+    specialInstructions?: string;
+    status: 'pending' | 'preparing' | 'ready' | 'served' | 'cancelled';
+  }>;
+  kitchenNotes?: string;
+  preparationTime?: number;
+  createdAt: string;
+  timestamp: Date;
+  tenantId: string;
+  action: 'new' | 'updated' | 'cancelled';
+}
+
 interface UseSocketOptions {
   autoConnect?: boolean;
 }
@@ -119,6 +142,20 @@ export const useSocket = (options: UseSocketOptions = { autoConnect: true }) => 
     }
   };
 
+  const joinKitchenRoom = (tenantId: string) => {
+    if (socketRef.current?.connected && tenantId) {
+      console.log(`🍳 Joining kitchen room: ${tenantId}`);
+      socketRef.current.emit('join-kitchen', tenantId);
+    }
+  };
+
+  const leaveKitchenRoom = (tenantId: string) => {
+    if (socketRef.current?.connected && tenantId) {
+      console.log(`🍳 Leaving kitchen room: ${tenantId}`);
+      socketRef.current.emit('leave-kitchen', tenantId);
+    }
+  };
+
   const onPaymentStatusUpdate = (callback: (update: PaymentStatusUpdate) => void) => {
     if (socketRef.current) {
       socketRef.current.on('payment:status-update', callback);
@@ -143,6 +180,54 @@ export const useSocket = (options: UseSocketOptions = { autoConnect: true }) => 
     }
   };
 
+  const onKitchenOrderUpdate = (callback: (update: KitchenOrderUpdate) => void) => {
+    if (socketRef.current) {
+      socketRef.current.on('kitchen:order-update', callback);
+    }
+  };
+
+  const onKitchenNewOrder = (callback: (update: KitchenOrderUpdate) => void) => {
+    if (socketRef.current) {
+      socketRef.current.on('kitchen:new-order', callback);
+    }
+  };
+
+  const onKitchenOrderUpdated = (callback: (update: KitchenOrderUpdate) => void) => {
+    if (socketRef.current) {
+      socketRef.current.on('kitchen:order-updated', callback);
+    }
+  };
+
+  const onKitchenOrderCancelled = (callback: (update: KitchenOrderUpdate) => void) => {
+    if (socketRef.current) {
+      socketRef.current.on('kitchen:order-cancelled', callback);
+    }
+  };
+
+  const offKitchenOrderUpdate = (callback?: (update: KitchenOrderUpdate) => void) => {
+    if (socketRef.current) {
+      socketRef.current.off('kitchen:order-update', callback);
+    }
+  };
+
+  const offKitchenNewOrder = (callback?: (update: KitchenOrderUpdate) => void) => {
+    if (socketRef.current) {
+      socketRef.current.off('kitchen:new-order', callback);
+    }
+  };
+
+  const offKitchenOrderUpdated = (callback?: (update: KitchenOrderUpdate) => void) => {
+    if (socketRef.current) {
+      socketRef.current.off('kitchen:order-updated', callback);
+    }
+  };
+
+  const offKitchenOrderCancelled = (callback?: (update: KitchenOrderUpdate) => void) => {
+    if (socketRef.current) {
+      socketRef.current.off('kitchen:order-cancelled', callback);
+    }
+  };
+
   useEffect(() => {
     if (options.autoConnect) {
       connect();
@@ -161,10 +246,20 @@ export const useSocket = (options: UseSocketOptions = { autoConnect: true }) => 
     disconnect,
     joinOrderRoom,
     joinUserRoom,
+    joinKitchenRoom,
+    leaveKitchenRoom,
     onPaymentStatusUpdate,
     onOrderStatusUpdate,
     offPaymentStatusUpdate,
     offOrderStatusUpdate,
+    onKitchenOrderUpdate,
+    onKitchenNewOrder,
+    onKitchenOrderUpdated,
+    onKitchenOrderCancelled,
+    offKitchenOrderUpdate,
+    offKitchenNewOrder,
+    offKitchenOrderUpdated,
+    offKitchenOrderCancelled,
   };
 };
 
@@ -198,5 +293,95 @@ export const usePaymentStatus = (orderId: string) => {
     paymentStatus,
     connected,
     socket
+  };
+};
+
+// Hook specifically for kitchen updates
+export const useKitchenUpdates = (tenantId: string, onNewOrder?: (order: KitchenOrderUpdate) => void) => {
+  const [orders, setOrders] = useState<KitchenOrderUpdate[]>([]);
+  const [lastUpdate, setLastUpdate] = useState<KitchenOrderUpdate | null>(null);
+  const { 
+    connected, 
+    joinKitchenRoom, 
+    leaveKitchenRoom,
+    onKitchenOrderUpdate,
+    onKitchenNewOrder,
+    onKitchenOrderUpdated,
+    onKitchenOrderCancelled,
+    offKitchenOrderUpdate,
+    offKitchenNewOrder,
+    offKitchenOrderUpdated,
+    offKitchenOrderCancelled
+  } = useSocket();
+
+  useEffect(() => {
+    if (connected && tenantId) {
+      console.log('🍳 Setting up kitchen WebSocket listeners for tenant:', tenantId);
+      
+      // Join the kitchen room
+      joinKitchenRoom(tenantId);
+
+      // Handle new orders
+      const handleNewOrder = (update: KitchenOrderUpdate) => {
+        console.log('🍳 New kitchen order received:', update);
+        setOrders(prev => {
+          const exists = prev.find(o => o.orderId === update.orderId);
+          if (exists) {
+            return prev.map(o => o.orderId === update.orderId ? update : o);
+          }
+          return [update, ...prev];
+        });
+        setLastUpdate(update);
+        onNewOrder?.(update);
+      };
+
+      // Handle order updates
+      const handleOrderUpdate = (update: KitchenOrderUpdate) => {
+        console.log('🍳 Kitchen order updated:', update);
+        setOrders(prev => {
+          const exists = prev.find(o => o.orderId === update.orderId);
+          if (exists) {
+            // Update existing order
+            return prev.map(o => o.orderId === update.orderId ? update : o);
+          } else if (update.status === 'confirmed') {
+            // Add new confirmed order
+            return [update, ...prev];
+          }
+          return prev;
+        });
+        setLastUpdate(update);
+      };
+
+      // Handle cancelled orders
+      const handleOrderCancelled = (update: KitchenOrderUpdate) => {
+        console.log('🍳 Kitchen order cancelled:', update);
+        setOrders(prev => prev.filter(o => o.orderId !== update.orderId));
+        setLastUpdate(update);
+      };
+
+      // Set up listeners
+      onKitchenNewOrder(handleNewOrder);
+      onKitchenOrderUpdated(handleOrderUpdate);
+      onKitchenOrderCancelled(handleOrderCancelled);
+      onKitchenOrderUpdate(handleOrderUpdate); // General fallback
+
+      return () => {
+        // Clean up listeners
+        offKitchenNewOrder(handleNewOrder);
+        offKitchenOrderUpdated(handleOrderUpdate);
+        offKitchenOrderCancelled(handleOrderCancelled);
+        offKitchenOrderUpdate(handleOrderUpdate);
+        
+        // Leave kitchen room
+        leaveKitchenRoom(tenantId);
+      };
+    }
+  }, [connected, tenantId]);
+
+  return {
+    orders,
+    lastUpdate,
+    connected,
+    setOrders
   };
 };

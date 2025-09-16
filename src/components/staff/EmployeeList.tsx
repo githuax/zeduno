@@ -1,11 +1,13 @@
+import { formatDistanceToNow } from 'date-fns';
+import { Clock, Clock8, Phone, Mail, MapPin, Users, ToggleLeft, ToggleRight } from 'lucide-react';
 import { useState } from 'react';
+
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Clock, Clock8, Phone, Mail, MapPin, Users, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Employee } from '@/types/staff.types';
-import { formatDistanceToNow } from 'date-fns';
+
 
 interface EmployeeListProps {
   employees: Employee[];

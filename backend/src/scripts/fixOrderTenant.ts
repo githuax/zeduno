@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+
 import Order from '../models/Order';
 
 const connectDB = async () => {

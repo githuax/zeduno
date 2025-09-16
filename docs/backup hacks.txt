@@ -1,0 +1,29 @@
+ Use These Scripts
+
+  - Set an existing tenant admin’s password:
+      - cd backend
+      - npm run set:tenant-admin:password -- testadmin1@mail.com "Pass@123"
+  - Set a superadmin’s password (by email):
+      - cd backend
+      - npm run set:superadmin:password -- testadmin1@mail.com "Pass@123"
+  - Create a tenant admin (if the user doesn’t exist yet):
+      - cd backend
+      - npm run create:tenant-admin -- testadmin1@mail.com <tenant-slug-or-id> "Pass@123"
+	  
+What I changed
+
+  - Tenant creation dialog (frontend)
+      - Added “Generate temporary” toggle next to Admin Password (on by default).
+      - When on: password field is disabled and not required; backend generates a secure temp password.
+      - When off: password field becomes required (min 8 chars).
+      - File: src/pages/superadmin/TenantManagement.tsx
+  - Success feedback (frontend)
+      - After a successful create, if the backend returns initialPassword (dev only), it:
+          - Tries to copy it to the clipboard and shows a toast “Temporary admin password generated and copied to clipboard.”
+          - If clipboard copy fails, shows the password in the toast description.
+      - Otherwise, shows the normal success toast.
+      - File: src/pages/superadmin/TenantManagement.tsx
+  - Backend (already aligned)
+      - If admin password omitted, generates secure temp password and sets mustChangePassword=true.
+      - For non-production, returns { initialPassword } in the response.
+      - File: backend/src/controllers/superadmin.controller.ts (createTenant)

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Table } from '@/types/order.types';
+
 import { getApiUrl } from '@/config/api';
+import { Table } from '@/types/order.types';
 
 const API_URL = getApiUrl('tables');
 

@@ -1,18 +1,22 @@
-import express, { Application } from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import compression from 'compression';
-import morgan from 'morgan';
-import dotenv from 'dotenv';
-import path from 'path';
-import swaggerUi from 'swagger-ui-express';
 import { createServer } from 'http';
+import path from 'path';
+
+import compression from 'compression';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import express, { Application } from 'express';
+import helmet from 'helmet';
+import morgan from 'morgan';
 import { Server } from 'socket.io';
+import swaggerUi from 'swagger-ui-express';
+
+
 import { connectDB } from './config/database';
+import { swaggerSpec } from './config/swagger';
 import { errorHandler } from './middleware/errorHandler';
 import { rateLimiter } from './middleware/rateLimiter';
-import { swaggerSpec } from './config/swagger';
 import routes from './routes';
+import { validateEnv } from './config/env';
 
 dotenv.config();
 
@@ -25,33 +29,37 @@ app.set('trust proxy', true);
 // Create HTTP server
 const server = createServer(app);
 
+// Validate required environment configuration early
+validateEnv();
+
+// Helper to parse allowlist from environment
+const parseAllowedOrigins = (): string[] => {
+  const raw = process.env.ALLOWED_ORIGINS || process.env.CORS_ALLOWED_ORIGINS || '';
+  return raw
+    .split(',')
+    .map((o) => o.trim())
+    .filter((o) => o.length > 0);
+};
+
 // Initialize Socket.io
 const io = new Server(server, {
   cors: {
     origin: (origin, callback) => {
-      // Allow all origins for WebSocket in development
+      // Allow requests with no origin (Postman/mobile) and all in development
       if (!origin || process.env.NODE_ENV !== 'production') {
         return callback(null, true);
       }
-      
-      // Production allowed origins
-      const allowedOrigins = [
-        'https://zeduno.piskoe.com',
-        'http://192.168.2.43:8080',
-        'http://192.168.2.43:5173',
-        'http://localhost:3000',
-        'http://localhost:5173'
-      ];
-      
+
+      const allowedOrigins = parseAllowedOrigins();
       if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(null, true); // Allow all for now to avoid connection issues
+        return callback(null, true);
       }
+
+      return callback(null, false);
     },
     methods: ['GET', 'POST'],
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-id', 'x-branch-id']
   },
   transports: ['websocket', 'polling']
 });
@@ -85,23 +93,17 @@ const corsOptions = {
     }
     
     // Production allowed origins
-    const allowedOrigins = [
-      'https://zeduno.piskoe.com',
-      'http://192.168.2.43:8080',
-      'http://192.168.2.43:5173',
-      'http://localhost:3000',
-      'http://localhost:5173'
-    ];
+    const allowedOrigins = parseAllowedOrigins();
     
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(null, true); // Allow all for now
+      callback(null, false);
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-id', 'x-branch-id']
 };
 
 app.use(cors(corsOptions));
@@ -152,6 +154,53 @@ io.on('connection', (socket) => {
     console.log(`📦 Joined order room: ${orderId}`);
   });
 
+  // Join kitchen room for tenant-specific kitchen updates
+  socket.on('join-kitchen', (tenantId: string) => {
+    if (!tenantId) {
+      console.warn('⚠️ Cannot join kitchen room: tenantId is required');
+      return;
+    }
+    
+    const kitchenRoom = `kitchen:${tenantId}`;
+    socket.join(kitchenRoom);
+    console.log(`🍳 Kitchen joined room: ${kitchenRoom} (socket: ${socket.id})`);
+    
+    // Confirm joining
+    socket.emit('kitchen-room-joined', { tenantId, room: kitchenRoom });
+  });
+
+  // Join analytics room for real-time metrics updates
+  socket.on('join-analytics', (tenantId: string) => {
+    if (!tenantId) {
+      console.warn('⚠️ Cannot join analytics room: tenantId is required');
+      return;
+    }
+    
+    websocketService.joinAnalyticsRoom(socket.id, tenantId);
+  });
+
+  // Leave kitchen room
+  socket.on('leave-kitchen', (tenantId: string) => {
+    if (!tenantId) {
+      console.warn('⚠️ Cannot leave kitchen room: tenantId is required');
+      return;
+    }
+    
+    const kitchenRoom = `kitchen:${tenantId}`;
+    socket.leave(kitchenRoom);
+    console.log(`🍳 Kitchen left room: ${kitchenRoom} (socket: ${socket.id})`);
+  });
+
+  // Leave analytics room
+  socket.on('leave-analytics', (tenantId: string) => {
+    if (!tenantId) {
+      console.warn('⚠️ Cannot leave analytics room: tenantId is required');
+      return;
+    }
+    
+    websocketService.leaveAnalyticsRoom(socket.id, tenantId);
+  });
+
   socket.on('disconnect', (reason) => {
     console.log(`🔌 Client disconnected: ${socket.id}, reason: ${reason}`);
   });
@@ -181,3 +230,14 @@ export { io };
 // Initialize WebSocket service
 import { websocketService } from './services/websocket.service';
 websocketService.initialize(io);
+
+// Initialize Real-time Analytics Service
+import { realTimeAnalyticsService } from './services/realTimeAnalytics.service';
+realTimeAnalyticsService.initialize();
+console.log('📊 Real-time Analytics Service initialized');
+
+// Initialize Report Queue Service - Temporarily disabled due to TypeScript issues
+// import { reportQueueService } from './services/reportQueue.service';
+// reportQueueService.initialize().catch(error => {
+//   console.error('Failed to initialize Report Queue Service:', error);
+// });

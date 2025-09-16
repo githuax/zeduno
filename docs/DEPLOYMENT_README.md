@@ -129,6 +129,16 @@ PORT=5000
 NODE_ENV=production
 FRONTEND_URL=https://yourdomain.com
 
+# CORS allowlist (comma-separated) — required in production
+ALLOWED_ORIGINS=https://yourdomain.com,https://admin.yourdomain.com
+
+# Zed Business (M‑Pesa via KCB) — required in production
+ZED_API_BASE_URL=https://api.zed.business
+ZED_AUTH_TOKEN=your-zed-business-token
+ZED_EXTERNAL_ORIGIN=your-zed-business-id
+# Optional: header name for token, defaults to X-Authorization
+ZED_API_KEY_HEADER=X-Authorization
+
 # Additional configurations...
 ```
 

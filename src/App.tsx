@@ -1,29 +1,35 @@
-import { Suspense, lazy } from "react";
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
+import { Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { TenantProvider } from "@/contexts/TenantContext";
+
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
+import { TenantProvider } from "@/contexts/TenantContext";
+
 import ProtectedRoute from "./components/ProtectedRoute";
-import { Loader2 } from "lucide-react";
+import { AnalyticsLoading } from "./components/loading/AnalyticsLoading";
+import { InventoryLoading } from "./components/loading/InventoryLoading";
 
 // Critical pages - load immediately
-import Login from "./pages/Login";
+import { Login } from "./features/auth";
 import Index from "./pages/Index";
 
 // Lazy load all other pages
 const Dashboard = lazy(() => import("./pages/Dashboard"));
-const OrderManagement = lazy(() => import("./pages/OrderManagement"));
-const MenuManagement = lazy(() => import("./pages/MenuManagement"));
-const InventoryManagement = lazy(() => import("./pages/InventoryManagement"));
+const OrderManagement = lazy(() => import("./features/orders/pages/OrderManagement"));
+const MenuManagement = lazy(() => import("./features/menu/pages/MenuManagement"));
+const InventoryManagement = lazy(() => import("./features/inventory/pages/InventoryManagement"));
 const DineInService = lazy(() => import("./pages/DineInService"));
 const TakeawayOrders = lazy(() => import("./pages/TakeawayOrders"));
 const DeliveryService = lazy(() => import("./pages/DeliveryService"));
+const KitchenDisplay = lazy(() => import("./pages/KitchenDisplay"));
 const StaffManagement = lazy(() => import("./pages/StaffManagement"));
 const Analytics = lazy(() => import("./pages/Analytics"));
+const RealTimeAnalytics = lazy(() => import("./pages/RealTimeAnalytics"));
 const Reports = lazy(() => import("./pages/Reports"));
 const PaymentProcessing = lazy(() => import("./pages/PaymentProcessing"));
 const TenantPaymentGatewaySettings = lazy(() => import("./pages/PaymentGatewaySettings"));
@@ -32,15 +38,16 @@ const SystemSettings = lazy(() => import("./pages/SystemSettings"));
 const RestaurantSettings = lazy(() => import("./pages/RestaurantSettings"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
 const BackupManagement = lazy(() => import("./pages/BackupManagement"));
+const BranchManagement = lazy(() => import("./pages/BranchManagement"));
 const TenantOnboarding = lazy(() => import("./pages/TenantOnboarding"));
 const SuperAdminDashboard = lazy(() => import("./pages/SuperAdminDashboard"));
-const UserProfile = lazy(() => import("./pages/UserProfile"));
+const UserProfile = lazy(() => import("./features/auth/pages/UserProfile"));
 const TenantManagement = lazy(() => import("./pages/superadmin/TenantManagement"));
 const SuperAdminUserManagement = lazy(() => import("./pages/superadmin/UserManagement"));
 const SuperAdminAnalytics = lazy(() => import("./pages/superadmin/Analytics"));
 const PaymentGatewaySettings = lazy(() => import("./pages/superadmin/PaymentGatewaySettings"));
 const SuperAdminSystemSettings = lazy(() => import("./pages/superadmin/SystemSettings"));
-const CustomerMenu = lazy(() => import("./pages/CustomerMenu"));
+const CustomerMenu = lazy(() => import("./features/menu/pages/CustomerMenu"));
 const Checkout = lazy(() => import("./pages/Checkout"));
 const OrderConfirmation = lazy(() => import("./pages/OrderConfirmation"));
 import NotFound from "./pages/NotFound";
@@ -56,8 +63,8 @@ const PageLoadingSpinner = () => (
 );
 
 // Helper component to wrap lazy loaded components with Suspense
-const LazyRoute = ({ children }: { children: React.ReactNode }) => (
-  <Suspense fallback={<PageLoadingSpinner />}>
+const LazyRoute = ({ children, fallback }: { children: React.ReactNode; fallback?: React.ReactNode }) => (
+  <Suspense fallback={fallback || <PageLoadingSpinner />}>
     {children}
   </Suspense>
 );
@@ -117,7 +124,9 @@ const App = () => (
             } />
             <Route path="/inventory" element={
               <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                <LazyRoute><InventoryManagement /></LazyRoute>
+                <LazyRoute fallback={<InventoryLoading />}>
+                  <InventoryManagement />
+                </LazyRoute>
               </ProtectedRoute>
             } />
             <Route path="/dine-in" element={
@@ -135,6 +144,11 @@ const App = () => (
                 <DeliveryService />
               </ProtectedRoute>
             } />
+            <Route path="/kitchen" element={
+              <ProtectedRoute allowedRoles={['admin', 'manager', 'staff']}>
+                <LazyRoute><KitchenDisplay /></LazyRoute>
+              </ProtectedRoute>
+            } />
             <Route path="/staff" element={
               <ProtectedRoute allowedRoles={['admin', 'manager']}>
                 <StaffManagement />
@@ -142,7 +156,16 @@ const App = () => (
             } />
             <Route path="/analytics" element={
               <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                <Analytics />
+                <LazyRoute fallback={<AnalyticsLoading />}>
+                  <Analytics />
+                </LazyRoute>
+              </ProtectedRoute>
+            } />
+            <Route path="/real-time-analytics" element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <LazyRoute fallback={<AnalyticsLoading />}>
+                  <RealTimeAnalytics />
+                </LazyRoute>
               </ProtectedRoute>
             } />
             <Route path="/reports" element={
@@ -183,6 +206,11 @@ const App = () => (
             <Route path="/settings/backup" element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <BackupManagement />
+              </ProtectedRoute>
+            } />
+            <Route path="/branches" element={
+              <ProtectedRoute allowedRoles={['admin', 'owner']}>
+                <LazyRoute><BranchManagement /></LazyRoute>
               </ProtectedRoute>
             } />
             

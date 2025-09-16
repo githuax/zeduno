@@ -42,7 +42,7 @@ const patchMenuService = () => {
         { $unwind: '$category' },
         { $match: { 'category.isActive': true } },
         { $replaceRoot: { newRoot: '$category' } },
-        { $sort: { displayOrder: 1, name: 1 } }
+        { $sort: { displayOrder: 1 as 1, name: 1 as 1 } }
       ]);
     } else if (tenantId) {
       query.tenantId = new mongoose.Types.ObjectId(tenantId);
@@ -68,7 +68,7 @@ const patchMenuService = () => {
         { $unwind: '$category' },
         { $match: { 'category.isActive': true } },
         { $replaceRoot: { newRoot: '$category' } },
-        { $sort: { displayOrder: 1, name: 1 } }
+        { $sort: { displayOrder: 1 as 1, name: 1 as 1 } }
       ]);
     } else if (tenantId) {
       query.tenantId = new mongoose.Types.ObjectId(tenantId);

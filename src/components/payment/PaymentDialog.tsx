@@ -1,17 +1,3 @@
-import { useState } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { usePaymentMethods, useProcessPayment } from "@/hooks/usePayments";
-import { PaymentIntent } from "@/types/payment.types";
-import { useCurrency } from '@/hooks/useCurrency';
-import { MPesaPaymentDialog } from './MPesaPaymentDialog';
-import { MPesaKCBPaymentDialog } from './MPesaKCBPaymentDialog';
 import { 
   CreditCard, 
   Smartphone, 
@@ -23,6 +9,23 @@ import {
   CheckCircle,
   AlertCircle
 } from "lucide-react";
+import { useState } from 'react';
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { useCurrency } from '@/hooks/useCurrency';
+import { useBranches } from '@/hooks/useBranches';
+import { usePaymentMethods, useProcessPayment } from "@/hooks/usePayments";
+import { PaymentIntent } from "@/types/payment.types";
+
+import { MPesaKCBPaymentDialog } from './MPesaKCBPaymentDialog';
+import { MPesaPaymentDialog } from './MPesaPaymentDialog';
 
 interface PaymentDialogProps {
   open: boolean;
@@ -31,7 +34,7 @@ interface PaymentDialogProps {
     id: string;
     amount: number;
     customerName: string;
-    items: Array<{ name: string; quantity: number; price: number }>;
+    items: Array<{ name: string; quantity: number; price: number; alcoholic?: boolean }>;
   };
   onPaymentSuccess?: (transactionId: string) => void;
   onPaymentError?: (error: string) => void;
@@ -53,6 +56,7 @@ export const PaymentDialog = ({
 
   const { data: paymentMethods } = usePaymentMethods();
   const { format: formatPrice, currencyCode, symbol } = useCurrency();
+  const { currentBranch } = useBranches();
   const processPayment = useProcessPayment();
 
   const activePaymentMethods = paymentMethods?.filter(method => method.isEnabled) || [];
@@ -80,7 +84,13 @@ export const PaymentDialog = ({
   };
 
   const subtotal = orderData.amount;
-  const taxAmount = subtotal * 0.085; // 8.5% tax
+  const baseTaxRate = currentBranch?.financial.taxRate ?? 0;
+  const alcoholTaxRate = currentBranch?.financial.alcoholTaxRate ?? baseTaxRate;
+  const taxAmount = orderData.items.reduce((acc, item) => {
+    const line = item.price * item.quantity;
+    const rate = item.alcoholic ? alcoholTaxRate : baseTaxRate;
+    return acc + line * (rate / 100);
+  }, 0);
   const processingFee = selectedMethod ? (subtotal + tipAmount) * (selectedMethod.processingFee / 100) : 0;
   const total = subtotal + taxAmount + tipAmount + processingFee;
 
@@ -216,7 +226,7 @@ export const PaymentDialog = ({
                   <span>{formatPrice(subtotal)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Tax (8.5%):</span>
+                  <span>Tax:</span>
                   <span>{formatPrice(taxAmount)}</span>
                 </div>
                 <div className="flex justify-between">

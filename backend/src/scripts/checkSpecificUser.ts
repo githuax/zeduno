@@ -1,6 +1,7 @@
-import mongoose from 'mongoose';
-import { User } from '../models/User';
 import { config } from 'dotenv';
+import mongoose from 'mongoose';
+
+import { User } from '../models/User';
 
 config();
 

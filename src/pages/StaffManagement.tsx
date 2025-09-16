@@ -1,25 +1,26 @@
-import { useState } from 'react';
 import { Plus, Users, Clock, DollarSign, Calendar, UserCheck, Star, AlertCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { EmployeeList } from '@/components/staff/EmployeeList';
-import { ShiftScheduling } from '@/components/staff/ShiftScheduling';
-import { TimeTracking } from '@/components/staff/TimeTracking';
-import { PerformanceMonitoring } from '@/components/staff/PerformanceMonitoring';
-import { PayrollManagement } from '@/components/staff/PayrollManagement';
+import { useState } from 'react';
+
 import { AddEmployeeDialog } from '@/components/staff/AddEmployeeDialog';
 import { EmployeeDetailsDialog } from '@/components/staff/EmployeeDetailsDialog';
-import { useEmployees } from '@/hooks/useEmployees';
-import { useShifts } from '@/hooks/useShifts';
+import { EmployeeList } from '@/components/staff/EmployeeList';
+import { PayrollManagement } from '@/components/staff/PayrollManagement';
+import { PerformanceMonitoring } from '@/components/staff/PerformanceMonitoring';
+import { ShiftScheduling } from '@/components/staff/ShiftScheduling';
+import { TimeTracking } from '@/components/staff/TimeTracking';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { getApiUrl } from '@/config/api';
+import { toast } from '@/hooks/use-toast';
 import { useAttendance } from '@/hooks/useAttendance';
 import { useCurrency } from '@/hooks/useCurrency';
-import { getApiUrl } from '@/config/api';
+import { useEmployees } from '@/hooks/useEmployees';
+import { useShifts } from '@/hooks/useShifts';
 import { Employee, EmployeeRole, EmploymentStatus } from '@/types/staff.types';
-import { toast } from '@/hooks/use-toast';
 
 export default function StaffManagement() {
   const [selectedRole, setSelectedRole] = useState<EmployeeRole | 'all'>('all');

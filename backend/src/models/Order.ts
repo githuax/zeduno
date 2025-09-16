@@ -1,8 +1,10 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
+import { IMenuItem } from './MenuItem';
+
 export interface IOrderItem {
   _id?: mongoose.Types.ObjectId;
-  menuItem: mongoose.Types.ObjectId;
+  menuItem: mongoose.Types.ObjectId | IMenuItem;
   quantity: number;
   price: number;
   customizations?: {
@@ -16,6 +18,9 @@ export interface IOrderItem {
 
 export interface IOrder extends Document {
   tenantId: mongoose.Types.ObjectId;
+  branchId: mongoose.Types.ObjectId;
+  branchCode: string;
+  branchOrderNumber: string;
   orderNumber: string;
   orderType: 'dine-in' | 'takeaway' | 'delivery';
   status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'out-for-delivery' | 'delivered' | 'completed' | 'cancelled' | 'refunded';
@@ -163,6 +168,22 @@ const OrderSchema: Schema = new Schema(
     tenantId: {
       type: Schema.Types.ObjectId,
       ref: 'Tenant',
+      required: true,
+      // index: true - REMOVED: Compound indexes below provide better performance
+    },
+    branchId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Branch',
+      required: true,
+      // index: true - REMOVED: Compound indexes below provide better performance
+    },
+    branchCode: {
+      type: String,
+      required: true,
+      index: true,
+    },
+    branchOrderNumber: {
+      type: String,
       required: true,
       index: true,
     },
@@ -465,6 +486,17 @@ OrderSchema.methods.calculateTotal = function() {
   this.total = Math.max(0, total); // Ensure total is never negative
   return this.total;
 };
+
+// Create indexes for optimal query performance
+OrderSchema.index({ tenantId: 1, branchId: 1, status: 1 });
+OrderSchema.index({ tenantId: 1, branchId: 1, createdAt: -1 });
+OrderSchema.index({ branchId: 1, orderType: 1 });
+OrderSchema.index({ branchId: 1, paymentStatus: 1 });
+// Removed duplicate: customerId, createdAt index already defined on line 392
+OrderSchema.index({ staffId: 1, status: 1 });
+OrderSchema.index({ tableId: 1, status: 1 });
+OrderSchema.index({ branchOrderNumber: 1, branchId: 1 }, { unique: true });
+OrderSchema.index({ 'deliveryInfo.driverId': 1, status: 1 });
 
 export const Order = mongoose.model<IOrder>('Order', OrderSchema);
 export default Order;

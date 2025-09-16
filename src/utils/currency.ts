@@ -154,7 +154,7 @@ export const parseCurrency = (value: string, currencyCode: string = 'KES'): numb
   const currency = CURRENCIES[currencyCode] || CURRENCIES.KES;
   
   // Remove currency symbol and separators
-  let cleanInput = value
+  const cleanInput = value
     .replace(currency.symbol, '')
     .replace(new RegExp(`\\${currency.thousandsSeparator}`, 'g'), '')
     .replace(currency.decimalSeparator, '.')

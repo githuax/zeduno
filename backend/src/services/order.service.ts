@@ -1,7 +1,9 @@
 import mongoose from 'mongoose';
+
+import { MenuItem } from '../models/MenuItem';
 import Order, { IOrder } from '../models/Order';
 import Table from '../models/Table';
-import { MenuItem } from '../models/MenuItem';
+import { websocketService, KitchenOrderUpdate } from './websocket.service';
 
 export interface OrderQueryParams {
   status?: string | string[];
@@ -62,7 +64,7 @@ export class OrderService {
       orderNumber
     } = params;
 
-    let query: any = {};
+    const query: any = {};
 
     if (tenantId) {
       query.tenantId = tenantId;
@@ -267,12 +269,56 @@ export class OrderService {
     
     // Populate references
     await order.populate([
-      { path: 'items.menuItemId', select: 'name price' },
+      { path: 'items.menuItemId', select: 'name price preparationTime' },
       { path: 'tableId', select: 'number section' },
       { path: 'customerId', select: 'firstName lastName email phone' }
     ]);
 
+    // Emit kitchen update for confirmed orders (new orders that are ready for kitchen)
+    if (order.status === 'confirmed') {
+      const kitchenUpdate = this.mapOrderToKitchenUpdate(order, 'new');
+      
+      try {
+        websocketService.emitKitchenOrderUpdate(kitchenUpdate);
+        console.log(`📡 New kitchen order WebSocket update sent: ${order.orderNumber}`);
+      } catch (wsError) {
+        console.warn('⚠️ Failed to emit new kitchen order WebSocket update:', wsError);
+        // Don't fail the order creation if WebSocket fails
+      }
+    }
+
     return order;
+  }
+
+  /**
+   * Convert order to kitchen update format
+   */
+  private static mapOrderToKitchenUpdate(
+    order: any,
+    action: 'new' | 'updated' | 'cancelled'
+  ): KitchenOrderUpdate {
+    return {
+      orderId: order._id.toString(),
+      orderNumber: order.orderNumber,
+      orderType: order.orderType || 'dine-in',
+      status: order.status,
+      priority: order.priority || 'normal',
+      tableNumber: order.tableId?.number?.toString(),
+      customerName: order.customerName || order.customerId?.firstName + ' ' + order.customerId?.lastName || 'Guest',
+      items: order.items?.map((item: any) => ({
+        name: item.menuItem?.name || item.name,
+        quantity: item.quantity,
+        customizations: item.customizations || [],
+        specialInstructions: item.specialInstructions,
+        status: item.status || 'pending'
+      })) || [],
+      kitchenNotes: order.kitchenNotes,
+      preparationTime: order.preparationTime,
+      createdAt: order.createdAt?.toISOString(),
+      timestamp: new Date(),
+      tenantId: order.tenantId,
+      action
+    };
   }
 
   /**
@@ -309,11 +355,30 @@ export class OrderService {
       updates.cancelledAt = new Date();
     }
 
-    return await Order.findOneAndUpdate(
+    const updatedOrder = await Order.findOneAndUpdate(
       query,
       updates,
       { new: true }
-    ).populate('items.menuItem', 'name price');
+    )
+    .populate('items.menuItem', 'name price preparationTime')
+    .populate('tableId', 'number section')
+    .populate('customerId', 'firstName lastName email phone');
+
+    // Emit kitchen updates for kitchen-relevant statuses
+    if (updatedOrder && ['confirmed', 'preparing', 'ready', 'cancelled'].includes(status)) {
+      const action = status === 'cancelled' ? 'cancelled' : 'updated';
+      const kitchenUpdate = this.mapOrderToKitchenUpdate(updatedOrder, action);
+      
+      try {
+        websocketService.emitKitchenOrderUpdate(kitchenUpdate);
+        console.log(`📡 Kitchen WebSocket update sent for order ${updatedOrder.orderNumber}: ${status}`);
+      } catch (wsError) {
+        console.warn('⚠️ Failed to emit kitchen WebSocket update:', wsError);
+        // Don't fail the status update if WebSocket fails - log and continue
+      }
+    }
+
+    return updatedOrder;
   }
 
   /**
@@ -415,7 +480,7 @@ export class OrderService {
           count: { $sum: '$items.quantity' },
           revenue: { $sum: { $multiply: ['$items.price', '$items.quantity'] } }
         }},
-        { $sort: { count: -1 } },
+        { $sort: { count: -1 as -1 } },
         { $limit: 10 }
       ])
     ]);

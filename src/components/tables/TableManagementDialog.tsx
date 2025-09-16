@@ -1,5 +1,10 @@
-import { useState } from 'react';
 import { Users, Clock, DollarSign, Utensils, AlertCircle, CheckCircle } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -7,14 +12,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Table } from '@/types/order.types';
-import { useOrder } from '@/hooks/useOrders';
+import { useOrder } from '@/features/orders';
 import { toast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
+import { Table } from '@/types/order.types';
+
 
 interface TableManagementDialogProps {
   table?: Table | null;

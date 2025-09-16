@@ -1,7 +1,10 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import type { ReactNode } from "react";
 import { LucideIcon } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
 
 interface ModuleCardProps {
   title: string;
@@ -10,9 +13,10 @@ interface ModuleCardProps {
   status: "active" | "inactive" | "maintenance" | "disabled";
   stats?: string;
   onClick: () => void;
+  extra?: ReactNode;
 }
 
-const ModuleCard = ({ title, description, icon: Icon, status, stats, onClick }: ModuleCardProps) => {
+const ModuleCard = ({ title, description, icon: Icon, status, stats, onClick, extra }: ModuleCardProps) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
@@ -46,6 +50,11 @@ const ModuleCard = ({ title, description, icon: Icon, status, stats, onClick }: 
         {stats && (
           <div className="mb-4">
             <p className="text-xl font-semibold text-primary">{stats}</p>
+          </div>
+        )}
+        {extra && (
+          <div className="mb-4">
+            {extra}
           </div>
         )}
         <Button 

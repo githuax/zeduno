@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Auth & Login Debug</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jwt-decode/3.1.2/jwt-decode.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .debug-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .success { color: green; }
+        .error { color: red; }
+        .warning { color: orange; }
+        button { margin: 5px; padding: 10px; }
+        .login-form { background: #f5f5f5; padding: 20px; margin: 20px 0; }
+        input { margin: 5px; padding: 8px; width: 200px; }
+    </style>
+</head>
+<body>
+    <h1>Authentication Debug & Clear Tool</h1>
+    
+    <div class="debug-section">
+        <h2>Step 1: Current Authentication Status</h2>
+        <div id="current-auth"></div>
+        <button onclick="checkCurrentAuth()">Check Current Auth</button>
+    </div>
+
+    <div class="debug-section">
+        <h2>Step 2: Clear All Authentication Data</h2>
+        <button onclick="clearAllAuth()" style="background: red; color: white;">CLEAR ALL AUTH DATA</button>
+        <p>This will remove all tokens, user data, and session information.</p>
+    </div>
+
+    <div class="debug-section">
+        <h2>Step 3: Login as test1@mail.com</h2>
+        <div class="login-form">
+            <div>
+                <label>Email:</label><br>
+                <input type="email" id="login-email" value="test1@mail.com" />
+            </div>
+            <div>
+                <label>Password:</label><br>
+                <input type="password" id="login-password" value="admin123" />
+            </div>
+            <div>
+                <button onclick="performLogin()">Login</button>
+            </div>
+        </div>
+        <div id="login-result"></div>
+    </div>
+
+    <div class="debug-section">
+        <h2>Step 4: Verify Tenant Context</h2>
+        <button onclick="checkTenantContext()">Check Tenant Context</button>
+        <div id="tenant-result"></div>
+    </div>
+
+    <script>
+        function checkCurrentAuth() {
+            const token = localStorage.getItem('token');
+            const user = localStorage.getItem('user');
+            const tenantId = localStorage.getItem('currentTenantId');
+            
+            let html = '<h3>Current Storage:</h3>';
+            html += `<p><strong>Token:</strong> ${token ? 'Present (' + token.substring(0, 30) + '...)' : '<span class="error">NOT FOUND</span>'}</p>`;
+            html += `<p><strong>User Data:</strong> ${user ? user : '<span class="error">NOT FOUND</span>'}</p>`;
+            html += `<p><strong>Tenant ID:</strong> ${tenantId || '<span class="error">NOT FOUND</span>'}</p>`;
+            
+            if (token) {
+                try {
+                    const decoded = jwt_decode(token);
+                    html += '<h3>Decoded Token:</h3>';
+                    html += `<pre>${JSON.stringify(decoded, null, 2)}</pre>`;
+                } catch (e) {
+                    html += `<p class="error">Error decoding token: ${e.message}</p>`;
+                }
+            }
+            
+            if (user) {
+                try {
+                    const userData = JSON.parse(user);
+                    html += '<h3>User Data:</h3>';
+                    html += `<pre>${JSON.stringify(userData, null, 2)}</pre>`;
+                    
+                    if (userData.email !== 'test1@mail.com') {
+                        html += `<p class="warning">⚠️ WARNING: Currently logged in as ${userData.email}, not test1@mail.com!</p>`;
+                    }
+                } catch (e) {
+                    html += `<p class="error">Error parsing user data: ${e.message}</p>`;
+                }
+            }
+            
+            document.getElementById('current-auth').innerHTML = html;
+        }
+        
+        function clearAllAuth() {
+            localStorage.clear();
+            sessionStorage.clear();
+            // Also clear any specific keys that might exist
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            localStorage.removeItem('currentTenantId');
+            localStorage.removeItem('tenantId');
+            
+            document.getElementById('current-auth').innerHTML = '<p class="success">✅ All authentication data cleared!</p>';
+            document.getElementById('login-result').innerHTML = '';
+            document.getElementById('tenant-result').innerHTML = '';
+        }
+        
+        async function performLogin() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const resultDiv = document.getElementById('login-result');
+            
+            resultDiv.innerHTML = '<p>🔄 Attempting login...</p>';
+            
+            try {
+                const response = await fetch('http://localhost:5000/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Store the authentication data
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    
+                    if (data.user.tenantId) {
+                        localStorage.setItem('currentTenantId', data.user.tenantId);
+                    }
+                    
+                    let html = '<p class="success">✅ Login successful!</p>';
+                    html += '<h4>Login Response:</h4>';
+                    html += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                    
+                    if (data.user.tenantName) {
+                        html += `<p class="success"><strong>Tenant Name:</strong> ${data.user.tenantName}</p>`;
+                    }
+                    
+                    resultDiv.innerHTML = html;
+                } else {
+                    resultDiv.innerHTML = `<p class="error">❌ Login failed: ${data.message}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">❌ Network error: ${error.message}</p>`;
+            }
+        }
+        
+        function checkTenantContext() {
+            const user = localStorage.getItem('user');
+            const tenantId = localStorage.getItem('currentTenantId');
+            const resultDiv = document.getElementById('tenant-result');
+            
+            let html = '<h4>Tenant Context Check:</h4>';
+            
+            if (user) {
+                try {
+                    const userData = JSON.parse(user);
+                    html += `<p><strong>User Email:</strong> ${userData.email}</p>`;
+                    html += `<p><strong>User Role:</strong> ${userData.role}</p>`;
+                    html += `<p><strong>Tenant ID:</strong> ${userData.tenantId || 'NOT FOUND'}</p>`;
+                    html += `<p><strong>Tenant Name:</strong> ${userData.tenantName || 'NOT FOUND'}</p>`;
+                    html += `<p><strong>Current Tenant ID (localStorage):</strong> ${tenantId || 'NOT FOUND'}</p>`;
+                    
+                    if (userData.tenantName === 'TESTFRIDAY912') {
+                        html += '<p class="success">✅ Correct tenant: TESTFRIDAY912</p>';
+                    } else {
+                        html += `<p class="error">❌ Wrong tenant: ${userData.tenantName || 'Unknown'} (should be TESTFRIDAY912)</p>`;
+                    }
+                    
+                } catch (e) {
+                    html += `<p class="error">Error parsing user data: ${e.message}</p>`;
+                }
+            } else {
+                html += '<p class="error">No user data found</p>';
+            }
+            
+            resultDiv.innerHTML = html;
+        }
+        
+        // Auto-check on load
+        checkCurrentAuth();
+    </script>
+</body>
+</html>

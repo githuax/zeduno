@@ -1,8 +1,9 @@
+import dotenv from 'dotenv';
 import mongoose from 'mongoose';
+
 import { Category } from '../models/Category';
 import { MenuItem } from '../models/MenuItem';
 import Order from '../models/Order';
-import dotenv from 'dotenv';
 
 dotenv.config();
 

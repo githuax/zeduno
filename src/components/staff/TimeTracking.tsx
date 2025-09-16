@@ -1,17 +1,19 @@
+import { format, addDays, subDays, parseISO, differenceInHours, differenceInMinutes, isToday } from 'date-fns';
+import { Clock, Calendar, Coffee, CheckCircle, XCircle, AlertCircle, Timer, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { useState } from 'react';
+
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Clock, Calendar, Coffee, CheckCircle, XCircle, AlertCircle, Timer, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
-import { Employee, Attendance, AttendanceStatus } from '@/types/staff.types';
 import { toast } from '@/hooks/use-toast';
-import { format, addDays, subDays, parseISO, differenceInHours, differenceInMinutes, isToday } from 'date-fns';
+import { Employee, Attendance, AttendanceStatus } from '@/types/staff.types';
+
 
 interface TimeTrackingProps {
   employees: Employee[];

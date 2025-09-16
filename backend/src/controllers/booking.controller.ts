@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+
 import { Booking } from '../models/Booking';
 import { Room } from '../models/Room';
 

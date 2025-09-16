@@ -1,7 +1,8 @@
-import mongoose from 'mongoose';
-import { User } from '../models/User';
-import { Tenant } from '../models/Tenant';
 import dotenv from 'dotenv';
+import mongoose from 'mongoose';
+
+import { Tenant } from '../models/Tenant';
+import { User } from '../models/User';
 
 dotenv.config();
 
@@ -15,11 +16,11 @@ const seedUsers = async () => {
     
     if (!tenant) {
       // Create a superadmin first to be the creator
-      let superadmin = await User.findOne({ email: 'superadmin@hotelzed.com' });
+      let superadmin = await User.findOne({ email: 'superadmin@zeduno.com' });
       
       if (!superadmin) {
         superadmin = await User.create({
-          email: 'superadmin@hotelzed.com',
+          email: 'superadmin@zeduno.com',
           password: 'SuperAdmin@123',
           firstName: 'Super',
           lastName: 'Admin',
@@ -136,7 +137,7 @@ const seedUsers = async () => {
     console.log('\n📋 Sample Accounts Created:');
     console.log('=====================================');
     console.log('\n🔐 SUPERADMIN:');
-    console.log('   Email: superadmin@hotelzed.com');
+    console.log('   Email: superadmin@zeduno.com');
     console.log('   Password: SuperAdmin@123');
     console.log('\n👔 MANAGER:');
     console.log('   Email: manager@demorestaurant.com');

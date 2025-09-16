@@ -1,8 +1,9 @@
+import L from 'leaflet';
+import { MapPin } from "lucide-react";
 import { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+
 import { Input } from "@/components/ui/input";
-import { MapPin } from "lucide-react";
-import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 // Fix for default markers in React-Leaflet

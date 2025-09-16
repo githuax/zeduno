@@ -1,11 +1,10 @@
+import { Users, Plus, Edit, Trash2, Search, Filter, Shield, Building } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { getApiUrl } from '@/config/api';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+
+import SuperAdminLayout from '@/components/layout/SuperAdminLayout';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/components/ui/use-toast';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -15,6 +14,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -23,16 +32,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Users, Plus, Edit, Trash2, Search, Filter, Shield, Building } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import SuperAdminLayout from '@/components/layout/SuperAdminLayout';
+import { useToast } from '@/components/ui/use-toast';
+import { getApiUrl } from '@/config/api';
 
 interface User {
   _id: string;

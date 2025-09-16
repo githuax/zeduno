@@ -5,6 +5,8 @@ export interface ITenant extends Document {
   slug: string;
   email: string;
   domain?: string;
+  parentTenantId?: mongoose.Types.ObjectId;
+  tenantType: 'root' | 'branch' | 'franchise';
   plan: 'basic' | 'premium' | 'enterprise';
   status: 'active' | 'inactive' | 'suspended';
   maxUsers: number;
@@ -14,6 +16,20 @@ export interface ITenant extends Document {
   contactPerson?: string;
   description?: string;
   logo?: string;
+  
+  // Branch Management
+  branchQuota: {
+    maxBranches: number;
+    currentBranches: number;
+  };
+  
+  // Inheritance Rules
+  inheritance: {
+    menu: 'full' | 'partial' | 'none';
+    settings: 'full' | 'partial' | 'none';
+    users: 'shared' | 'isolated';
+    pricing: 'inherit' | 'override' | 'multiplier';
+  };
   settings: {
     timezone?: string;
     currency?: string;
@@ -90,6 +106,47 @@ const tenantSchema = new Schema<ITenant>(
     domain: {
       type: String,
       trim: true,
+    },
+    parentTenantId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Tenant',
+    },
+    tenantType: {
+      type: String,
+      enum: ['root', 'branch', 'franchise'],
+      default: 'root',
+    },
+    branchQuota: {
+      maxBranches: {
+        type: Number,
+        default: 50,
+      },
+      currentBranches: {
+        type: Number,
+        default: 0,
+      },
+    },
+    inheritance: {
+      menu: {
+        type: String,
+        enum: ['full', 'partial', 'none'],
+        default: 'full',
+      },
+      settings: {
+        type: String,
+        enum: ['full', 'partial', 'none'],
+        default: 'full',
+      },
+      users: {
+        type: String,
+        enum: ['shared', 'isolated'],
+        default: 'isolated',
+      },
+      pricing: {
+        type: String,
+        enum: ['inherit', 'override', 'multiplier'],
+        default: 'inherit',
+      },
     },
     plan: {
       type: String,
@@ -286,5 +343,12 @@ tenantSchema.pre('save', function (next) {
   }
   next();
 });
+
+// Create indexes for optimal query performance
+// Note: slug and email already have unique: true in schema definition which creates indexes
+tenantSchema.index({ parentTenantId: 1 });
+tenantSchema.index({ tenantType: 1, status: 1 });
+tenantSchema.index({ isActive: 1, status: 1 });
+tenantSchema.index({ plan: 1, status: 1 });
 
 export const Tenant = mongoose.model<ITenant>('Tenant', tenantSchema);

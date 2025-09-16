@@ -1,11 +1,3 @@
-import { useState, useEffect, useRef } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useToast } from '@/components/ui/use-toast';
-import SuperAdminLayout from '@/components/layout/SuperAdminLayout';
-import { getApiUrl } from '@/config/api';
-import { getAssetUrl } from '@/utils/url';
 import { 
   Upload, 
   Save,
@@ -13,6 +5,15 @@ import {
   Image,
   X
 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+
+import SuperAdminLayout from '@/components/layout/SuperAdminLayout';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from '@/components/ui/use-toast';
+import { getApiUrl } from '@/config/api';
+import { getAssetUrl } from '@/utils/url';
 
 const SystemSettings = () => {
   const { toast } = useToast();

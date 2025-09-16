@@ -6,6 +6,7 @@ export interface CartItem {
   name: string;
   price: number;
   quantity: number;
+  alcoholic?: boolean;
   customizations?: {
     [key: string]: any;
   };

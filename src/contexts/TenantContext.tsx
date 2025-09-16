@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { TenantContext as TenantContextType, Tenant, TenantUser } from '@/types/tenant.types';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+
 import { useTenantContext } from '@/hooks/useTenant';
+import { TenantContext as TenantContextType, Tenant, TenantUser } from '@/types/tenant.types';
 
 interface TenantProviderProps {
   children: React.ReactNode;

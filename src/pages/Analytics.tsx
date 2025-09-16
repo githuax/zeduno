@@ -1,12 +1,4 @@
-import { useState } from 'react';
-import { useNavigate } from "react-router-dom";
-import Header from "@/components/layout/Header";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useAnalytics, useDashboardStats } from "@/hooks/useAnalytics";
-import { useCurrency } from "@/hooks/useCurrency";
+import React, { useState, memo, useMemo, useCallback } from 'react';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -18,9 +10,27 @@ import {
   Calendar,
   Clock
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 
-const Analytics = () => {
+import Header from "@/components/layout/Header";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAnalytics, useDashboardStats } from "@/hooks/useAnalytics";
+import { useCurrency } from "@/hooks/useCurrency";
+
+// Custom comparison function for Analytics memo
+const areAnalyticsEqual = (prevProps: any, nextProps: any) => {
+  return (
+    prevProps.analytics === nextProps.analytics &&
+    prevProps.dashboardStats === nextProps.dashboardStats &&
+    prevProps.isLoading === nextProps.isLoading
+  );
+};
+
+const AnalyticsComponent = () => {
   const navigate = useNavigate();
   const [selectedPeriod, setSelectedPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   
@@ -28,9 +38,35 @@ const Analytics = () => {
   const { data: dashboardStats } = useDashboardStats();
   const { format: formatCurrency } = useCurrency();
 
-  const formatPercentage = (value: number) => `${value.toFixed(1)}%`;
+  // Memoized calculations
+  const formatPercentage = useCallback((value: number) => `${value.toFixed(1)}%`, []);
+  const COLORS = useMemo(() => ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'], []);
 
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
+  // Memoized handlers
+  const handlePeriodChange = useCallback((value: 'daily' | 'weekly' | 'monthly') => {
+    setSelectedPeriod(value);
+  }, []);
+
+  const handleGenerateReports = useCallback(() => {
+    navigate("/reports");
+  }, [navigate]);
+
+  // Memoized chart data processing
+  const processedRevenueData = useMemo(() => {
+    return analytics?.revenueByPeriod || [];
+  }, [analytics?.revenueByPeriod]);
+
+  const processedServiceData = useMemo(() => {
+    return analytics?.ordersByService || [];
+  }, [analytics?.ordersByService]);
+
+  const processedPeakHours = useMemo(() => {
+    return analytics?.peakHours?.filter(hour => hour.hour >= 8 && hour.hour <= 23) || [];
+  }, [analytics?.peakHours]);
+
+  const processedPopularItems = useMemo(() => {
+    return analytics?.popularItems || [];
+  }, [analytics?.popularItems]);
 
   if (isLoading) {
     return (
@@ -63,8 +99,27 @@ const Analytics = () => {
             </p>
           </div>
           
+          <div className="flex space-x-2">
+            <Button 
+              variant="outline" 
+              className="flex items-center gap-2"
+              onClick={() => navigate("/real-time-analytics")}
+            >
+              <TrendingUp className="h-4 w-4" />
+              Real-time Dashboard
+            </Button>
+            <Button 
+              variant="outline" 
+              className="flex items-center gap-2"
+              onClick={handleGenerateReports}
+            >
+              <Download className="h-4 w-4" />
+              Generate Reports
+            </Button>
+          </div>
+          
           <div className="flex flex-col sm:flex-row gap-3">
-            <Select value={selectedPeriod} onValueChange={(value: 'daily' | 'weekly' | 'monthly') => setSelectedPeriod(value)}>
+            <Select value={selectedPeriod} onValueChange={handlePeriodChange}>
               <SelectTrigger className="w-32">
                 <SelectValue />
               </SelectTrigger>
@@ -78,7 +133,7 @@ const Analytics = () => {
             <Button 
               variant="outline" 
               className="flex items-center gap-2"
-              onClick={() => navigate("/reports")}
+              onClick={handleGenerateReports}
             >
               <Download className="h-4 w-4" />
               Generate Reports
@@ -154,7 +209,7 @@ const Analytics = () => {
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={analytics?.revenueByPeriod || []}>
+                <LineChart data={processedRevenueData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="period" 
@@ -186,7 +241,7 @@ const Analytics = () => {
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
-                    data={analytics?.ordersByService || []}
+                    data={processedServiceData}
                     dataKey="orders"
                     nameKey="service"
                     cx="50%"
@@ -194,7 +249,7 @@ const Analytics = () => {
                     outerRadius={80}
                     label={({ service, orders }) => `${service}: ${orders}`}
                   >
-                    {analytics?.ordersByService?.map((entry, index) => (
+                    {processedServiceData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
@@ -214,7 +269,7 @@ const Analytics = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {analytics?.popularItems?.map((item, index) => (
+                {processedPopularItems.map((item, index) => (
                   <div key={index} className="flex items-center justify-between p-3 rounded-lg border">
                     <div className="flex items-center gap-3">
                       <Badge variant="secondary">{index + 1}</Badge>
@@ -240,7 +295,7 @@ const Analytics = () => {
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={analytics?.peakHours?.filter(hour => hour.hour >= 8 && hour.hour <= 23) || []}>
+                <BarChart data={processedPeakHours}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="hour" 
@@ -337,4 +392,6 @@ const Analytics = () => {
   );
 };
 
+// Memoized export
+const Analytics = memo(AnalyticsComponent);
 export default Analytics;

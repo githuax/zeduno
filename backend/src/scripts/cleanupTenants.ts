@@ -1,8 +1,9 @@
 import mongoose from 'mongoose';
-import { User } from '../models/User';
-import { Tenant } from '../models/Tenant';
+
 import { MenuItem } from '../models/MenuItem';
 import OrderModel from '../models/Order';
+import { Tenant } from '../models/Tenant';
+import { User } from '../models/User';
 
 const cleanupTenants = async (): Promise<void> => {
   try {

@@ -1,6 +1,6 @@
 import { IOrder } from '../models/Order';
-import { ITenant } from '../models/Tenant';
 import { IPaymentTransaction } from '../models/PaymentTransaction';
+import { ITenant } from '../models/Tenant';
 
 export interface ReceiptData {
   tenant: ITenant;

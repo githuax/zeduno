@@ -1,10 +1,11 @@
 import { Request, Response } from 'express';
-import mongoose from 'mongoose';
-import { Tenant } from '../models/Tenant';
-import { PaymentTransaction } from '../models/PaymentTransaction';
-import { Order, IOrder } from '../models/Order';
-import MPesaService from '../services/mpesa.service';
 import { body, param, validationResult } from 'express-validator';
+import mongoose from 'mongoose';
+
+import { Order, IOrder } from '../models/Order';
+import { PaymentTransaction } from '../models/PaymentTransaction';
+import { Tenant } from '../models/Tenant';
+import MPesaService from '../services/mpesa.service';
 
 interface AuthenticatedRequest extends Request {
   user?: {

@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
+
 import { Order } from '../models/Order';
 import { PaymentTransaction } from '../models/PaymentTransaction';
-import mongoose from 'mongoose';
 import { websocketService, PaymentStatusUpdate } from '../services/websocket.service';
 
 interface AuthenticatedRequest extends Request {
@@ -12,12 +13,12 @@ interface AuthenticatedRequest extends Request {
   };
 }
 
-// Zed Business API Configuration
+// Zed Business API Configuration (externalized)
 const ZED_BUSINESS_CONFIG = {
-  apiKey: 'X-Authorization',
-  baseUrl: 'https://api.dev.zed.business',
-  externalOrigin: '9002742',
-  authToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub2IiOnsidmFsdWUiOjUwLCJzdGF0ZSI6ZmFsc2V9LCJ2b2NiIjpmYWxzZSwidXNlcklkIjoiNjQ5ZDJlMTc2MmFlMjJkZjg2ZjAxNjk3IiwiaWQiOiI2NDlkMmUxNzYyYWUyMmRmODZmMDE2OTciLCJlbWFpbCI6ImtpbWF0aGljaHJpczEzK2RhaWx5aG90ZWxAZ21haWwuY29tIiwidXNlck5hbWUiOiJCcmlhbkdpdGh1YSIsImdyb3VwIjoiTWVyY2hhbnQiLCJiaWQiOiI5MDAyNzQyIiwiYmlkU3RyaW5nIjoiNjhiMTQ4MjM4MDRlNWRmNzA5ZGU2MWM3IiwiY3VzdG9tZXJJZCI6IjY2MjY1ZmYzZDg5Njc1YTk3NTY1ZGRkYSIsImJ1c2luZXNzTmFtZSI6IkRhaWx5IEhvdGVsIiwiYnVzaW5lc3NPd25lclBob25lIjoiKzI1NDU0NTQ1NDU0NCIsImJ1c2luZXNzT3duZXJBZGRyZXNzIjoiTmFpcm9iaSwgS2VueWEiLCJidWxrVGVybWluYWxzIjpbXSwic2Vzc2lvbkV4cGlyeSI6IjIwMjUtMDgtMzBUMDY6MjY6NDUuMjM5WiIsIlRpbGwiOiIiLCJQYXliaWxsIjoiIiwiVm9vbWEiOiIiLCJFcXVpdGVsIjoiIiwic3RvcmVOYW1lIjoibnVsbCIsImxvY2FsQ3VycmVuY3kiOiJLRVMiLCJ4ZXJvQWNjb3VudGluZ0VuYWJsZWQiOiJmYWxzZSIsInF1aWNrYm9va3NBY2NvdW50aW5nRW5hYmxlZCI6ImZhbHNlIiwiem9ob0FjY291bnRpbmdFbmFibGVkIjoiZmFsc2UiLCJpYXQiOjE3NTY0NDg4MDUsImV4cCI6MTc1NjUzNTIwNX0.4LrMoetiZiTSc7HzeCGuAaxnEk1tP7e3F05ccxxxtwc'
+  apiKeyHeader: process.env.ZED_API_KEY_HEADER || 'X-Authorization',
+  baseUrl: process.env.ZED_API_BASE_URL || '',
+  externalOrigin: process.env.ZED_EXTERNAL_ORIGIN || '',
+  authToken: process.env.ZED_AUTH_TOKEN || ''
 };
 
 // Type definitions for Zed Business API responses
@@ -449,7 +450,7 @@ export class MPesaKCBController {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${ZED_BUSINESS_CONFIG.authToken}`,
-            [ZED_BUSINESS_CONFIG.apiKey]: ZED_BUSINESS_CONFIG.authToken,
+            [ZED_BUSINESS_CONFIG.apiKeyHeader]: ZED_BUSINESS_CONFIG.authToken,
             'Accept': 'application/json'
           }
         });

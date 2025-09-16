@@ -1,10 +1,11 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
+
 import { Ingredient } from '../models/Ingredient';
+import { PurchaseOrder } from '../models/PurchaseOrder';
 import { Recipe } from '../models/Recipe';
 import { StockMovement } from '../models/StockMovement';
 import { Supplier } from '../models/Supplier';
-import { PurchaseOrder } from '../models/PurchaseOrder';
-import mongoose from 'mongoose';
 import { inventoryCache } from '../utils/cache';
 
 // Ingredient Management
@@ -13,7 +14,7 @@ export const getIngredients = async (req: Request, res: Response) => {
     const { category, lowStock, expiring } = req.query;
     const tenantId = (req as any).user.tenantId;
 
-    let query: any = { tenantId, isActive: true };
+    const query: any = { tenantId, isActive: true };
 
     if (category) {
       query.category = category;
@@ -348,7 +349,7 @@ export const getStockMovements = async (req: Request, res: Response) => {
     const { type, referenceId, startDate, endDate, limit = 50 } = req.query;
     const tenantId = (req as any).user.tenantId;
 
-    let query: any = { tenantId };
+    const query: any = { tenantId };
 
     if (type) {
       query.type = type;
@@ -451,7 +452,7 @@ export const getWasteReport = async (req: Request, res: Response) => {
         }
       },
       {
-        $sort: { totalCost: -1 }
+        $sort: { totalCost: -1 as -1 }
       }
     ]);
 
@@ -476,7 +477,7 @@ export const getSuppliers = async (req: Request, res: Response) => {
     const { category } = req.query;
     const tenantId = (req as any).user.tenantId;
 
-    let query: any = { tenantId, isActive: true };
+    const query: any = { tenantId, isActive: true };
 
     if (category) {
       query.categories = category;
@@ -572,7 +573,7 @@ export const getPurchaseOrders = async (req: Request, res: Response) => {
     const { status, supplierId, startDate, endDate } = req.query;
     const tenantId = (req as any).user.tenantId;
 
-    let query: any = { tenantId };
+    const query: any = { tenantId };
 
     if (status) {
       query.status = status;

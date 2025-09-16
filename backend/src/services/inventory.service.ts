@@ -1,9 +1,10 @@
 import mongoose from 'mongoose';
-import { MenuItem } from '../models/MenuItem';
-import { Recipe } from '../models/Recipe';
+
 import { Ingredient } from '../models/Ingredient';
-import { StockMovement } from '../models/StockMovement';
+import { MenuItem } from '../models/MenuItem';
 import { IOrder } from '../models/Order';
+import { Recipe } from '../models/Recipe';
+import { StockMovement } from '../models/StockMovement';
 
 export class InventoryService {
   /**

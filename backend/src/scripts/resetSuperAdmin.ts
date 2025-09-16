@@ -1,6 +1,6 @@
-import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import { config } from 'dotenv';
+import mongoose from 'mongoose';
 
 config();
 
@@ -25,6 +25,7 @@ interface SuperAdmin {
   };
   isActive: boolean;
   isSuperAdmin: boolean;
+  mustChangePassword?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -38,7 +39,7 @@ const resetSuperAdmin = async () => {
 
     // Delete existing superadmin account
     const deleteResult = await superAdminCollection.deleteMany({ 
-      email: 'superadmin@hotelzed.com' 
+      email: 'superadmin@zeduno.com' 
     });
     
     if (deleteResult.deletedCount > 0) {
@@ -52,7 +53,7 @@ const resetSuperAdmin = async () => {
     // Create new superadmin user
     const superAdmin: SuperAdmin = {
       username: 'superadmin',
-      email: 'superadmin@hotelzed.com',
+      email: 'superadmin@zeduno.com',
       password: hashedPassword,
       firstName: 'Super',
       lastName: 'Admin',
@@ -68,6 +69,7 @@ const resetSuperAdmin = async () => {
       },
       isActive: true,
       isSuperAdmin: true,
+      mustChangePassword: true,
       createdAt: new Date(),
       updatedAt: new Date(),
     };

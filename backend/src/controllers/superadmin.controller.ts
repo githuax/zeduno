@@ -1,8 +1,9 @@
+import fs from 'fs';
+import path from 'path';
+
 import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
 import jwt from 'jsonwebtoken';
-import fs from 'fs';
-import path from 'path';
 import multer from 'multer';
 
 const generateToken = (id: string, isSuperAdmin: boolean = false) => {
@@ -22,7 +23,7 @@ export const superAdminLogin = async (req: Request, res: Response, next: NextFun
     console.log('SuperAdmin login attempt for:', email);
 
     // First check SuperAdmin model, then fallback to User model with superadmin role
-    let superAdmin;
+    let superAdmin: any;
     
     try {
       // Try SuperAdmin model first
@@ -71,7 +72,21 @@ export const superAdminLogin = async (req: Request, res: Response, next: NextFun
       return res.status(401).json({ success: false, message: 'Account is inactive' });
     }
 
-    const token = generateToken(superAdmin._id.toString(), true);
+    // Prefer linking to User collection for downstream actions (e.g., change-password)
+    let tokenUserId = superAdmin._id.toString();
+    try {
+      const { User } = await import('../models/User');
+      const matchingUser = await User.findOne({ email: superAdmin.email });
+      if (matchingUser) {
+        tokenUserId = matchingUser._id.toString();
+        // Align mustChangePassword with User document if available
+        superAdmin.mustChangePassword = matchingUser.mustChangePassword;
+      }
+    } catch (e) {
+      // ignore linkage error; fallback to superAdmin id
+    }
+
+    const token = generateToken(tokenUserId, true);
     console.log('Generated token with isSuperAdmin flag');
 
     res.json({
@@ -85,7 +100,9 @@ export const superAdminLogin = async (req: Request, res: Response, next: NextFun
         role: 'superadmin',
         isActive: superAdmin.isActive,
         permissions: superAdmin.permissions || ['all'],
+        mustChangePassword: !!superAdmin.mustChangePassword,
       },
+      mustChangePassword: !!superAdmin.mustChangePassword,
       message: 'SuperAdmin login successful'
     });
   } catch (error) {
@@ -211,121 +228,133 @@ export const switchTenant = async (req: Request, res: Response, next: NextFuncti
 };
 
 export const createTenant = async (req: Request, res: Response, next: NextFunction) => {
+  let newTenant: any = null;
+  let adminUser: any = null;
   try {
     const user = (req as any).user;
 
-    // Create new tenant in database
     const { Tenant } = require('../models/Tenant');
     const { User } = require('../models/User');
-    
-    // Extract admin user info from request
-    const { name, email, contactPerson, phone, address, plan, maxUsers, admin } = req.body;
-    
-    // Extract admin password if provided in admin object or directly
-    const adminPassword = admin?.password || req.body.adminPassword;
-    
-    // Validate required fields
-    if (!name || !email || !contactPerson) {
+
+    // Extract admin/tenant info
+    const { name, email, contactPerson, plan, maxUsers, admin } = req.body;
+    const adminEmail = admin?.email || req.body.adminEmail || email;
+    const adminFirstName = admin?.firstName || (contactPerson?.trim()?.split(' ')[0] || 'Admin');
+    const adminLastName = admin?.lastName || (contactPerson?.trim()?.split(' ').slice(1).join(' ') || 'User');
+    let adminPassword: string | undefined = admin?.password || req.body.adminPassword;
+
+    // Validate minimal required fields
+    if (!name || !adminEmail) {
       return res.status(400).json({
         success: false,
-        message: 'Restaurant name, email, and contact person are required'
+        message: 'Tenant name and admin email are required'
       });
     }
-    
-    // Generate slug from name if not provided
+
+    // Prepare tenant data
+    const slug = (req.body.slug || name)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
     const tenantData = {
-      ...req.body,
-      slug: req.body.slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''),
+      name,
+      email, // billing/contact email for tenant
+      slug,
       status: req.body.status || 'active',
       plan: plan || 'basic',
       currentUsers: 0,
       maxUsers: maxUsers || 10,
       isActive: true,
-      createdBy: user._id // Track who created this tenant
+      createdBy: user?._id,
+      domain: req.body.domain,
+      settings: req.body.settings,
+      features: req.body.features,
     };
 
-    // Check if tenant with this email already exists
-    const existingTenant = await Tenant.findOne({ 
-      $or: [{ email: email }, { slug: tenantData.slug }]
-    });
-    
+    // Check duplicates
+    const existingTenant = await Tenant.findOne({ $or: [{ email }, { slug }] });
     if (existingTenant) {
-      return res.status(400).json({
-        success: false,
-        message: 'A tenant with this email or name already exists'
-      });
+      return res.status(409).json({ success: false, message: 'A tenant with this email or name already exists' });
+    }
+    const existingAdmin = await User.findOne({ email: adminEmail });
+    if (existingAdmin) {
+      return res.status(409).json({ success: false, message: 'A user with this admin email already exists' });
     }
 
-    const newTenant = new Tenant(tenantData);
-    await newTenant.save();
+    // Create tenant (non-transactional); we'll compensate on failure below
+    newTenant = await new Tenant(tenantData).save();
 
-    console.log('New tenant created:', newTenant.name, 'with ID:', newTenant._id);
-    
-    // Automatically create admin user for this tenant
-    const bcrypt = require('bcryptjs');
-    
-    // Use provided password or generate a default one
-    const userPassword = adminPassword || 'restaurant123';
-    const hashedPassword = await bcrypt.hash(userPassword, 10);
-    
-    // Extract first and last name from contactPerson
-    const nameParts = contactPerson.trim().split(' ');
-    const firstName = nameParts[0] || 'Admin';
-    const lastName = nameParts.slice(1).join(' ') || 'User';
-    
-    // Create the admin user
-    const adminUser = new User({
-      email: email,
-      firstName: firstName,
-      lastName: lastName,
+    // Set password: generate if not provided
+    let generatedPassword: string | undefined;
+    if (!adminPassword) {
+      const crypto = await import('crypto');
+      generatedPassword = crypto.randomBytes(9).toString('base64')
+        .replace(/[^a-zA-Z0-9@#]/g, '')
+        .slice(0, 12);
+      if (!/[A-Z]/.test(generatedPassword)) generatedPassword = 'A' + generatedPassword;
+      if (!/[a-z]/.test(generatedPassword)) generatedPassword = 'a' + generatedPassword;
+      if (!/[0-9]/.test(generatedPassword)) generatedPassword = generatedPassword + '1';
+      if (!/[@#]/.test(generatedPassword)) generatedPassword = generatedPassword + '@';
+      adminPassword = generatedPassword;
+    }
+
+    // Create admin user — DO NOT pre-hash; pre-save hook will hash
+    adminUser = await new User({
+      email: adminEmail,
+      firstName: adminFirstName,
+      lastName: adminLastName,
       role: 'admin',
-      password: hashedPassword,
+      password: adminPassword,
       tenantId: newTenant._id,
       tenantName: newTenant.name,
       isActive: true,
-      mustChangePassword: true, // Force password change on first login
+      mustChangePassword: !!generatedPassword || true, // force change on first login
       accountStatus: 'active',
       passwordLastChanged: new Date(),
-      createdAt: new Date(),
-      updatedAt: new Date()
-    });
-    
-    await adminUser.save();
-    
-    // Update tenant's current user count
+    }).save();
+
+    // Update tenant user count
     await Tenant.updateOne(
       { _id: newTenant._id },
       { $set: { currentUsers: 1 } }
     );
-    
-    console.log('Admin user created for tenant:', email, 'with password:', userPassword);
 
+    // Response
     res.status(201).json({
       success: true,
       tenant: newTenant,
       adminUser: {
+        _id: adminUser._id,
         email: adminUser.email,
         firstName: adminUser.firstName,
         lastName: adminUser.lastName,
         role: adminUser.role,
-        defaultPassword: userPassword,
-        mustChangePassword: true
+        mustChangePassword: true,
       },
+      ...(process.env.NODE_ENV !== 'production' && adminPassword === generatedPassword
+        ? { initialPassword: generatedPassword }
+        : {}),
       message: 'Tenant and admin user created successfully'
     });
   } catch (error) {
     console.error('Create tenant error:', error);
-    
-    // Handle duplicate key errors
-    if (error.code === 11000) {
-      const field = Object.keys(error.keyValue)[0];
-      return res.status(400).json({ 
-        success: false, 
-        message: `A tenant with this ${field} already exists` 
-      });
+    // Compensating action: remove tenant if user creation failed after tenant was created
+    try {
+      if (newTenant && !adminUser) {
+        await (await import('../models/Tenant')).Tenant.deleteOne({ _id: newTenant._id });
+        console.warn('🧹 Rolled back tenant creation due to admin user creation failure.');
+      }
+    } catch (cleanupErr) {
+      console.error('Failed to rollback tenant after error:', cleanupErr);
     }
-    
+    if ((error as any).code === 11000) {
+      const field = Object.keys((error as any).keyValue || { duplicate: 'key' })[0];
+      return res.status(409).json({ success: false, message: `Duplicate ${field}` });
+    }
     next(error);
+  } finally {
+    // no session to end in non-transactional flow
   }
 };
 
@@ -423,8 +452,8 @@ export const uploadSystemLogo = async (req: Request, res: Response, next: NextFu
       return res.status(400).json({ success: false, message: 'No file uploaded' });
     }
 
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = path.join(__dirname, '../../uploads');
+    // Create uploads directory if it doesn't exist - use process.cwd() for reliable path resolution
+    const uploadsDir = path.join(process.cwd(), 'uploads');
     const logosDir = path.join(uploadsDir, 'logos');
     
     if (!fs.existsSync(logosDir)) {
@@ -461,8 +490,8 @@ export const uploadSystemLogo = async (req: Request, res: Response, next: NextFu
 
 export const getSystemLogo = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Check if logo exists
-    const logosDir = path.join(__dirname, '../../uploads/logos');
+    // Check if logo exists - use process.cwd() for reliable path resolution
+    const logosDir = path.join(process.cwd(), 'uploads/logos');
     
     // Check for various image formats
     const possibleExtensions = ['.png', '.jpg', '.jpeg', '.svg', '.webp', '.gif'];
@@ -557,13 +586,16 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
     const { User } = require('../models/User');
     const { Tenant } = require('../models/Tenant');
     
-    const { email, firstName, lastName, role, tenantId, password } = req.body;
+    const { email, firstName, lastName, role, tenantId } = req.body;
+    let { password } = req.body as { password?: string };
+    const autoGeneratePassword: boolean = req.body.autoGeneratePassword === true || !password;
+    const issueDevToken: boolean = req.body.issueDevToken === true;
     
-    // Validate required fields
-    if (!email || !firstName || !lastName || !role || !password) {
+    // Validate required fields (password can be generated when missing)
+    if (!email || !firstName || !lastName || !role) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Email, firstName, lastName, role, and password are required' 
+        message: 'Email, firstName, lastName, and role are required' 
       });
     }
 
@@ -581,6 +613,21 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
       return res.status(400).json({ success: false, message: 'User with this email already exists' });
     }
 
+    // Auto-generate a strong temporary password when requested or missing
+    let generatedPassword: string | undefined;
+    if (autoGeneratePassword) {
+      const crypto = await import('crypto');
+      generatedPassword = crypto.randomBytes(9).toString('base64') // ~12 chars
+        .replace(/[^a-zA-Z0-9@#]/g, '')
+        .slice(0, 12);
+      // Ensure minimal complexity
+      if (!/[A-Z]/.test(generatedPassword)) generatedPassword = 'A' + generatedPassword;
+      if (!/[a-z]/.test(generatedPassword)) generatedPassword = 'a' + generatedPassword;
+      if (!/[0-9]/.test(generatedPassword)) generatedPassword = generatedPassword + '1';
+      if (!/[@#]/.test(generatedPassword)) generatedPassword = generatedPassword + '@';
+      password = generatedPassword;
+    }
+
     // Create new user
     const newUser = new User({
       email,
@@ -590,7 +637,7 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
       password,
       tenantId: tenantId && tenantId !== 'none' ? tenantId : undefined,
       isActive: true,
-      mustChangePassword: req.body.mustChangePassword || false,
+      mustChangePassword: autoGeneratePassword ? true : (req.body.mustChangePassword || false),
       accountStatus: 'active'
     });
 
@@ -611,9 +658,18 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
       updatedAt: newUser.updatedAt
     };
 
+    // Optionally issue a development login token for immediate access (dev only)
+    let devLoginToken: string | undefined;
+    if (issueDevToken && (process.env.ALLOW_MOCK_AUTH === 'true' || process.env.NODE_ENV !== 'production')) {
+      devLoginToken = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET!, { expiresIn: '7d' });
+    }
+
     res.status(201).json({
       success: true,
       user: userResponse,
+      // Only include initialPassword in non-production environments to avoid leaking secrets
+      ...(generatedPassword && (process.env.NODE_ENV !== 'production') ? { initialPassword: generatedPassword } : {}),
+      ...(devLoginToken ? { devLoginToken } : {}),
       message: 'User created successfully'
     });
   } catch (error) {

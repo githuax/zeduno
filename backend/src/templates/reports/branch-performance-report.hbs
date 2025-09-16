@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{title}}</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            line-height: 1.6;
+        }
+        .report-header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #20c997;
+            padding-bottom: 20px;
+        }
+        .report-title {
+            color: #20c997;
+            font-size: 28px;
+            font-weight: bold;
+            margin: 0;
+        }
+        .report-subtitle {
+            color: #666;
+            font-size: 14px;
+            margin: 10px 0 0 0;
+        }
+        .company-info {
+            margin-bottom: 15px;
+        }
+        .company-name {
+            font-size: 20px;
+            font-weight: bold;
+            color: #20c997;
+        }
+        .report-period {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 30px;
+            border-left: 5px solid #20c997;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .summary-card {
+            background: linear-gradient(135deg, #20c997 0%, #17a2b8 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .summary-card h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .summary-card .value {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 0;
+        }
+        .section {
+            margin-bottom: 40px;
+            page-break-inside: avoid;
+        }
+        .section-title {
+            font-size: 20px;
+            color: #20c997;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        th {
+            background-color: #20c997;
+            color: white;
+            padding: 15px 10px;
+            text-align: left;
+            font-weight: bold;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        tr:hover {
+            background-color: #e8f4f8;
+        }
+        .number {
+            text-align: right;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+        .currency {
+            color: #28a745;
+        }
+        .percentage {
+            color: #17a2b8;
+        }
+        .chart-placeholder {
+            background-color: #f8f9fa;
+            height: 300px;
+            border: 2px dashed #dee2e6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+            font-style: italic;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+            border-top: 1px solid #dee2e6;
+            padding-top: 20px;
+        }
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        .three-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+        }
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .metric-row:last-child {
+            border-bottom: none;
+        }
+        .metric-label {
+            font-weight: 500;
+            color: #666;
+        }
+        .metric-value {
+            font-weight: bold;
+            color: #333;
+        }
+        .status-success { color: #28a745; }
+        .status-warning { color: #ffc107; }
+        .status-danger { color: #dc3545; }
+        .rank-1 { background-color: #d4edda; font-weight: bold; }
+        .rank-2 { background-color: #d1ecf1; }
+        .rank-3 { background-color: #fff3cd; }
+        .rank-bottom { background-color: #f8d7da; }
+        .performance-excellent { background-color: #d4edda; }
+        .performance-good { background-color: #d1ecf1; }
+        .performance-average { background-color: #e2e3e5; }
+        .performance-poor { background-color: #f8d7da; }
+        .growth-positive { color: #28a745; }
+        .growth-negative { color: #dc3545; }
+        .branch-flagship { border-left: 5px solid #ffd700; }
+        .branch-standard { border-left: 5px solid #20c997; }
+        .branch-new { border-left: 5px solid #17a2b8; }
+        
+        @media print {
+            body { margin: 0; }
+            .page-break { page-break-before: always; }
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="report-header">
+        <div class="company-info">
+            <div class="company-name">{{companyInfo.name}}</div>
+            {{#if companyInfo.address}}
+            <div>{{companyInfo.address}}</div>
+            {{/if}}
+            {{#if companyInfo.phone}}
+            <div>Phone: {{companyInfo.phone}}</div>
+            {{/if}}
+        </div>
+        <h1 class="report-title">{{title}}</h1>
+        {{#if subtitle}}
+        <p class="report-subtitle">{{subtitle}}</p>
+        {{/if}}
+    </div>
+
+    <div class="report-period">
+        <strong>Report Period:</strong> {{formatDate data.filters.startDate}} to {{formatDate data.filters.endDate}}
+        <br>
+        <strong>Generated:</strong> {{formattedGeneratedAt}}
+        <br>
+        <strong>Generated by:</strong> {{generatedBy.userName}} ({{generatedBy.userRole}})
+        <br>
+        <strong>Total Branches Analyzed:</strong> {{formatNumber data.totalBranches}}
+    </div>
+
+    <!-- Network Performance Overview -->
+    <div class="section">
+        <h2 class="section-title">Network Performance Overview</h2>
+        <div class="summary-grid">
+            <div class="summary-card">
+                <h3>Total Branches</h3>
+                <p class="value">{{formatNumber data.summary.totalBranches}}</p>
+            </div>
+            <div class="summary-card">
+                <h3>Active Branches</h3>
+                <p class="value">{{formatNumber data.summary.activeBranches}}</p>
+            </div>
+            <div class="summary-card">
+                <h3>Network Revenue</h3>
+                <p class="value">{{formatCurrency data.summary.networkRevenue}}</p>
+            </div>
+            <div class="summary-card">
+                <h3>Avg Branch Revenue</h3>
+                <p class="value">{{formatCurrency data.summary.avgBranchRevenue}}</p>
+            </div>
+            <div class="summary-card">
+                <h3>Network Growth</h3>
+                <p class="value">{{formatPercentage data.summary.networkGrowth}}</p>
+            </div>
+            <div class="summary-card">
+                <h3>Top Performer ROI</h3>
+                <p class="value">{{formatPercentage data.summary.topPerformerROI}}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Branch Performance Rankings -->
+    {{#if data.branchRankings}}
+    <div class="section">
+        <h2 class="section-title">Branch Performance Rankings</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Branch</th>
+                    <th>Location</th>
+                    <th>Revenue</th>
+                    <th>Orders</th>
+                    <th>Profit Margin</th>
+                    <th>Customer Satisfaction</th>
+                    <th>Growth Rate</th>
+                    <th>Performance Score</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.branchRankings}}
+                <tr class="{{#compare @index '==' 0}}rank-1{{else}}{{#compare @index '==' 1}}rank-2{{else}}{{#compare @index '==' 2}}rank-3{{else}}{{#compare @index '>=' ../lastRankIndex}}rank-bottom{{/compare}}{{/compare}}{{/compare}}{{/compare}} branch-{{this.branchType}}">
+                    <td class="number"><strong>{{this.rank}}</strong></td>
+                    <td><strong>{{this.branchName}}</strong><br><small>{{this.branchCode}}</small></td>
+                    <td>{{this.location}}<br><small>{{this.address}}</small></td>
+                    <td class="number currency">{{formatCurrency this.revenue}}</td>
+                    <td class="number">{{formatNumber this.totalOrders}}</td>
+                    <td class="number percentage {{#compare this.profitMargin '>' 15}}status-success{{else}}{{#compare this.profitMargin '<' 8}}status-danger{{else}}status-warning{{/compare}}{{/compare}}">{{formatPercentage this.profitMargin}}</td>
+                    <td class="number {{#compare this.customerSatisfaction '>' 4.5}}status-success{{else}}{{#compare this.customerSatisfaction '<' 3.5}}status-danger{{else}}status-warning{{/compare}}{{/compare}}">{{formatNumber this.customerSatisfaction}}/5</td>
+                    <td class="number percentage growth-{{#if this.growthPositive}}positive{{else}}negative{{/if}}">{{formatPercentage this.growthRate}}</td>
+                    <td class="number {{#compare this.performanceScore '>' 85}}status-success{{else}}{{#compare this.performanceScore '<' 70}}status-danger{{else}}status-warning{{/compare}}{{/compare}}">{{formatNumber this.performanceScore}}/100</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+        <div class="chart-placeholder">
+            Branch Performance Comparison Chart (Multi-axis chart comparing revenue, orders, and satisfaction would be rendered here)
+        </div>
+    </div>
+    {{/if}}
+
+    <!-- Revenue Analysis by Branch -->
+    {{#if data.revenueAnalysis}}
+    <div class="section">
+        <h2 class="section-title">Revenue Performance Analysis</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Branch</th>
+                    <th>Revenue</th>
+                    <th>% of Network</th>
+                    <th>Avg Order Value</th>
+                    <th>Orders/Day</th>
+                    <th>Revenue/SqFt</th>
+                    <th>Target Achievement</th>
+                    <th>Trend</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.revenueAnalysis}}
+                <tr class="performance-{{this.performanceLevel}}">
+                    <td><strong>{{this.branchName}}</strong></td>
+                    <td class="number currency">{{formatCurrency this.revenue}}</td>
+                    <td class="number percentage">{{formatPercentage this.networkPercentage}}</td>
+                    <td class="number currency">{{formatCurrency this.avgOrderValue}}</td>
+                    <td class="number">{{formatNumber this.ordersPerDay}}</td>
+                    <td class="number currency">{{formatCurrency this.revenuePerSqFt}}</td>
+                    <td class="number percentage {{#compare this.targetAchievement '>' 100}}status-success{{else}}{{#compare this.targetAchievement '<' 80}}status-danger{{else}}status-warning{{/compare}}{{/compare}}">{{formatPercentage this.targetAchievement}}</td>
+                    <td class="growth-{{#if this.trendPositive}}positive{{else}}negative{{/if}}">{{#if this.trendPositive}}↗ Growing{{else}}↘ Declining{{/if}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+    {{/if}}
+
+    <!-- Operational Metrics Comparison -->
+    {{#if data.operationalMetrics}}
+    <div class="section">
+        <h2 class="section-title">Operational Metrics Comparison</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Branch</th>
+                    <th>Staff Count</th>
+                    <th>Seating Capacity</th>
+                    <th>Utilization Rate</th>
+                    <th>Staff Productivity</th>
+                    <th>Operating Hours</th>
+                    <th>Energy Efficiency</th>
+                    <th>Waste Management</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.operationalMetrics}}
+                <tr>
+                    <td><strong>{{this.branchName}}</strong></td>
+                    <td class="number">{{formatNumber this.staffCount}}</td>
+                    <td class="number">{{formatNumber this.seatingCapacity}}</td>
+                    <td class="number percentage {{#compare this.utilizationRate '>' 75}}status-success{{else}}{{#compare this.utilizationRate '<' 50}}status-warning{{else}}status-success{{/compare}}{{/compare}}">{{formatPercentage this.utilizationRate}}</td>
+                    <td class="number currency">{{formatCurrency this.staffProductivity}}</td>
+                    <td class="number">{{formatNumber this.operatingHours}}</td>
+                    <td class="{{#compare this.energyEfficiency '>' 80}}status-success{{else}}{{#compare this.energyEfficiency '<' 60}}status-warning{{else}}status-success{{/compare}}{{/compare}}">{{this.energyEfficiencyGrade}}</td>
+                    <td class="{{#compare this.wasteManagement '>' 80}}status-success{{else}}{{#compare this.wasteManagement '<' 60}}status-warning{{else}}status-success{{/compare}}{{/compare}}">{{this.wasteManagementGrade}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+    {{/if}}
+
+    <!-- Customer Analytics by Branch -->
+    {{#if data.customerAnalytics}}
+    <div class="section page-break">
+        <h2 class="section-title">Customer Analytics by Branch</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Branch</th>
+                    <th>Total Customers</th>
+                    <th>New Customers</th>
+                    <th>Returning Customers</th>
+                    <th>Customer Retention</th>
+                    <th>Avg Visit Frequency</th>
+                    <th>Customer LTV</th>
+                    <th>NPS Score</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.customerAnalytics}}
+                <tr>
+                    <td><strong>{{this.branchName}}</strong></td>
+                    <td class="number">{{formatNumber this.totalCustomers}}</td>
+                    <td class="number status-success">{{formatNumber this.newCustomers}}</td>
+                    <td class="number">{{formatNumber this.returningCustomers}}</td>
+                    <td class="number percentage {{#compare this.retentionRate '>' 70}}status-success{{else}}{{#compare this.retentionRate '<' 50}}status-danger{{else}}status-warning{{/compare}}{{/compare}}">{{formatPercentage this.retentionRate}}</td>
+                    <td class="number">{{formatNumber this.avgVisitFrequency}}</td>
+                    <td class="number currency">{{formatCurrency this.customerLTV}}</td>
+                    <td class="number {{#compare this.npsScore '>' 50}}status-success{{else}}{{#compare this.npsScore '<' 0}}status-danger{{else}}status-warning{{/compare}}{{/compare}}">{{formatNumber this.npsScore}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+    {{/if}}
+
+    <!-- Cost Structure Analysis -->
+    {{#if data.costAnalysis}}
+    <div class="section">
+        <h2 class="section-title">Cost Structure Analysis by Branch</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Branch</th>
+                    <th>Total Costs</th>
+                    <th>Food Cost %</th>
+                    <th>Labor Cost %</th>
+                    <th>Rent Cost %</th>
+                    <th>Utilities %</th>
+                    <th>Marketing %</th>
+                    <th>Operating Margin</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.costAnalysis}}
+                <tr>
+                    <td><strong>{{this.branchName}}</strong></td>
+                    <td class="number currency">{{formatCurrency this.totalCosts}}</td>
+                    <td class="number percentage {{#compare this.foodCostPercent '>' 35}}status-danger{{else}}{{#compare this.foodCostPercent '<' 25}}status-success{{else}}status-warning{{/compare}}{{/compare}}">{{formatPercentage this.foodCostPercent}}</td>
+                    <td class="number percentage {{#compare this.laborCostPercent '>' 40}}status-danger{{else}}{{#compare this.laborCostPercent '<' 30}}status-success{{else}}status-warning{{/compare}}{{/compare}}">{{formatPercentage this.laborCostPercent}}</td>
+                    <td class="number percentage">{{formatPercentage this.rentCostPercent}}</td>
+                    <td class="number percentage">{{formatPercentage this.utilitiesPercent}}</td>
+                    <td class="number percentage">{{formatPercentage this.marketingPercent}}</td>
+                    <td class="number percentage {{#compare this.operatingMargin '>' 15}}status-success{{else}}{{#compare this.operatingMargin '<' 8}}status-danger{{else}}status-warning{{/compare}}{{/compare}}">{{formatPercentage this.operatingMargin}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+        <div class="chart-placeholder">
+            Cost Structure Comparison Chart (Stacked bar chart showing cost breakdown by branch would be rendered here)
+        </div>
+    </div>
+    {{/if}}
+
+    <!-- Geographic Performance Analysis -->
+    {{#if data.geographicAnalysis}}
+    <div class="section">
+        <h2 class="section-title">Geographic Performance Analysis</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Region/City</th>
+                    <th>Branch Count</th>
+                    <th>Total Revenue</th>
+                    <th>Market Penetration</th>
+                    <th>Competition Density</th>
+                    <th>Growth Potential</th>
+                    <th>Regional Performance</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.geographicAnalysis}}
+                <tr>
+                    <td><strong>{{this.region}}</strong></td>
+                    <td class="number">{{formatNumber this.branchCount}}</td>
+                    <td class="number currency">{{formatCurrency this.totalRevenue}}</td>
+                    <td class="number percentage {{#compare this.marketPenetration '>' 15}}status-success{{else}}{{#compare this.marketPenetration '<' 5}}status-warning{{else}}status-success{{/compare}}{{/compare}}">{{formatPercentage this.marketPenetration}}</td>
+                    <td class="{{#compare this.competitionDensity '>' 70}}status-danger{{else}}{{#compare this.competitionDensity '<' 40}}status-success{{else}}status-warning{{/compare}}{{/compare}}">{{this.competitionLevel}}</td>
+                    <td class="{{#compare this.growthPotential '>' 70}}status-success{{else}}{{#compare this.growthPotential '<' 40}}status-warning{{else}}status-success{{/compare}}{{/compare}}">{{this.growthPotentialLevel}}</td>
+                    <td class="number percentage {{#compare this.regionalPerformance '>' 85}}status-success{{else}}{{#compare this.regionalPerformance '<' 70}}status-danger{{else}}status-warning{{/compare}}{{/compare}}">{{formatPercentage this.regionalPerformance}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+        <div class="chart-placeholder">
+            Geographic Performance Heatmap (Map showing branch performance by location would be rendered here)
+        </div>
+    </div>
+    {{/if}}
+
+    <!-- Branch Benchmark Analysis -->
+    <div class="section">
+        <h2 class="section-title">Performance Benchmarking</h2>
+        <div class="three-column">
+            <div>
+                <h3>Revenue Leaders</h3>
+                <div class="metric-row">
+                    <span class="metric-label">Top Revenue Branch:</span>
+                    <span class="metric-value status-success">{{data.benchmarks.topRevenue.name}}</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Revenue Amount:</span>
+                    <span class="metric-value currency">{{formatCurrency data.benchmarks.topRevenue.amount}}</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Above Network Avg:</span>
+                    <span class="metric-value percentage">{{formatPercentage data.benchmarks.topRevenue.aboveAverage}}</span>
+                </div>
+            </div>
+            <div>
+                <h3>Efficiency Leaders</h3>
+                <div class="metric-row">
+                    <span class="metric-label">Most Efficient Branch:</span>
+                    <span class="metric-value status-success">{{data.benchmarks.mostEfficient.name}}</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Operating Margin:</span>
+                    <span class="metric-value percentage">{{formatPercentage data.benchmarks.mostEfficient.margin}}</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Cost Efficiency:</span>
+                    <span class="metric-value percentage">{{formatPercentage data.benchmarks.mostEfficient.costEfficiency}}</span>
+                </div>
+            </div>
+            <div>
+                <h3>Growth Champions</h3>
+                <div class="metric-row">
+                    <span class="metric-label">Fastest Growing:</span>
+                    <span class="metric-value status-success">{{data.benchmarks.fastestGrowing.name}}</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Growth Rate:</span>
+                    <span class="metric-value percentage">{{formatPercentage data.benchmarks.fastestGrowing.rate}}</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Customer Growth:</span>
+                    <span class="metric-value percentage">{{formatPercentage data.benchmarks.fastestGrowing.customerGrowth}}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Improvement Opportunities -->
+    {{#if data.improvementOpportunities}}
+    <div class="section">
+        <h2 class="section-title">Branch Improvement Opportunities</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Branch</th>
+                    <th>Priority Area</th>
+                    <th>Current Performance</th>
+                    <th>Target Performance</th>
+                    <th>Potential Impact</th>
+                    <th>Investment Required</th>
+                    <th>Timeline</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.improvementOpportunities}}
+                <tr class="{{#compare this.priority '==' 'high'}}status-danger{{else}}{{#compare this.priority '==' 'medium'}}status-warning{{else}}status-success{{/compare}}{{/compare}}">
+                    <td><strong>{{this.branchName}}</strong></td>
+                    <td>{{this.priorityArea}}</td>
+                    <td class="number">{{this.currentPerformance}}</td>
+                    <td class="number">{{this.targetPerformance}}</td>
+                    <td class="number currency">{{formatCurrency this.potentialImpact}}</td>
+                    <td class="number currency">{{formatCurrency this.investmentRequired}}</td>
+                    <td>{{this.timeline}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+    {{/if}}
+
+    <!-- Network Growth Trends -->
+    {{#if data.networkTrends}}
+    <div class="section">
+        <h2 class="section-title">Network Growth & Expansion Trends</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Period</th>
+                    <th>New Branches</th>
+                    <th>Network Revenue</th>
+                    <th>Same-Store Growth</th>
+                    <th>Market Share</th>
+                    <th>Customer Base</th>
+                    <th>Network Efficiency</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.networkTrends}}
+                <tr>
+                    <td><strong>{{this.period}}</strong></td>
+                    <td class="number status-success">{{formatNumber this.newBranches}}</td>
+                    <td class="number currency">{{formatCurrency this.networkRevenue}}</td>
+                    <td class="number percentage growth-{{#if this.sameStoreGrowthPositive}}positive{{else}}negative{{/if}}">{{formatPercentage this.sameStoreGrowth}}</td>
+                    <td class="number percentage">{{formatPercentage this.marketShare}}</td>
+                    <td class="number">{{formatNumber this.customerBase}}</td>
+                    <td class="number percentage {{#compare this.networkEfficiency '>' 85}}status-success{{else}}{{#compare this.networkEfficiency '<' 75}}status-warning{{else}}status-success{{/compare}}{{/compare}}">{{formatPercentage this.networkEfficiency}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+        <div class="chart-placeholder">
+            Network Growth Trajectory Chart (Multi-line chart showing growth trends across metrics would be rendered here)
+        </div>
+    </div>
+    {{/if}}
+
+    <div class="footer">
+        <p>This report was generated on {{formattedGeneratedAt}} by {{generatedBy.userName}}</p>
+        <p>{{companyInfo.name}} - Branch Performance Analysis Report</p>
+        {{#if companyInfo.email}}
+        <p>Contact: {{companyInfo.email}}</p>
+        {{/if}}
+        <p><strong>Strategic Business Information - Confidential</strong></p>
+    </div>
+</body>
+</html>

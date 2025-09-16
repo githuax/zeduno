@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate, authorize } from '../middleware/auth';
+
 import {
   getAttendance,
   createAttendance,
@@ -8,6 +8,7 @@ import {
   breakStart,
   breakEnd
 } from '../controllers/attendance.controller';
+import { authenticate, authorize } from '../middleware/auth';
 
 const router = Router();
 

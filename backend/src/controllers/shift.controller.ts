@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 
 // Mock data for now - in a real app this would come from a database
-let shifts: any[] = [];
+const shifts: any[] = [];
 
 export const getShifts = async (req: Request, res: Response, next: NextFunction) => {
   try {

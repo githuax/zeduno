@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
-import Order from '../models/Order';
+
 import { MenuItem } from '../models/MenuItem';
+import Order from '../models/Order';
 import Table from '../models/Table';
 import { User } from '../models/User';
 

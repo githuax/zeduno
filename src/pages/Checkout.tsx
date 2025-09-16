@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
 import { ArrowLeft, CreditCard, MapPin, Clock, Phone, User, CheckCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { useCart } from '@/contexts/CartContext';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
-import { useNavigate } from 'react-router-dom';
 import { getApiUrl } from '@/config/api';
+import { useCart } from '@/contexts/CartContext';
+import { useTenantContext } from '@/hooks/useTenant';
 import { useCurrency } from '@/hooks/useCurrency';
 
 interface CustomerInfo {
@@ -66,8 +68,14 @@ const Checkout = () => {
     cardholderName: ''
   });
 
+  const { data: tenantContext } = useTenantContext();
   const subtotal = getTotalPrice();
-  const tax = subtotal * 0.08;
+  const baseTaxRate = tenantContext?.tenant.settings.defaultTaxRate ?? 0;
+  const alcoholTaxRate = baseTaxRate; // Optional: add tenant setting override in future
+  const tax = items.reduce((acc, item) => {
+    const rate = item.alcoholic ? alcoholTaxRate : baseTaxRate;
+    return acc + (item.price * item.quantity) * (rate / 100);
+  }, 0);
   const deliveryFee = deliveryType === 'delivery' ? (subtotal > 25 ? 0 : 2.99) : 0;
   const total = subtotal + tax + deliveryFee;
 

@@ -136,7 +136,7 @@ stockMovementSchema.statics.getWasteReport = function(
       }
     },
     {
-      $sort: { totalCost: -1 }
+      $sort: { totalCost: -1 as -1 }
     }
   ]);
 };

@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
-import { User } from '../models/User';
+
 import { Tenant } from '../models/Tenant';
+import { User } from '../models/User';
 
 const checkUserTenantMapping = async (): Promise<void> => {
   try {
@@ -24,10 +25,10 @@ const checkUserTenantMapping = async (): Promise<void> => {
           console.log(`   Tenant Name: ${(user.tenantId as any).name}`);
         }
         
-        // Also check the tenant field if it exists
-        if (user.tenant) {
-          const tenantObj = await Tenant.findById(user.tenant);
-          console.log(`   Tenant (field): ${user.tenant}`);
+        // Also check the tenantId field if it exists
+        if ((user as any).tenant) {
+          const tenantObj = await Tenant.findById((user as any).tenant);
+          console.log(`   Tenant (field): ${(user as any).tenant}`);
           console.log(`   Tenant Name (from tenant field): ${tenantObj?.name}`);
         }
         console.log('');

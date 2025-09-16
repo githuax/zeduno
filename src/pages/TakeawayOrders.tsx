@@ -1,20 +1,20 @@
-import { useState, useEffect } from 'react';
 import { Plus, Clock, Phone, Package, Bell, Filter, RefreshCw, Search, Users } from 'lucide-react';
+import { useState, useEffect } from 'react';
+
+import { PrepTimeEstimator } from '@/components/takeaway/PrepTimeEstimator';
+import { QuickOrderDialog } from '@/components/takeaway/QuickOrderDialog';
+import { TakeawayOrderList } from '@/components/takeaway/TakeawayOrderList';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { TakeawayOrderList } from '@/components/takeaway/TakeawayOrderList';
-import { QuickOrderDialog } from '@/components/takeaway/QuickOrderDialog';
-import { OrderDetailsDialog } from '@/components/orders/OrderDetailsDialog';
-import { CreateOrderDialog } from '@/components/orders/CreateOrderDialog';
-import { PrepTimeEstimator } from '@/components/takeaway/PrepTimeEstimator';
-import { useOrders } from '@/hooks/useOrders';
-import { Order, OrderStatus } from '@/types/order.types';
+import { OrderDetailsDialog, CreateOrderDialog } from '@/features/orders';
+import { useOrders } from '@/features/orders';
 import { toast } from '@/hooks/use-toast';
 import { useCurrency } from '@/hooks/useCurrency';
+import { Order, OrderStatus } from '@/types/order.types';
 
 export default function TakeawayOrders() {
   const { format: formatPrice } = useCurrency();

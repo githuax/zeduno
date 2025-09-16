@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
-import { MenuItem } from '../models/MenuItem';
+
 import { Category } from '../models/Category';
+import { MenuItem } from '../models/MenuItem';
 
 // Connect to MongoDB
 const connectDB = async () => {

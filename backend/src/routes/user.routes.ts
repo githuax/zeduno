@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate, authorize } from '../middleware/auth';
+
 import { 
   getAllUsers, 
   getUserById, 
@@ -11,6 +11,7 @@ import {
   getUserAuditLogs,
   changePassword
 } from '../controllers/user.controller';
+import { authenticate, authorize } from '../middleware/auth';
 
 const router = Router();
 

@@ -1,7 +1,8 @@
+import { useQueryClient } from '@tanstack/react-query';
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
-import { getApiUrl } from '../config/api';
+
+import { getApiUrl } from '@/config/api';
 
 interface User {
   id: string;
@@ -13,6 +14,12 @@ interface User {
   tenant?: any; // Store the full tenant object from the backend
   permissions?: string[];
   mustChangePassword?: boolean;
+  // Branch management fields
+  currentBranch?: string;
+  assignedBranches?: string[];
+  defaultBranch?: string;
+  canSwitchBranches?: boolean;
+  branchRole?: 'branch_manager' | 'branch_staff' | 'multi_branch';
 }
 
 interface AuthContextType {
@@ -206,7 +213,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         tenantName: data.user.tenantName || data.user.tenant?.name,
         tenant: data.user.tenant, // Store the full tenant object
         permissions: data.user.permissions,
-        mustChangePassword: data.user.mustChangePassword || false
+        mustChangePassword: data.user.mustChangePassword || false,
+        // Map branch management fields
+        currentBranch: data.user.currentBranch,
+        assignedBranches: data.user.assignedBranches,
+        defaultBranch: data.user.defaultBranch,
+        canSwitchBranches: data.user.canSwitchBranches,
+        branchRole: data.user.branchRole
       };
       
       localStorage.setItem('token', data.token);

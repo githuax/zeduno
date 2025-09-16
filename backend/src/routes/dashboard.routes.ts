@@ -1,4 +1,5 @@
 import { Router } from 'express';
+
 import { getDashboardStats } from '../controllers/dashboard.controller';
 import { authenticate, authorize } from '../middleware/auth';
 

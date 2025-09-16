@@ -1,5 +1,5 @@
-import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
+import mongoose, { Document, Schema } from 'mongoose';
 
 export interface ISuperAdmin extends Document {
   email: string;

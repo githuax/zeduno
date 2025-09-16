@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+
 import { AnalyticsMetrics, ReportFilters, DashboardStats } from '@/types/analytics.types';
 
 // Mock data generator for analytics

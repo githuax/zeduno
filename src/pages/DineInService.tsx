@@ -1,21 +1,22 @@
-import { useState, useEffect } from 'react';
 import { Plus, Users, Clock, DollarSign, Filter, RefreshCw, Calendar } from 'lucide-react';
+import { useState, useEffect } from 'react';
+
+import { ReservationDialog } from '@/components/tables/ReservationDialog';
+import { SimpleTableDialog } from '@/components/tables/SimpleTableDialog';
+import { TableGrid } from '@/components/tables/TableGrid';
+import { TableManagementDialog } from '@/components/tables/TableManagementDialog';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { TableGrid } from '@/components/tables/TableGrid';
-import { SimpleTableDialog } from '@/components/tables/SimpleTableDialog';
-import { TableManagementDialog } from '@/components/tables/TableManagementDialog';
-import { ReservationDialog } from '@/components/tables/ReservationDialog';
-import { CreateOrderDialog } from '@/components/orders/CreateOrderDialog';
-import { useTables } from '@/hooks/useTables';
-import { useOrders } from '@/hooks/useOrders';
-import { Table } from '@/types/order.types';
-import { toast } from '@/hooks/use-toast';
 import { RESTAURANT_FLOORS, getFloorOptions, getSectionOptions } from '@/config/restaurant';
+import { CreateOrderDialog } from '@/features/orders';
+import { useOrders } from '@/features/orders';
+import { toast } from '@/hooks/use-toast';
+import { useTables } from '@/hooks/useTables';
+import { Table } from '@/types/order.types';
 
 export default function DineInService() {
   const [selectedFloor, setSelectedFloor] = useState<number>(1);

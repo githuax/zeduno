@@ -1,8 +1,9 @@
+import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-import { User } from '../models/User';
+
 import { Category } from '../models/Category';
 import { MenuItem } from '../models/MenuItem';
-import dotenv from 'dotenv';
+import { User } from '../models/User';
 
 dotenv.config();
 

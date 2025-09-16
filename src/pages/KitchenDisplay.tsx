@@ -1,7 +1,3 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { 
   Clock, 
   AlertTriangle, 
@@ -12,9 +8,18 @@ import {
   Truck,
   RefreshCw,
   Volume2,
-  VolumeX
+  VolumeX,
+  Wifi,
+  WifiOff
 } from "lucide-react";
+import React, { useState, useEffect, useCallback, useContext, useRef } from 'react';
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { getApiUrl } from "@/config/api";
+import { useTenant } from "@/contexts/TenantContext";
+import { useKitchenUpdates, KitchenOrderUpdate } from "@/hooks/useSocket";
 import { formatCurrency } from '@/utils/currency';
 
 interface KitchenOrder {
@@ -39,10 +44,135 @@ interface KitchenOrder {
 }
 
 const KitchenDisplay: React.FC = () => {
+  const { context } = useTenant();
+  const tenant = context?.tenant;
   const [orders, setOrders] = useState<KitchenOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [lastOrderCount, setLastOrderCount] = useState(0);
+  const [updatingOrders, setUpdatingOrders] = useState<Set<string>>(new Set());
+  const [updateErrors, setUpdateErrors] = useState<Map<string, string>>(new Map());
+  const [successMessages, setSuccessMessages] = useState<Map<string, string>>(new Map());
+  const [retryAttempts, setRetryAttempts] = useState<Map<string, number>>(new Map());
+  const [selectedOrderIndex, setSelectedOrderIndex] = useState<number>(0);
+  const [keyboardNavigationEnabled, setKeyboardNavigationEnabled] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Convert WebSocket order format to KitchenOrder format
+  const convertWsOrderToKitchenOrder = useCallback((wsOrder: KitchenOrderUpdate): KitchenOrder => {
+    return {
+      _id: wsOrder.orderId,
+      orderNumber: wsOrder.orderNumber,
+      orderType: wsOrder.orderType,
+      status: wsOrder.status,
+      priority: wsOrder.priority,
+      tableNumber: wsOrder.tableNumber,
+      customerName: wsOrder.customerName,
+      items: wsOrder.items.map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        customizations: item.customizations,
+        specialInstructions: item.specialInstructions,
+        status: item.status
+      })),
+      kitchenNotes: wsOrder.kitchenNotes,
+      preparationTime: wsOrder.preparationTime,
+      createdAt: wsOrder.createdAt
+    };
+  }, []);
+
+  // Handle new order sound notification
+  function handleNewOrderSound(order: KitchenOrderUpdate) {
+    if (soundEnabled && order.action === 'new') {
+      playNotificationSound(order.priority);
+    }
+  }
+
+  // WebSocket integration
+  const { 
+    orders: wsOrders, 
+    connected: wsConnected, 
+    lastUpdate,
+    setOrders: setWsOrders 
+  } = useKitchenUpdates(tenant?.id || '', handleNewOrderSound);
+
+  // Update orders when WebSocket orders change
+  useEffect(() => {
+    if (wsOrders.length > 0) {
+      const convertedOrders = wsOrders
+        .filter(wsOrder => ['confirmed', 'preparing', 'ready'].includes(wsOrder.status))
+        .map(convertWsOrderToKitchenOrder);
+      setOrders(convertedOrders);
+      setIsLoading(false);
+    }
+  }, [wsOrders, convertWsOrderToKitchenOrder]);
+
+  // Keyboard navigation for quick status updates
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!keyboardNavigationEnabled || orders.length === 0) return;
+
+      switch (event.key) {
+        case 'ArrowUp':
+          event.preventDefault();
+          setSelectedOrderIndex(prev => Math.max(0, prev - 1));
+          break;
+        case 'ArrowDown':
+          event.preventDefault();
+          setSelectedOrderIndex(prev => Math.min(orders.length - 1, prev + 1));
+          break;
+        case ' ': // Spacebar
+        case 'Enter':
+          event.preventDefault();
+          const selectedOrder = orders[selectedOrderIndex];
+          if (selectedOrder) {
+            if (selectedOrder.status === 'confirmed') {
+              updateOrderStatus(selectedOrder._id, 'preparing');
+            } else if (selectedOrder.status === 'preparing') {
+              updateOrderStatus(selectedOrder._id, 'ready');
+            }
+          }
+          break;
+        case 'Escape':
+          setKeyboardNavigationEnabled(false);
+          setSelectedOrderIndex(0);
+          break;
+        case 'k': // Enable keyboard navigation
+          if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            setKeyboardNavigationEnabled(true);
+            setSelectedOrderIndex(0);
+          }
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [keyboardNavigationEnabled, orders, selectedOrderIndex, updateOrderStatus]);
+
+  // Auto-scroll selected order into view
+  useEffect(() => {
+    if (keyboardNavigationEnabled && orders.length > 0) {
+      const orderCards = containerRef.current?.querySelectorAll('[data-order-index]');
+      const selectedCard = orderCards?.[selectedOrderIndex];
+      if (selectedCard) {
+        selectedCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [selectedOrderIndex, keyboardNavigationEnabled]);
+
+  // Handle real-time updates
+  useEffect(() => {
+    if (lastUpdate) {
+      console.log('🍳 Processing real-time kitchen update:', lastUpdate);
+      
+      // Play sound for new orders (priority-based)
+      if (lastUpdate.action === 'new' && soundEnabled) {
+        playNotificationSound(lastUpdate.priority);
+      }
+    }
+  }, [lastUpdate, soundEnabled, playNotificationSound]);
 
   const fetchKitchenOrders = async () => {
     try {
@@ -73,27 +203,85 @@ const KitchenDisplay: React.FC = () => {
     }
   };
 
-  const playNotificationSound = () => {
-    // Create a simple notification sound
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
+  const playNotificationSound = useCallback((priority: string = 'normal') => {
+    if (!soundEnabled) return;
     
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    oscillator.frequency.value = 800;
-    oscillator.type = 'sine';
-    
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-    
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.5);
-  };
-
-  const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      
+      // Different sounds for different priorities
+      const soundConfig = {
+        urgent: { frequency: 1000, duration: 0.8, volume: 0.4, pulses: 3 },
+        high: { frequency: 900, duration: 0.6, volume: 0.35, pulses: 2 },
+        normal: { frequency: 800, duration: 0.5, volume: 0.3, pulses: 1 },
+        low: { frequency: 700, duration: 0.4, volume: 0.25, pulses: 1 }
+      };
+      
+      const config = soundConfig[priority as keyof typeof soundConfig] || soundConfig.normal;
+      
+      for (let i = 0; i < config.pulses; i++) {
+        setTimeout(() => {
+          const oscillator = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
+          
+          oscillator.connect(gainNode);
+          gainNode.connect(audioContext.destination);
+          
+          oscillator.frequency.value = config.frequency;
+          oscillator.type = 'sine';
+          
+          const startTime = audioContext.currentTime + (i * 0.2);
+          gainNode.gain.setValueAtTime(config.volume, startTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + config.duration);
+          
+          oscillator.start(startTime);
+          oscillator.stop(startTime + config.duration);
+        }, i * 200);
+      }
+    } catch (error) {
+      console.warn('Could not play notification sound:', error);
+    }
+  }, [soundEnabled]);
+
+  const updateOrderStatus = async (orderId: string, newStatus: string, isRetry = false) => {
+    // Prevent multiple simultaneous updates for the same order
+    if (updatingOrders.has(orderId)) {
+      console.log('Update already in progress for order:', orderId);
+      return;
+    }
+
+    try {
+      // Mark order as updating
+      setUpdatingOrders(prev => new Set([...prev, orderId]));
+      
+      // Clear any previous messages for this order
+      setUpdateErrors(prev => {
+        const newErrors = new Map(prev);
+        newErrors.delete(orderId);
+        return newErrors;
+      });
+      setSuccessMessages(prev => {
+        const newMessages = new Map(prev);
+        newMessages.delete(orderId);
+        return newMessages;
+      });
+
+      // Store original status for rollback
+      const originalOrder = orders.find(order => order._id === orderId);
+      if (!originalOrder) {
+        throw new Error('Order not found for status update');
+      }
+      const originalStatus = originalOrder.status;
+
+      // Optimistic update - update UI immediately with loading state
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order._id === orderId 
+            ? { ...order, status: newStatus as any }
+            : order
+        )
+      );
+
       const token = localStorage.getItem('token');
       const response = await fetch(getApiUrl(`orders/${orderId}/status`), {
         method: 'PATCH',
@@ -101,25 +289,160 @@ const KitchenDisplay: React.FC = () => {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ status: newStatus, notes: `Status updated from kitchen` })
+        body: JSON.stringify({ 
+          status: newStatus, 
+          notes: `Status updated from kitchen at ${new Date().toLocaleTimeString()}${isRetry ? ' (retry)' : ''}` 
+        })
       });
 
-      if (response.ok) {
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.message || `Failed to update order status (${response.status})`;
+        throw new Error(errorMessage);
+      }
+
+      const updatedOrderData = await response.json();
+      const updatedOrder = updatedOrderData.order || updatedOrderData;
+      
+      console.log('✅ Order status updated successfully:', {
+        orderId,
+        newStatus,
+        orderNumber: updatedOrder.orderNumber || originalOrder.orderNumber
+      });
+
+      // Show success message
+      setSuccessMessages(prev => {
+        const newMessages = new Map(prev);
+        const statusText = newStatus === 'preparing' ? 'started preparing' : newStatus === 'ready' ? 'marked as ready' : `updated to ${newStatus}`;
+        newMessages.set(orderId, `Order ${statusText} successfully!`);
+        return newMessages;
+      });
+
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setSuccessMessages(prev => {
+          const newMessages = new Map(prev);
+          newMessages.delete(orderId);
+          return newMessages;
+        });
+      }, 3000);
+
+      // Reset retry attempts on success
+      setRetryAttempts(prev => {
+        const newAttempts = new Map(prev);
+        newAttempts.delete(orderId);
+        return newAttempts;
+      });
+
+      // If WebSocket is not connected, update the order with server response
+      if (!wsConnected && updatedOrder) {
+        setOrders(prevOrders => 
+          prevOrders.map(order => 
+            order._id === orderId 
+              ? { ...order, ...updatedOrder }
+              : order
+          )
+        );
+      }
+      // If WebSocket is connected, the real-time update will handle the correct state
+      
+    } catch (error) {
+      console.error('❌ Error updating order status:', error);
+      
+      const currentAttempts = retryAttempts.get(orderId) || 0;
+      const maxRetries = 2;
+      
+      if (currentAttempts < maxRetries && !isRetry) {
+        // Increment retry attempts
+        setRetryAttempts(prev => {
+          const newAttempts = new Map(prev);
+          newAttempts.set(orderId, currentAttempts + 1);
+          return newAttempts;
+        });
+        
+        // Retry with exponential backoff
+        const retryDelay = Math.pow(2, currentAttempts) * 1000; // 1s, 2s, 4s...
+        console.log(`🔄 Retrying status update in ${retryDelay}ms (attempt ${currentAttempts + 1}/${maxRetries})`);
+        
+        setTimeout(() => {
+          updateOrderStatus(orderId, newStatus, true);
+        }, retryDelay);
+        
+        // Show retry message
+        setUpdateErrors(prev => {
+          const newErrors = new Map(prev);
+          newErrors.set(orderId, `Update failed, retrying... (${currentAttempts + 1}/${maxRetries})`);
+          return newErrors;
+        });
+        
+        return; // Don't revert optimistic update during retry
+      }
+      
+      // Store final error for display
+      setUpdateErrors(prev => {
+        const newErrors = new Map(prev);
+        const errorMessage = error instanceof Error ? error.message : 'Update failed';
+        newErrors.set(orderId, `${errorMessage} (after ${currentAttempts + 1} attempts)`);
+        return newErrors;
+      });
+
+      // Clear error after 10 seconds
+      setTimeout(() => {
+        setUpdateErrors(prev => {
+          const newErrors = new Map(prev);
+          newErrors.delete(orderId);
+          return newErrors;
+        });
+        setRetryAttempts(prev => {
+          const newAttempts = new Map(prev);
+          newAttempts.delete(orderId);
+          return newAttempts;
+        });
+      }, 10000);
+
+      // Revert optimistic update on final error
+      const originalOrder = orders.find(order => order._id === orderId);
+      if (originalOrder) {
+        setOrders(prevOrders => 
+          prevOrders.map(order => 
+            order._id === orderId 
+              ? originalOrder
+              : order
+          )
+        );
+      } else if (!wsConnected) {
+        // Fallback: refresh from API if WebSocket not connected
         fetchKitchenOrders();
       }
-    } catch (error) {
-      console.error('Error updating order status:', error);
+    } finally {
+      // Remove updating state
+      setUpdatingOrders(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(orderId);
+        return newSet;
+      });
     }
   };
 
   useEffect(() => {
-    fetchKitchenOrders();
+    // Initial load from API when WebSocket is not connected or empty
+    if (!wsConnected || wsOrders.length === 0) {
+      fetchKitchenOrders();
+    }
     
-    // Auto-refresh every 15 seconds
-    const interval = setInterval(fetchKitchenOrders, 15000);
+    // Fallback polling only when WebSocket is disconnected
+    let interval: NodeJS.Timeout | null = null;
+    if (!wsConnected) {
+      console.log('🍳 WebSocket disconnected, falling back to polling');
+      interval = setInterval(fetchKitchenOrders, 15000);
+    }
     
-    return () => clearInterval(interval);
-  }, [soundEnabled, lastOrderCount]);
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [wsConnected, wsOrders.length]);
 
   const getTimeElapsed = (createdAt: string) => {
     const created = new Date(createdAt);
@@ -179,8 +502,13 @@ const KitchenDisplay: React.FC = () => {
   const preparingOrders = orders.filter(order => order.status === 'preparing');
   const readyOrders = orders.filter(order => order.status === 'ready');
 
-  const KitchenOrderCard: React.FC<{ order: KitchenOrder }> = ({ order }) => (
-    <Card className={`relative ${getStatusColor(order.status)} border-2 transition-all duration-300 hover:shadow-lg`}>
+  const KitchenOrderCard: React.FC<{ order: KitchenOrder; index: number; isSelected: boolean }> = ({ order, index, isSelected }) => (
+    <Card 
+      className={`relative ${getStatusColor(order.status)} border-2 transition-all duration-300 hover:shadow-lg ${
+        isSelected ? 'ring-4 ring-blue-500 shadow-lg transform scale-105' : ''
+      }`}
+      data-order-index={index}
+    >
       {order.priority === 'urgent' && (
         <div className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1">
           <AlertTriangle className="h-3 w-3" />
@@ -269,13 +597,44 @@ const KitchenDisplay: React.FC = () => {
           </div>
         )}
 
+        {/* Success Display */}
+        {successMessages.has(order._id) && (
+          <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded text-sm text-green-700">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 flex-shrink-0" />
+              <span>{successMessages.get(order._id)}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Error Display */}
+        {updateErrors.has(order._id) && (
+          <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+              <span>{updateErrors.get(order._id)}</span>
+              {retryAttempts.has(order._id) && (
+                <RefreshCw className="h-4 w-4 animate-spin ml-auto" />
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="flex gap-2">
           {order.status === 'confirmed' && (
             <Button
               className="flex-1"
               onClick={() => updateOrderStatus(order._id, 'preparing')}
+              disabled={updatingOrders.has(order._id)}
             >
-              Start Preparing
+              {updatingOrders.has(order._id) ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Starting...
+                </>
+              ) : (
+                'Start Preparing'
+              )}
             </Button>
           )}
           
@@ -283,8 +642,16 @@ const KitchenDisplay: React.FC = () => {
             <Button
               className="flex-1"
               onClick={() => updateOrderStatus(order._id, 'ready')}
+              disabled={updatingOrders.has(order._id)}
             >
-              Mark Ready
+              {updatingOrders.has(order._id) ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Marking Ready...
+                </>
+              ) : (
+                'Mark Ready'
+              )}
             </Button>
           )}
           
@@ -305,10 +672,26 @@ const KitchenDisplay: React.FC = () => {
       <div className="flex items-center justify-between mb-6 bg-white rounded-lg p-4 shadow">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Kitchen Display System</h1>
-          <p className="text-gray-600">Real-time order management for kitchen staff</p>
+          <p className="text-gray-600">
+            {wsConnected ? 'Real-time order management' : 'Fallback polling mode'} for kitchen staff
+          </p>
         </div>
         
         <div className="flex items-center gap-3">
+          {/* WebSocket Connection Status */}
+          <div className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${
+            wsConnected 
+              ? 'bg-green-100 text-green-700' 
+              : 'bg-yellow-100 text-yellow-700'
+          }`}>
+            {wsConnected ? (
+              <Wifi className="h-3 w-3" />
+            ) : (
+              <WifiOff className="h-3 w-3" />
+            )}
+            {wsConnected ? 'Live' : 'Offline'}
+          </div>
+          
           <Button
             variant="outline"
             size="sm"
@@ -332,8 +715,32 @@ const KitchenDisplay: React.FC = () => {
             Refresh
           </Button>
           
-          <div className="text-sm text-gray-600">
-            Last updated: {new Date().toLocaleTimeString()}
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <span>
+              {wsConnected 
+                ? `Connected • ${orders.length} orders`
+                : `Last updated: ${new Date().toLocaleTimeString()}`
+              }
+            </span>
+            
+            <div className="flex items-center gap-1">
+              {keyboardNavigationEnabled && (
+                <div className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
+                  Navigation: ↑↓ Select • Enter/Space: Update • Esc: Exit
+                </div>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setKeyboardNavigationEnabled(!keyboardNavigationEnabled);
+                  if (!keyboardNavigationEnabled) setSelectedOrderIndex(0);
+                }}
+                className="text-xs px-2"
+              >
+                ⌨️ {keyboardNavigationEnabled ? 'Exit' : 'Keyboard'}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -377,27 +784,51 @@ const KitchenDisplay: React.FC = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div ref={containerRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {/* New Orders First */}
           {confirmedOrders
             .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-            .map((order) => (
-              <KitchenOrderCard key={`confirmed-${order._id}`} order={order} />
-            ))}
+            .map((order, localIndex) => {
+              const globalIndex = localIndex;
+              return (
+                <KitchenOrderCard 
+                  key={`confirmed-${order._id}`} 
+                  order={order} 
+                  index={globalIndex}
+                  isSelected={keyboardNavigationEnabled && selectedOrderIndex === globalIndex}
+                />
+              );
+            })}
           
           {/* Preparing Orders */}
           {preparingOrders
             .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-            .map((order) => (
-              <KitchenOrderCard key={`preparing-${order._id}`} order={order} />
-            ))}
+            .map((order, localIndex) => {
+              const globalIndex = confirmedOrders.length + localIndex;
+              return (
+                <KitchenOrderCard 
+                  key={`preparing-${order._id}`} 
+                  order={order} 
+                  index={globalIndex}
+                  isSelected={keyboardNavigationEnabled && selectedOrderIndex === globalIndex}
+                />
+              );
+            })}
           
           {/* Ready Orders */}
           {readyOrders
             .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-            .map((order) => (
-              <KitchenOrderCard key={`ready-${order._id}`} order={order} />
-            ))}
+            .map((order, localIndex) => {
+              const globalIndex = confirmedOrders.length + preparingOrders.length + localIndex;
+              return (
+                <KitchenOrderCard 
+                  key={`ready-${order._id}`} 
+                  order={order} 
+                  index={globalIndex}
+                  isSelected={keyboardNavigationEnabled && selectedOrderIndex === globalIndex}
+                />
+              );
+            })}
         </div>
       )}
     </div>

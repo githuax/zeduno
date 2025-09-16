@@ -65,11 +65,11 @@ const AttendanceSchema: Schema = new Schema(
 // Calculate total hours and break time
 AttendanceSchema.pre('save', function(next) {
   if (this.clockIn && this.clockOut) {
-    const totalMinutes = (this.clockOut.getTime() - this.clockIn.getTime()) / (1000 * 60);
+    const totalMinutes = ((this.clockOut as Date).getTime() - (this.clockIn as Date).getTime()) / (1000 * 60);
     let breakMinutes = 0;
     
     if (this.breakStart && this.breakEnd) {
-      breakMinutes = (this.breakEnd.getTime() - this.breakStart.getTime()) / (1000 * 60);
+      breakMinutes = ((this.breakEnd as Date).getTime() - (this.breakStart as Date).getTime()) / (1000 * 60);
     }
     
     this.totalHours = Math.max(0, (totalMinutes - breakMinutes) / 60);

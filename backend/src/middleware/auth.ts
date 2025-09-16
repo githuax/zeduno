@@ -1,10 +1,21 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+
 import { User } from '../models/User';
 
-interface AuthRequest extends Request {
+export interface AuthRequest extends Request {
   user?: any;
 }
+
+export interface AuthenticatedRequest extends Request {
+  user?: any;
+}
+
+
+// DEBUG: Enhanced logging for auth middleware  
+const authDebugLog = (message: string, data?: any) => {
+  console.log('🔐 [AUTH-DEBUG]', message, data ? JSON.stringify(data, null, 2) : '');
+};
 
 export const authenticate = async (
   req: AuthRequest,
@@ -15,13 +26,18 @@ export const authenticate = async (
     const token = req.header('Authorization')?.replace('Bearer ', '');
 
     if (!token) {
+        authDebugLog('❌ No token provided');
       throw new Error();
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
     
-    // Handle mock users for development
-    if (decoded.id === 'mock-user-id' || decoded.id === 'joe-pizza-admin-id') {
+    // Handle mock users only when explicitly allowed (development by default)
+    const allowMockAuth = process.env.ALLOW_MOCK_AUTH === 'true' || process.env.NODE_ENV !== 'production';
+    if (
+      allowMockAuth &&
+      (decoded.id === 'mock-user-id' || decoded.id === 'joe-pizza-admin-id')
+    ) {
       const mockUser = decoded.id === 'joe-pizza-admin-id' ? {
         _id: 'joe-pizza-admin-id',
         email: 'admin@joespizzapalace.com',
@@ -88,27 +104,29 @@ export const authenticateSuperAdmin = async (
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
-    
-    if (!decoded.isSuperAdmin) {
+
+    // Prefer checking the User model by token id; accept role-based superadmin
+    let superAdmin: any = await User.findById(decoded.id).select('-password');
+    if (!superAdmin || superAdmin.role !== 'superadmin') {
+      // Fallback to dedicated SuperAdmin collection
+      try {
+        const { SuperAdmin } = require('../models/SuperAdmin');
+        const sa = await SuperAdmin.findById(decoded.id);
+        if (sa) {
+          superAdmin = sa;
+        }
+      } catch (e) {
+        // Ignore if collection/model not present
+      }
+    }
+
+    // As a final guard, check token claim if present
+    if (!superAdmin && decoded.isSuperAdmin !== true) {
       return res.status(403).json({ success: false, message: 'Superadmin access required' });
     }
-
-    // Try to find superadmin user
-    let superAdmin;
-    
-    try {
-      const SuperAdmin = require('../models/SuperAdmin').SuperAdmin;
-      superAdmin = await SuperAdmin.findById(decoded.id);
-    } catch (error) {
-      // SuperAdmin model might not exist
-    }
-
-    // If not found in SuperAdmin model, check User model with superadmin role
+    // If still not found, reject
     if (!superAdmin) {
-      superAdmin = await User.findById(decoded.id).select('-password');
-      if (!superAdmin || superAdmin.role !== 'superadmin') {
-        return res.status(403).json({ success: false, message: 'Superadmin access required' });
-      }
+      return res.status(403).json({ success: false, message: 'Superadmin access required' });
     }
 
     if (!superAdmin || !superAdmin.isActive) {
