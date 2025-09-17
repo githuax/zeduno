@@ -3,9 +3,7 @@ module.exports = {
     {
       name: 'backend',
       cwd: './backend',
-      script: 'src/server.ts',
-      interpreter: 'node',
-      interpreter_args: '-r ts-node/register',
+      script: 'dist/server.js',
       env: {
         NODE_ENV: 'development',
         PORT: 5000
