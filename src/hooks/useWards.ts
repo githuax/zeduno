@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { api } from '@/lib/api';
+import { api } from '@/utils/api';
 import { Ward } from '@/types/branch.types';
 
 export const useWards = (subcountyId?: string) => {

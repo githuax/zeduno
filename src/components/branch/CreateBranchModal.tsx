@@ -1,135 +1,41 @@
-import {
-  Building2,
-  MapPin,
-  Phone,
-  Mail,
-  Clock,
-  DollarSign,
-  Users,
-  Settings,
-  ChevronRight,
-  ChevronLeft,
-  Check,
-  AlertCircle,
-  Plus,
-  X,
-} from 'lucide-react';
-import React, { useState, useEffect, useMemo } from 'react';
-
-// UI Components
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
-import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-
-// Types
-import { Branch, CreateBranchData } from '@/types/branch.types';
-
-// Hooks
-import { useTenant } from '@/contexts/TenantContext';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { CalendarIcon, Loader2, PlusCircle, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { BranchFormData, BranchType, BranchStatus, IBranch } from '@/types/branch.types';
+import { useToast } from '@/components/ui/use-toast';
+import { useBranches } from '@/hooks/useBranches';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useSubcounties } from '@/hooks/useSubcounties';
 import { useWards } from '@/hooks/useWards';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
+import { Check } from 'lucide-react';
 
 interface CreateBranchModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: CreateBranchData) => Promise<void>;
-  branches: Branch[];
+  onSubmit: (formData: BranchFormData) => Promise<void>;
+  branches: IBranch[];
   loading?: boolean;
   onSuccess?: () => void;
 }
 
-interface WizardStep {
-  id: string;
-  title: string;
-  description: string;
-  icon: React.ComponentType<any>;
-  completed: boolean;
-  optional?: boolean;
-}
-
-interface BranchFormData extends Omit<CreateBranchData, 'address' | 'contact'> {
-  address: {
-    street: string;
-    city: string;
-    state: string;
-    postalCode: string;
-    country: string;
-    coordinates?: {
-      latitude: number;
-      longitude: number;
-    };
-  };
-  contact: {
-    phone: string;
-    email: string;
-    managerName?: string;
-    managerPhone?: string;
-    managerEmail?: string;
-  };
-  operations: {
-    openTime: string;
-    closeTime: string;
-    timezone: string;
-    daysOpen: string[];
-    seatingCapacity?: number;
-    deliveryRadius?: number;
-  };
-  financial: {
-    currency: string;
-    taxRate: number;
-    serviceChargeRate?: number;
-    tipEnabled: boolean;
-    paymentMethods: string[];
-  };
-  inventory: {
-    trackInventory: boolean;
-    lowStockAlertEnabled: boolean;
-    autoReorderEnabled: boolean;
-  };
-  staffing: {
-    maxStaff: number;
-    roles: string[];
-  };
-  integrations: {
-    onlineOrderingEnabled: boolean;
-  };
-  settings: {
-    orderPrefix: string;
-    theme?: string;
-  };
-}
-
 const defaultFormData: BranchFormData = {
   name: '',
+  code: '',
   type: 'branch',
+  status: 'active',
+  parentBranchId: '',
   address: {
     street: '',
     city: '',
@@ -137,115 +43,82 @@ const defaultFormData: BranchFormData = {
     postalCode: '',
     country: '',
     subcounty: '',
+    ward: '',
+    coordinates: { latitude: 0, longitude: 0 },
   },
   contact: {
     phone: '',
     email: '',
+    managerName: '',
+    managerPhone: '',
+    managerEmail: '',
   },
   operations: {
     openTime: '09:00',
     closeTime: '22:00',
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    daysOpen: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+    timezone: 'Africa/Nairobi',
+    daysOpen: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+    holidaySchedule: [],
+    seatingCapacity: undefined,
+    deliveryRadius: undefined,
   },
   financial: {
     currency: 'KES',
     taxRate: 0,
+    serviceChargeRate: 0,
     tipEnabled: true,
     paymentMethods: ['cash'],
+    bankAccount: {
+      accountName: '',
+      accountNumber: '',
+      bankName: '',
+      routingNumber: '',
+    },
   },
   inventory: {
     trackInventory: true,
     lowStockAlertEnabled: true,
     autoReorderEnabled: false,
+    warehouseId: undefined,
+  },
+  menuConfig: {
+    inheritFromParent: true,
+    priceMultiplier: 1,
+    customPricing: false,
+    availableCategories: [],
   },
   staffing: {
-    maxStaff: 10,
-    roles: ['cashier', 'kitchen_staff'],
+    maxStaff: 50,
+    currentStaff: 0,
+    roles: ['manager', 'cashier', 'waiter', 'chef', 'delivery'],
+    shiftPattern: '',
+  },
+  metrics: {
+    avgOrderValue: 0,
+    totalOrders: 0,
+    totalRevenue: 0,
+    rating: undefined,
+    lastUpdated: new Date(),
   },
   integrations: {
-    onlineOrderingEnabled: false,
+    posSystemId: '',
+    posSystemType: '',
+    kitchenDisplayId: '',
+    onlineOrderingEnabled: true,
   },
   settings: {
-    orderPrefix: 'BR',
+    orderPrefix: '',
+    orderNumberSequence: 1,
+    receiptHeader: '',
+    receiptFooter: '',
+    logoUrl: '',
+    theme: '',
   },
+  isActive: true,
+  createdBy: '',
 };
 
-const wizardSteps: WizardStep[] = [
-  {
-    id: 'basic',
-    title: 'Basic Information',
-    description: 'Branch name, type, and parent',
-    icon: Building2,
-    completed: false,
-  },
-  {
-    id: 'location',
-    title: 'Location & Contact',
-    description: 'Address and contact details',
-    icon: MapPin,
-    completed: false,
-  },
-  {
-    id: 'operations',
-    title: 'Operations',
-    description: 'Hours, capacity, and operational settings',
-    icon: Clock,
-    completed: false,
-  },
-  {
-    id: 'financial',
-    title: 'Financial Settings',
-    description: 'Currency, taxes, and payment methods',
-    icon: DollarSign,
-    completed: false,
-  },
-  {
-    id: 'additional',
-    title: 'Additional Settings',
-    description: 'Inventory, staffing, and integrations',
-    icon: Settings,
-    completed: false,
-    optional: true,
-  },
-];
-
-// Restrict currency options to East African currencies
-const currencies = [
-  { code: 'KES', name: 'Kenyan Shilling' },
-  { code: 'UGX', name: 'Ugandan Shilling' },
-  { code: 'SSP', name: 'South Sudanese Pound' },
-  { code: 'TZS', name: 'Tanzanian Shilling' },
-  { code: 'RWF', name: 'Rwandan Franc' },
-  { code: 'BIF', name: 'Burundian Franc' },
-];
-const allowedCurrencyCodes = currencies.map(c => c.code);
-const commonTimezones = [
-  'UTC',
-  'America/New_York',
-  'America/Chicago',
-  'America/Denver',
-  'America/Los_Angeles',
-  'America/Toronto',
-  'America/Vancouver',
-  'Europe/London',
-  'Europe/Paris',
-  'Europe/Berlin',
-  'Europe/Rome',
-  'Europe/Madrid',
-  'Asia/Tokyo',
-  'Asia/Shanghai',
-  'Asia/Kolkata',
-  'Asia/Singapore',
-  'Asia/Dubai',
-  'Australia/Sydney',
-  'Australia/Melbourne',
-  'Pacific/Auckland',
-  'Africa/Cairo',
-  'Africa/Johannesburg',
-];
-const paymentMethods = ['cash', 'credit_card', 'debit_card', 'mobile_payment', 'bank_transfer', 'cryptocurrency'];
-const weekDays = [
+const daysOfWeek = [
   { id: 'monday', label: 'Monday' },
   { id: 'tuesday', label: 'Tuesday' },
   { id: 'wednesday', label: 'Wednesday' },
@@ -256,7 +129,8 @@ const weekDays = [
 ];
 const staffRoles = ['manager', 'assistant_manager', 'cashier', 'kitchen_staff', 'server', 'cleaner', 'security'];
 
-export const CreateBranchModal: React.FC<CreateBranchModalProps> = ({
+
+export const CreateBranchModal = ({
   open,
   onOpenChange,
   onSubmit,
@@ -268,1060 +142,1034 @@ export const CreateBranchModal: React.FC<CreateBranchModalProps> = ({
   const [formData, setFormData] = useState<BranchFormData>(defaultFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Get current tenant context
-  const { context, isLoading: isTenantLoading } = useTenant();
-  
-  // Debug tenant context
-  console.log('CreateBranchModal - Tenant Context:', context);
-  console.log('CreateBranchModal - Tenant Loading:', isTenantLoading);
-  const currentTenant = context?.tenant;
-  console.log('CreateBranchModal - Current Tenant:', currentTenant);
-
-  // Available parent branches (main and branch types only)
-  const availableParents = useMemo(() => {
-    return branches.filter(b => b.type === 'main' || b.type === 'branch');
-  }, [branches]);
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const { subcounties, isLoading: isLoadingSubcounties } = useSubcounties();
+  const { wards, isLoading: isLoadingWards } = useWards(formData.address.subcounty);
 
   useEffect(() => {
-    if (!open) {
-      setCurrentStep(0);
-      setFormData(defaultFormData);
-      setErrors({});
-      setIsSubmitting(false);
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        createdBy: user._id,
+      }));
     }
-  }, [open]);
+  }, [user]);
 
-  // Form validation
-  const validateStep = (stepIndex: number): boolean => {
-    const newErrors: Record<string, string> = {};
-    const step = wizardSteps[stepIndex];
-
-    switch (step.id) {
-      case 'basic':
-        if (!formData.name.trim()) newErrors.name = 'Branch name is required';
-        if (!formData.type) newErrors.type = 'Branch type is required';
-        break;
-
-      case 'location':
-        if (!formData.address.street.trim()) newErrors.street = 'Street address is required';
-        if (!formData.address.city.trim()) newErrors.city = 'City is required';
-        if (!formData.address.state.trim()) newErrors.state = 'State is required';
-        if (!formData.address.postalCode.trim()) newErrors.postalCode = 'Postal code is required';
-        if (!formData.address.country.trim()) newErrors.country = 'Country is required';
-        if (!formData.contact.phone.trim()) newErrors.phone = 'Phone is required';
-        if (!formData.contact.email.trim()) newErrors.email = 'Email is required';
-        if (formData.contact.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contact.email)) {
-          newErrors.email = 'Please enter a valid email address';
-        }
-        break;
-
-      case 'operations':
-        if (!formData.operations.openTime) newErrors.openTime = 'Opening time is required';
-        if (!formData.operations.closeTime) newErrors.closeTime = 'Closing time is required';
-        if (!formData.operations.timezone) newErrors.timezone = 'Timezone is required';
-        if (formData.operations.daysOpen.length === 0) newErrors.daysOpen = 'At least one day must be selected';
-        break;
-
-      case 'financial':
-        if (!formData.financial.currency) newErrors.currency = 'Currency is required';
-        if (formData.financial.taxRate < 0 || formData.financial.taxRate > 100) {
-          newErrors.taxRate = 'Tax rate must be between 0 and 100';
-        }
-        if (formData.financial.paymentMethods.length === 0) {
-          newErrors.paymentMethods = 'At least one payment method must be selected';
-        }
-        break;
-
-      case 'additional':
-        if (formData.staffing.maxStaff <= 0) newErrors.maxStaff = 'Max staff must be greater than 0';
-        if (!formData.settings.orderPrefix.trim()) newErrors.orderPrefix = 'Order prefix is required';
-        break;
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  // Navigation handlers
   const handleNext = () => {
     if (validateStep(currentStep)) {
-      if (currentStep < wizardSteps.length - 1) {
-        setCurrentStep(currentStep + 1);
+      setCurrentStep((prev) => prev + 1);
+    }
+  };
+
+  const handleBack = () => {
+    setCurrentStep((prev) => prev - 1);
+  };
+
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => {
+      const keys = name.split('.');
+      if (keys.length > 1) {
+        let updated = { ...prev };
+        let current: any = updated;
+        for (let i = 0; i < keys.length - 1; i++) {
+          current[keys[i]] = { ...current[keys[i]] };
+          current = current[keys[i]];
+        }
+        current[keys[keys.length - 1]] = value;
+        return updated;
       }
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
-  const handleStepClick = (stepIndex: number) => {
-    // Allow jumping to previous steps or if current step is valid
-    if (stepIndex <= currentStep || validateStep(currentStep)) {
-      setCurrentStep(stepIndex);
-    }
-  };
-
-  // Form handlers
-  const updateFormData = (path: string, value: any) => {
-    setFormData(prev => {
-      const keys = path.split('.');
-      const updatedData = { ...prev };
-      let current: any = updatedData;
-
-      for (let i = 0; i < keys.length - 1; i++) {
-        if (!current[keys[i]]) current[keys[i]] = {};
-        current[keys[i]] = { ...current[keys[i]] };
-        current = current[keys[i]];
-      }
-
-      current[keys[keys.length - 1]] = value;
-      return updatedData;
+      return { ...prev, [name]: value };
     });
-
-    // Clear error when user starts typing
-    if (errors[path.split('.').pop() || '']) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[path.split('.').pop() || ''];
-        return newErrors;
-      });
-    }
   };
 
-  const handleArrayToggle = (path: string, value: string) => {
-    const keys = path.split('.');
-    let current = formData;
-    for (let i = 0; i < keys.length - 1; i++) {
-      current = (current as any)[keys[i]];
-    }
-    const array = (current as any)[keys[keys.length - 1]] as string[];
-    
-    const newArray = array.includes(value) 
-      ? array.filter(item => item !== value)
-      : [...array, value];
-    
-    updateFormData(path, newArray);
+  const handleSelectChange = (name: string, value: string | string[]) => {
+    setFormData((prev) => {
+      const keys = name.split('.');
+      if (keys.length > 1) {
+        let updated = { ...prev };
+        let current: any = updated;
+        for (let i = 0; i < keys.length - 1; i++) {
+          current[keys[i]] = { ...current[keys[i]] };
+          current = current[keys[i]];
+        }
+        current[keys[keys.length - 1]] = value;
+        return updated;
+      }
+      return { ...prev, [name]: value };
+    });
   };
 
-  // Submit handler
+  const handleCheckboxChange = (name: string, checked: boolean) => {
+    setFormData((prev) => {
+      const keys = name.split('.');
+      if (keys.length > 1) {
+        let updated = { ...prev };
+        let current: any = updated;
+        for (let i = 0; i < keys.length - 1; i++) {
+          current[keys[i]] = { ...current[keys[i]] };
+          current = current[keys[i]];
+        }
+        current[keys[keys.length - 1]] = checked;
+        return updated;
+      }
+      return { ...prev, [name]: checked };
+    });
+  };
+
+  const handleMultiSelectChange = (name: string, value: string) => {
+    setFormData((prev) => {
+      const keys = name.split('.');
+      if (keys.length > 1) {
+        let updated = { ...prev };
+        let current: any = updated;
+        for (let i = 0; i < keys.length - 1; i++) {
+          current[keys[i]] = { ...current[keys[i]] };
+          current = current[keys[i]];
+        }
+        const currentValues = current[keys[keys.length - 1]] || [];
+        current[keys[keys.length - 1]] = currentValues.includes(value)
+          ? currentValues.filter((item: string) => item !== value)
+          : [...currentValues, value];
+        return updated;
+      }
+      const currentValues = (prev as any)[name] || [];
+      return {
+        ...prev,
+        [name]: currentValues.includes(value)
+          ? currentValues.filter((item: string) => item !== value)
+          : [...currentValues, value],
+      };
+    });
+  };
+
+  const validateStep = (step: number) => {
+    let currentErrors: Record<string, string> = {};
+    let isValid = true;
+
+    if (step === 0) { // Basic Info
+      if (!formData.name) {
+        currentErrors.name = 'Branch name is required';
+        isValid = false;
+      }
+      if (!formData.type) {
+        currentErrors.type = 'Branch type is required';
+        isValid = false;
+      }
+      if (!formData.status) {
+        currentErrors.status = 'Branch status is required';
+        isValid = false;
+      }
+      if (formData.type !== 'main' && !formData.parentBranchId) {
+        currentErrors.parentBranchId = 'Parent branch is required for non-main branches';
+        isValid = false;
+      }
+    } else if (step === 1) { // Address Info
+      if (!formData.address.street) {
+        currentErrors['address.street'] = 'Street is required';
+        isValid = false;
+      }
+      if (!formData.address.city) {
+        currentErrors['address.city'] = 'City is required';
+        isValid = false;
+      }
+      if (!formData.address.state) {
+        currentErrors['address.state'] = 'State is required';
+        isValid = false;
+      }
+      if (!formData.address.postalCode) {
+        currentErrors['address.postalCode'] = 'Postal Code is required';
+        isValid = false;
+      }
+      if (!formData.address.country) {
+        currentErrors['address.country'] = 'Country is required';
+        isValid = false;
+      }
+      if (!formData.address.subcounty) {
+        currentErrors['address.subcounty'] = 'Subcounty is required';
+        isValid = false;
+      }
+      if (!formData.address.ward) {
+        currentErrors['address.ward'] = 'Ward is required';
+        isValid = false;
+      }
+    } else if (step === 2) { // Contact Info
+      if (!formData.contact.phone) {
+        currentErrors['contact.phone'] = 'Phone number is required';
+        isValid = false;
+      }
+      if (!formData.contact.email) {
+        currentErrors['contact.email'] = 'Email is required';
+        isValid = false;
+      } else if (!/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(formData.contact.email)) {
+        currentErrors['contact.email'] = 'Invalid email format';
+        isValid = false;
+      }
+    } else if (step === 3) { // Operations Info
+      if (!formData.operations.openTime) {
+        currentErrors['operations.openTime'] = 'Opening time is required';
+        isValid = false;
+      }
+      if (!formData.operations.closeTime) {
+        currentErrors['operations.closeTime'] = 'Closing time is required';
+        isValid = false;
+      }
+      if (!formData.operations.timezone) {
+        currentErrors['operations.timezone'] = 'Timezone is required';
+        isValid = false;
+      }
+      if (formData.operations.daysOpen.length === 0) {
+        currentErrors['operations.daysOpen'] = 'At least one day of operation is required';
+        isValid = false;
+      }
+    } else if (step === 4) { // Financial Info
+      if (!formData.financial.currency) {
+        currentErrors['financial.currency'] = 'Currency is required';
+        isValid = false;
+      }
+      if (formData.financial.taxRate === undefined || formData.financial.taxRate < 0) {
+        currentErrors['financial.taxRate'] = 'Valid tax rate is required';
+        isValid = false;
+      }
+      if (formData.financial.paymentMethods.length === 0) {
+        currentErrors['financial.paymentMethods'] = 'At least one payment method is required';
+        isValid = false;
+      }
+    } else if (step === 5) { // Inventory Config
+      // No specific required fields for this step based on current schema
+    } else if (step === 6) { // Menu Config
+      // No specific required fields for this step based on current schema
+    } else if (step === 7) { // Staffing Config
+      if (formData.staffing.maxStaff === undefined || formData.staffing.maxStaff <= 0) {
+        currentErrors['staffing.maxStaff'] = 'Max staff must be a positive number';
+        isValid = false;
+      }
+      if (formData.staffing.roles.length === 0) {
+        currentErrors['staffing.roles'] = 'At least one staff role is required';
+        isValid = false;
+      }
+    } else if (step === 8) { // Integration Settings
+      // No specific required fields for this step based on current schema
+    } else if (step === 9) { // Branch Specific Settings
+      if (!formData.settings.orderPrefix) {
+        currentErrors['settings.orderPrefix'] = 'Order prefix is required';
+        isValid = false;
+      }
+    }
+
+    setErrors(currentErrors);
+    return isValid;
+  };
+
   const handleSubmit = async () => {
-    // Validate all steps
-    const allValid = wizardSteps.every((_, index) => validateStep(index));
-    
-    if (!allValid) {
-      // Find first invalid step
-      const firstInvalidStep = wizardSteps.findIndex((_, index) => !validateStep(index));
-      setCurrentStep(firstInvalidStep);
+    if (!validateStep(currentStep)) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please fill in all required fields for the current step.',
+        variant: 'destructive',
+      });
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const submitData: CreateBranchData = {
-        name: formData.name,
-        type: formData.type,
-        parentBranchId: formData.parentBranchId,
-        wardId: formData.wardId,
-        address: formData.address,
-        contact: formData.contact,
-        operations: formData.operations,
-        financial: formData.financial,
-        inventory: formData.inventory,
-        staffing: formData.staffing,
-        integrations: formData.integrations,
-        settings: formData.settings,
-      };
-
-      await onSubmit(submitData);
-      onSuccess?.();
+      await onSubmit(formData);
+      toast({
+        title: 'Branch Created',
+        description: 'The new branch has been successfully created.',
+      });
       onOpenChange(false);
-    } catch (error) {
-      console.error('Failed to create branch:', error);
+      onSuccess?.();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to create branch.',
+        variant: 'destructive',
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Step completion status
-  const getStepStatus = (stepIndex: number) => {
-    if (stepIndex < currentStep) return 'completed';
-    if (stepIndex === currentStep) return 'current';
-    return 'upcoming';
-  };
+  const renderStep = useMemo(() => {
+    switch (currentStep) {
+      case 0:
+        return (
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">Branch Name</Label>
+              <Input
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleFormChange}
+                className="col-span-3"
+              />
+              {errors.name && <p className="col-span-4 text-right text-red-500 text-sm">{errors.name}</p>}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="code" className="text-right">Branch Code</Label>
+              <Input
+                id="code"
+                name="code"
+                value={formData.code}
+                onChange={handleFormChange}
+                className="col-span-3"
+                placeholder="Auto-generated if left blank"
+              />
+              {errors.code && <p className="col-span-4 text-right text-red-500 text-sm">{errors.code}</p>}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="type" className="text-right">Branch Type</Label>
+              <Select
+                name="type"
+                value={formData.type}
+                onValueChange={(value) => handleSelectChange('type', value as BranchType)}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select branch type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="main">Main</SelectItem>
+                  <SelectItem value="branch">Branch</SelectItem>
+                  <SelectItem value="franchise">Franchise</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.type && <p className="col-span-4 text-right text-red-500 text-sm">{errors.type}</p>}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="status" className="text-right">Status</Label>
+              <Select
+                name="status"
+                value={formData.status}
+                onValueChange={(value) => handleSelectChange('status', value as BranchStatus)}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="suspended">Suspended</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.status && <p className="col-span-4 text-right text-red-500 text-sm">{errors.status}</p>}
+            </div>
+            {formData.type !== 'main' && (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="parentBranchId" className="text-right">Parent Branch</Label>
+                <Select
+                  name="parentBranchId"
+                  value={formData.parentBranchId || ''}
+                  onValueChange={(value) => handleSelectChange('parentBranchId', value)}
+                  disabled={!branches || branches.length === 0}
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select parent branch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {branches.map((branch) => (
+                      <SelectItem key={branch._id} value={branch._id}>
+                        {branch.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.parentBranchId && <p className="col-span-4 text-right text-red-500 text-sm">{errors.parentBranchId}</p>}
+              </div>
+            )}
+          </div>
+        );
+      case 1:
+        return (
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="address.street" className="text-right">Street</Label>
+              <Input
+                id="address.street"
+                name="address.street"
+                value={formData.address.street}
+                onChange={handleFormChange}
+                className="col-span-3"
+              />
+              {errors['address.street'] && <p className="col-span-4 text-right text-red-500 text-sm">{errors['address.street']}</p>}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="address.city" className="text-right">City</Label>
+              <Input
+                id="address.city"
+                name="address.city"
+                value={formData.address.city}
+                onChange={handleFormChange}
+                className="col-span-3"
+              />
+              {errors['address.city'] && <p className="col-span-4 text-right text-red-500 text-sm">{errors['address.city']}</p>}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="address.state" className="text-right">State</Label>
+              <Input
+                id="address.state"
+                name="address.state"
+                value={formData.address.state}
+                onChange={handleFormChange}
+                className="col-span-3"
+              />
+              {errors['address.state'] && <p className="col-span-4 text-right text-red-500 text-sm">{errors['address.state']}</p>}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="address.postalCode" className="text-right">Postal Code</Label>
+              <Input
+                id="address.postalCode"
+                name="address.postalCode"
+                value={formData.address.postalCode}
+                onChange={handleFormChange}
+                className="col-span-3"
+              />
+              {errors['address.postalCode'] && <p className="col-span-4 text-right text-red-500 text-sm">{errors['address.postalCode']}</p>}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="address.country" className="text-right">Country</Label>
+              <Input
+                id="address.country"
+                name="address.country"
+                value={formData.address.country}
+                onChange={handleFormChange}
+                className="col-span-3"
+              />
+              {errors['address.country'] && <p className="col-span-4 text-right text-red-500 text-sm">{errors['address.country']}</p>}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="address.subcounty" className="text-right">Subcounty</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className={cn(
+                      "col-span-3 justify-between",
+                      !formData.address.subcounty && "text-muted-foreground"
+                    )}
+                  >
+                    {formData.address.subcounty
+                      ? subcounties.find((s) => s._id === formData.address.subcounty)?.name
+                      : "Select subcounty"}
+                    <Check className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search subcounty..." />
+                    <CommandEmpty>No subcounty found.</CommandEmpty>
+                    <CommandGroup>
+                      <ScrollArea className="h-[200px]">
+                        {isLoadingSubcounties ? (
+                          <CommandItem>Loading subcounties...</CommandItem>
+                        ) : (
+                          subcounties.map((s) => (
+                            <CommandItem
+                              key={s._id}
+                              value={s.name}
+                              onSelect={() => {
+                                handleSelectChange('address.subcounty', s._id);
+                                handleSelectChange('address.ward', ''); // Reset ward when subcounty changes
+                              }}
+                            >
+                              {s.name}
+                              <Check
+                                className={cn(
+                                  "ml-auto h-4 w-4",
+                                  formData.address.subcounty === s._id
+                                    ? "opacity-100"
+                                    : "opacity-0"
+                                )}
+                              />
+                            </CommandItem>
+                          ))
+                        )}
+                      </ScrollArea>
+                    </CommandGroup>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              {errors['address.subcounty'] && <p className="col-span-4 text-right text-red-500 text-sm">{errors['address.subcounty']}</p>}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="address.ward" className="text-right">Ward</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className={cn(
+                      "col-span-3 justify-between",
+                      !formData.address.ward && "text-muted-foreground"
+                    )}
+                    disabled={!formData.address.subcounty || isLoadingWards}
+                  >
+                    {formData.address.ward
+                      ? wards.find((w) => w._id === formData.address.ward)?.name
+                      : "Select ward"}
+                    <Check className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search ward..." />
+                    <CommandEmpty>No ward found.</CommandEmpty>
+                    <CommandGroup>
+                      <ScrollArea className="h-[200px]">
+                        {isLoadingWards ? (
+                          <CommandItem>Loading wards...</CommandItem>
+                        ) : (
+                          wards.map((w) => (
+                            <CommandItem
+                              key={w._id}
+                              value={w.name}
+                              onSelect={() => {
+                                handleSelectChange('address.ward', w._id);
+                              }}
+                            >
+                              {w.name}
+                              <Check
+                                className={cn(
+                                  "ml-auto h-4 w-4",
+                                  formData.address.ward === w._id
+                                    ? "opacity-100"
+                                    : "opacity-0"
+                                )}
+                              />
+                            </CommandItem>
+                          ))
+                        )}
+                      </ScrollArea>
+                    </CommandGroup>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              {errors['address.ward'] && <p className="col-span-4 text-right text-red-500 text-sm">{errors['address.ward']}</p>}
+            </div>
+          </div>
+        );
+      case 2:
+        return (
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="contact.phone" className="text-right">Phone</Label>
+              <Input
+                id="contact.phone"
+                name="contact.phone"
+                value={formData.contact.phone}
+                onChange={handleFormChange}
+                className="col-span-3"
+              />
+              {errors['contact.phone'] && <p className="col-span-4 text-right text-red-500 text-sm">{errors['contact.phone']}</p>}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="contact.email" className="text-right">Email</Label>
+              <Input
+                id="contact.email"
+                name="contact.email"
+                value={formData.contact.email}
+                onChange={handleFormChange}
+                className="col-span-3"
+              />
+              {errors['contact.email'] && <p className="col-span-4 text-right text-red-500 text-sm">{errors['contact.email']}</p>}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="contact.managerName" className="text-right">Manager Name</Label>
+              <Input
+                id="contact.managerName"
+                name="contact.managerName"
+                value={formData.contact.managerName || ''}
+                onChange={handleFormChange}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="contact.managerPhone" className="text-right">Manager Phone</Label>
+              <Input
+                id="contact.managerPhone"
+                name="contact.managerPhone"
+                value={formData.contact.managerPhone || ''}
+                onChange={handleFormChange}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="contact.managerEmail" className="text-right">Manager Email</Label>
+              <Input
+                id="contact.managerEmail"
+                name="contact.managerEmail"
+                value={formData.contact.managerEmail || ''}
+                onChange={handleFormChange}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+        );
+      case 3:
+        return (
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="operations.openTime" className="text-right">Opening Time</Label>
+              <Input
+                id="operations.openTime"
+                name="operations.openTime"
+                type="time"
+                value={formData.operations.openTime}
+                onChange={handleFormChange}
+                className="col-span-3"
+              />
+              {errors['operations.openTime'] && <p className="col-span-4 text-right text-red-500 text-sm">{errors['operations.openTime']}</p>}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="operations.closeTime" className="text-right">Closing Time</Label>
+              <Input
+                id="operations.closeTime"
+                name="operations.closeTime"
+                type="time"
+                value={formData.operations.closeTime}
+                onChange={handleFormChange}
+                className="col-span-3"
+              />
+              {errors['operations.closeTime'] && <p className="col-span-4 text-right text-red-500 text-sm">{errors['operations.closeTime']}</p>}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="operations.timezone" className="text-right">Timezone</Label>
+              <Select
+                name="operations.timezone"
+                value={formData.operations.timezone}
+                onValueChange={(value) => handleSelectChange('operations.timezone', value)}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select timezone" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Africa/Nairobi">Africa/Nairobi</SelectItem>
+                  <SelectItem value="UTC">UTC</SelectItem>
+                  {/* Add more timezones as needed */}
+                </SelectContent>
+              </Select>
+              {errors['operations.timezone'] && <p className="col-span-4 text-right text-red-500 text-sm">{errors['operations.timezone']}</p>}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Days Open</Label>
+              <div className="col-span-3 flex flex-wrap gap-2">
+                {daysOfWeek.map((day) => (
+                  <div key={day.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`day-${day.id}`}
+                      checked={formData.operations.daysOpen.includes(day.label)}
+                      onCheckedChange={(checked) => {
+                        handleMultiSelectChange('operations.daysOpen', day.label);
+                      }}
+                    />
+                    <Label htmlFor={`day-${day.id}`}>{day.label}</Label>
+                  </div>
+                ))}
+              </div>
+              {errors['operations.daysOpen'] && <p className="col-span-4 text-right text-red-500 text-sm">{errors['operations.daysOpen']}</p>}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="operations.seatingCapacity" className="text-right">Seating Capacity</Label>
+              <Input
+                id="operations.seatingCapacity"
+                name="operations.seatingCapacity"
+                type="number"
+                value={formData.operations.seatingCapacity || ''}
+                onChange={handleFormChange}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="operations.deliveryRadius" className="text-right">Delivery Radius (km)</Label>
+              <Input
+                id="operations.deliveryRadius"
+                name="operations.deliveryRadius"
+                type="number"
+                value={formData.operations.deliveryRadius || ''}
+                onChange={handleFormChange}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+        );
+      case 4:
+        return (
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="financial.currency" className="text-right">Currency</Label>
+              <Select
+                name="financial.currency"
+                value={formData.financial.currency}
+                onValueChange={(value) => handleSelectChange('financial.currency', value)}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="KES">KES</SelectItem>
+                  <SelectItem value="USD">USD</SelectItem>
+                  {/* Add more currencies as needed */}
+                </SelectContent>
+              </Select>
+              {errors['financial.currency'] && <p className="col-span-4 text-right text-red-500 text-sm">{errors['financial.currency']}</p>}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="financial.taxRate" className="text-right">Tax Rate (%)</Label>
+              <Input
+                id="financial.taxRate"
+                name="financial.taxRate"
+                type="number"
+                step="0.01"
+                value={formData.financial.taxRate}
+                onChange={handleFormChange}
+                className="col-span-3"
+              />
+              {errors['financial.taxRate'] && <p className="col-span-4 text-right text-red-500 text-sm">{errors['financial.taxRate']}</p>}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="financial.serviceChargeRate" className="text-right">Service Charge Rate (%)</Label>
+              <Input
+                id="financial.serviceChargeRate"
+                name="financial.serviceChargeRate"
+                type="number"
+                step="0.01"
+                value={formData.financial.serviceChargeRate || ''}
+                onChange={handleFormChange}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="financial.tipEnabled" className="text-right">Tip Enabled</Label>
+              <Checkbox
+                id="financial.tipEnabled"
+                name="financial.tipEnabled"
+                checked={formData.financial.tipEnabled}
+                onCheckedChange={(checked) => handleCheckboxChange('financial.tipEnabled', checked as boolean)}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Payment Methods</Label>
+              <div className="col-span-3 flex flex-wrap gap-2">
+                {[ 'cash', 'card', 'mpesa', 'bank_transfer'].map((method) => (
+                  <div key={method} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`payment-method-${method}`}
+                      checked={formData.financial.paymentMethods.includes(method)}
+                      onCheckedChange={(checked) => {
+                        handleMultiSelectChange('financial.paymentMethods', method);
+                      }}
+                    />
+                    <Label htmlFor={`payment-method-${method}`}>{method.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</Label>
+                  </div>
+                ))}
+              </div>
+              {errors['financial.paymentMethods'] && <p className="col-span-4 text-right text-red-500 text-sm">{errors['financial.paymentMethods']}</p>}
+            </div>
+            {formData.financial.paymentMethods.includes('bank_transfer') && (
+              <div className="grid gap-4 grid-cols-4 items-center">
+                <Label htmlFor="financial.bankAccount.accountName" className="text-right">Account Name</Label>
+                <Input
+                  id="financial.bankAccount.accountName"
+                  name="financial.bankAccount.accountName"
+                  value={formData.financial.bankAccount?.accountName || ''}
+                  onChange={handleFormChange}
+                  className="col-span-3"
+                />
+                <Label htmlFor="financial.bankAccount.accountNumber" className="text-right">Account Number</Label>
+                <Input
+                  id="financial.bankAccount.accountNumber"
+                  name="financial.bankAccount.accountNumber"
+                  value={formData.financial.bankAccount?.accountNumber || ''}
+                  onChange={handleFormChange}
+                  className="col-span-3"
+                />
+                <Label htmlFor="financial.bankAccount.bankName" className="text-right">Bank Name</Label>
+                <Input
+                  id="financial.bankAccount.bankName"
+                  name="financial.bankAccount.bankName"
+                  value={formData.financial.bankAccount?.bankName || ''}
+                  onChange={handleFormChange}
+                  className="col-span-3"
+                />
+                <Label htmlFor="financial.bankAccount.routingNumber" className="text-right">Routing Number</Label>
+                <Input
+                  id="financial.bankAccount.routingNumber"
+                  name="financial.bankAccount.routingNumber"
+                  value={formData.financial.bankAccount?.routingNumber || ''}
+                  onChange={handleFormChange}
+                  className="col-span-3"
+                />
+              </div>
+            )}
+          </div>
+        );
+      case 5:
+        return (
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="inventory.trackInventory" className="text-right">Track Inventory</Label>
+              <Checkbox
+                id="inventory.trackInventory"
+                name="inventory.trackInventory"
+                checked={formData.inventory.trackInventory}
+                onCheckedChange={(checked) => handleCheckboxChange('inventory.trackInventory', checked as boolean)}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="inventory.lowStockAlertEnabled" className="text-right">Low Stock Alert Enabled</Label>
+              <Checkbox
+                id="inventory.lowStockAlertEnabled"
+                name="inventory.lowStockAlertEnabled"
+                checked={formData.inventory.lowStockAlertEnabled}
+                onCheckedChange={(checked) => handleCheckboxChange('inventory.lowStockAlertEnabled', checked as boolean)}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="inventory.autoReorderEnabled" className="text-right">Auto Reorder Enabled</Label>
+              <Checkbox
+                id="inventory.autoReorderEnabled"
+                name="inventory.autoReorderEnabled"
+                checked={formData.inventory.autoReorderEnabled}
+                onCheckedChange={(checked) => handleCheckboxChange('inventory.autoReorderEnabled', checked as boolean)}
+                className="col-span-3"
+              />
+            </div>
+            {/* Add warehouseId selection if applicable */}
+          </div>
+        );
+      case 6:
+        return (
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="menuConfig.inheritFromParent" className="text-right">Inherit Menu from Parent</Label>
+              <Checkbox
+                id="menuConfig.inheritFromParent"
+                name="menuConfig.inheritFromParent"
+                checked={formData.menuConfig.inheritFromParent}
+                onCheckedChange={(checked) => handleCheckboxChange('menuConfig.inheritFromParent', checked as boolean)}
+                className="col-span-3"
+              />
+            </div>
+            {!formData.menuConfig.inheritFromParent && (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="menuConfig.priceMultiplier" className="text-right">Price Multiplier</Label>
+                <Input
+                  id="menuConfig.priceMultiplier"
+                  name="menuConfig.priceMultiplier"
+                  type="number"
+                  step="0.01"
+                  value={formData.menuConfig.priceMultiplier}
+                  onChange={handleFormChange}
+                  className="col-span-3"
+                />
+              </div>
+            )}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="menuConfig.customPricing" className="text-right">Custom Pricing Enabled</Label>
+              <Checkbox
+                id="menuConfig.customPricing"
+                name="menuConfig.customPricing"
+                checked={formData.menuConfig.customPricing}
+                onCheckedChange={(checked) => handleCheckboxChange('menuConfig.customPricing', checked as boolean)}
+                className="col-span-3"
+              />
+            </div>
+            {/* Add availableCategories selection if applicable */}
+          </div>
+        );
+      case 7:
+        return (
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="staffing.maxStaff" className="text-right">Max Staff</Label>
+              <Input
+                id="staffing.maxStaff"
+                name="staffing.maxStaff"
+                type="number"
+                value={formData.staffing.maxStaff}
+                onChange={handleFormChange}
+                className="col-span-3"
+              />
+              {errors['staffing.maxStaff'] && <p className="col-span-4 text-right text-red-500 text-sm">{errors['staffing.maxStaff']}</p>}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Staff Roles</Label>
+              <div className="col-span-3 flex flex-wrap gap-2">
+                {staffRoles.map((role) => (
+                  <div key={role} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`role-${role}`}
+                      checked={formData.staffing.roles.includes(role)}
+                      onCheckedChange={(checked) => {
+                        handleMultiSelectChange('staffing.roles', role);
+                      }}
+                    />
+                    <Label htmlFor={`role-${role}`}>{role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</Label>
+                  </div>
+                ))}
+              </div>
+              {errors['staffing.roles'] && <p className="col-span-4 text-right text-red-500 text-sm">{errors['staffing.roles']}</p>}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="staffing.shiftPattern" className="text-right">Shift Pattern</Label>
+              <Input
+                id="staffing.shiftPattern"
+                name="staffing.shiftPattern"
+                value={formData.staffing.shiftPattern || ''}
+                onChange={handleFormChange}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+        );
+      case 8:
+        return (
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="integrations.posSystemId" className="text-right">POS System ID</Label>
+              <Input
+                id="integrations.posSystemId"
+                name="integrations.posSystemId"
+                value={formData.integrations.posSystemId || ''}
+                onChange={handleFormChange}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="integrations.posSystemType" className="text-right">POS System Type</Label>
+              <Input
+                id="integrations.posSystemType"
+                name="integrations.posSystemType"
+                value={formData.integrations.posSystemType || ''}
+                onChange={handleFormChange}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="integrations.kitchenDisplayId" className="text-right">Kitchen Display ID</Label>
+              <Input
+                id="integrations.kitchenDisplayId"
+                name="integrations.kitchenDisplayId"
+                value={formData.integrations.kitchenDisplayId || ''}
+                onChange={handleFormChange}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="integrations.onlineOrderingEnabled" className="text-right">Online Ordering Enabled</Label>
+              <Checkbox
+                id="integrations.onlineOrderingEnabled"
+                name="integrations.onlineOrderingEnabled"
+                checked={formData.integrations.onlineOrderingEnabled}
+                onCheckedChange={(checked) => handleCheckboxChange('integrations.onlineOrderingEnabled', checked as boolean)}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+        );
+      case 9:
+        return (
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="settings.orderPrefix" className="text-right">Order Prefix</Label>
+              <Input
+                id="settings.orderPrefix"
+                name="settings.orderPrefix"
+                value={formData.settings.orderPrefix}
+                onChange={handleFormChange}
+                className="col-span-3"
+              />
+              {errors['settings.orderPrefix'] && <p className="col-span-4 text-right text-red-500 text-sm">{errors['settings.orderPrefix']}</p>}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="settings.receiptHeader" className="text-right">Receipt Header</Label>
+              <Input
+                id="settings.receiptHeader"
+                name="settings.receiptHeader"
+                value={formData.settings.receiptHeader || ''}
+                onChange={handleFormChange}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="settings.receiptFooter" className="text-right">Receipt Footer</Label>
+              <Input
+                id="settings.receiptFooter"
+                name="settings.receiptFooter"
+                value={formData.settings.receiptFooter || ''}
+                onChange={handleFormChange}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="settings.logoUrl" className="text-right">Logo URL</Label>
+              <Input
+                id="settings.logoUrl"
+                name="settings.logoUrl"
+                value={formData.settings.logoUrl || ''}
+                onChange={handleFormChange}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="settings.theme" className="text-right">Theme</Label>
+              <Input
+                id="settings.theme"
+                name="settings.theme"
+                value={formData.settings.theme || ''}
+                onChange={handleFormChange}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+        );
+      default:
+        return null;
+    }
+  }, [currentStep, formData, errors, branches, subcounties, wards, isLoadingSubcounties, isLoadingWards, handleFormChange, handleSelectChange, handleMultiSelectChange, handleCheckboxChange]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] p-0">
-        <div className="flex h-full">
-          {/* Step Navigation Sidebar */}
-          <div className="w-80 border-r bg-muted/50 p-6">
-            <DialogHeader className="mb-6">
-              <DialogTitle>Create New Branch</DialogTitle>
-              <DialogDescription>
-                Set up a new branch location with all necessary settings
-              </DialogDescription>
-            </DialogHeader>
-
-            <nav className="space-y-2">
-              {wizardSteps.map((step, index) => {
-                const status = getStepStatus(index);
-                const StepIcon = step.icon;
-
-                return (
-                  <button
-                    key={step.id}
-                    onClick={() => handleStepClick(index)}
-                    className={`w-full text-left p-3 rounded-lg transition-colors ${
-                      status === 'current' 
-                        ? 'bg-primary text-primary-foreground' 
-                        : status === 'completed'
-                        ? 'bg-muted text-foreground hover:bg-muted/80'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className={`mt-0.5 ${
-                        status === 'completed' ? 'text-green-600' : ''
-                      }`}>
-                        {status === 'completed' ? (
-                          <Check className="h-5 w-5" />
-                        ) : (
-                          <StepIcon className="h-5 w-5" />
-                        )}
-                      </div>
-                      <div>
-                        <div className="font-medium flex items-center gap-2">
-                          {step.title}
-                          {step.optional && (
-                            <Badge variant="outline" className="text-xs">
-                              Optional
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="text-sm opacity-70 mt-1">
-                          {step.description}
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
-
-          {/* Main Content */}
-          <div className="flex-1 flex flex-col">
-            <ScrollArea className="flex-1 p-6">
-              {/* Step Content */}
-              {currentStep === 0 && (
-                <BasicInformationStep
-                  formData={formData}
-                  updateFormData={updateFormData}
-                  errors={errors}
-                  availableParents={availableParents}
-                  currentTenant={currentTenant}
-                  isTenantLoading={isTenantLoading}
-                  context={context}
-                />
+      <DialogContent className="sm:max-w-[600px] p-0">
+        <DialogHeader className="px-6 pt-6">
+          <DialogTitle>Create New Branch</DialogTitle>
+          <DialogDescription>
+            Fill in the details below to create a new branch. You will proceed through several steps.
+          </DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="h-[70vh] px-6">
+          {renderStep}
+        </ScrollArea>
+        <div className="flex justify-between p-6 border-t">
+          {currentStep > 0 && (
+            <Button variant="outline" onClick={handleBack}>
+              Back
+            </Button>
+          )}
+          <div className="flex-grow" />
+          {currentStep < 9 ? (
+            <Button onClick={handleNext}>
+              Next
+            </Button>
+          ) : (
+            <Button type="submit" onClick={handleSubmit} disabled={isSubmitting || loading}>
+              {isSubmitting || loading ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating...</>
+              ) : (
+                'Create Branch'
               )}
-              
-              {currentStep === 1 && (
-                <LocationContactStep
-                  formData={formData}
-                  updateFormData={updateFormData}
-                  errors={errors}
-                />
-              )}
-              
-              {currentStep === 2 && (
-                <OperationsStep
-                  formData={formData}
-                  updateFormData={updateFormData}
-                  handleArrayToggle={handleArrayToggle}
-                  errors={errors}
-                />
-              )}
-              
-              {currentStep === 3 && (
-                <FinancialStep
-                  formData={formData}
-                  updateFormData={updateFormData}
-                  handleArrayToggle={handleArrayToggle}
-                  errors={errors}
-                />
-              )}
-              
-              {currentStep === 4 && (
-                <AdditionalSettingsStep
-                  formData={formData}
-                  updateFormData={updateFormData}
-                  handleArrayToggle={handleArrayToggle}
-                  errors={errors}
-                />
-              )}
-            </ScrollArea>
-
-            {/* Navigation Footer */}
-            <div className="border-t p-6 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                Step {currentStep + 1} of {wizardSteps.length}
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="outline"
-                  onClick={handlePrevious}
-                  disabled={currentStep === 0}
-                >
-                  <ChevronLeft className="h-4 w-4 mr-2" />
-                  Previous
-                </Button>
-
-                {currentStep < wizardSteps.length - 1 ? (
-                  <Button onClick={handleNext}>
-                    Next
-                    <ChevronRight className="h-4 w-4 ml-2" />
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={isSubmitting || loading}
-                  >
-                    {isSubmitting ? 'Creating...' : 'Create Branch'}
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>
   );
 };
 
-// Step Components
-const BasicInformationStep: React.FC<{
-  formData: BranchFormData;
-  updateFormData: (path: string, value: any) => void;
-  errors: Record<string, string>;
-  availableParents: Branch[];
-  currentTenant?: { name: string; _id: string } | null;
-  isTenantLoading?: boolean;
-  context?: any;
-}> = ({ formData, updateFormData, errors, availableParents, currentTenant, isTenantLoading, context }) => (
-  <div className="space-y-6">
-    <div>
-      <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
-      <p className="text-sm text-muted-foreground mb-6">
-        Provide the basic details for your new branch location.
-      </p>
-    </div>
-
-    {/* Tenant Information Display */}
-    <Card className="bg-muted/30 border-dashed">
-      <CardContent className="pt-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <Building2 className="h-4 w-4 text-primary" />
-          </div>
-          <div>
-            <Label className="text-sm font-medium">Tenant Organization</Label>
-            <p className="text-sm text-muted-foreground mt-1">
-              This branch will be created under: <span className="font-semibold text-foreground">
-                {isTenantLoading ? 'Loading tenant...' : (currentTenant?.name || 'No tenant found')}
-              </span>
-            </p>
-            {!isTenantLoading && !currentTenant && (
-              <div className="text-xs text-red-600 mt-1 space-y-1">
-                <p>⚠️ Debug: No tenant context found</p>
-                <p>Context: {context ? 'Present' : 'Null'}</p>
-                <p>User Data: {typeof window !== 'undefined' ? localStorage.getItem('user')?.substring(0, 50) + '...' : 'N/A'}</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-
-    <div className="grid grid-cols-2 gap-4">
-      <div className="space-y-2">
-        <Label htmlFor="name">Branch Name *</Label>
-        <Input
-          id="name"
-          value={formData.name}
-          onChange={(e) => updateFormData('name', e.target.value)}
-          placeholder="Enter branch name"
-          className={errors.name ? 'border-destructive' : ''}
-        />
-        {errors.name && (
-          <p className="text-sm text-destructive">{errors.name}</p>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="type">Branch Type *</Label>
-        <Select value={formData.type} onValueChange={(value) => updateFormData('type', value)}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select branch type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="main">Main Branch</SelectItem>
-            <SelectItem value="branch">Branch</SelectItem>
-            <SelectItem value="franchise">Franchise</SelectItem>
-          </SelectContent>
-        </Select>
-        {errors.type && (
-          <p className="text-sm text-destructive">{errors.type}</p>
-        )}
-      </div>
-    </div>
-
-    <div className="space-y-2">
-      <Label htmlFor="parent">Parent Branch (Optional)</Label>
-      <Select value={formData.parentBranchId || 'none'} onValueChange={(value) => updateFormData('parentBranchId', value === 'none' ? undefined : value)}>
-        <SelectTrigger>
-          <SelectValue placeholder="Select parent branch (if any)" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="none">No parent branch</SelectItem>
-          {availableParents.map(branch => (
-            <SelectItem key={branch._id} value={branch._id}>
-              {branch.name} ({branch.code})
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <p className="text-sm text-muted-foreground">
-        Select a parent branch to inherit settings and create a hierarchy.
-      </p>
-    </div>
-
-    {formData.type === 'franchise' && (
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          Franchise branches may have different operational restrictions and requirements.
-        </AlertDescription>
-      </Alert>
-    )}
-  </div>
-);
-
-import { useSubcounties } from '@/hooks/useSubcounties';
-import { useWards } from '@/hooks/useWards';
-
-const LocationContactStep: React.FC<{
-  formData: BranchFormData;
-  updateFormData: (path: string, value: any) => void;
-  errors: Record<string, string>;
-}> = ({ formData, updateFormData, errors }) => {
-  const { subcounties, loading: subcountiesLoading } = useSubcounties();
-  const { wards, loading: wardsLoading } = useWards(formData.address.subcounty);
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold mb-4">Location & Contact</h3>
-        <p className="text-sm text-muted-foreground mb-6">
-          Enter the physical address and contact information for this branch.
-        </p>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Address Information</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="street">Street Address *</Label>
-            <Input
-              id="street"
-              value={formData.address.street}
-              onChange={(e) => updateFormData('address.street', e.target.value)}
-              placeholder="Enter street address"
-              className={errors.street ? 'border-destructive' : ''}
-            />
-            {errors.street && (
-              <p className="text-sm text-destructive">{errors.street}</p>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="city">City *</Label>
-              <Input
-                id="city"
-                value={formData.address.city}
-                onChange={(e) => updateFormData('address.city', e.target.value)}
-                placeholder="Enter city"
-                className={errors.city ? 'border-destructive' : ''}
-              />
-              {errors.city && (
-                <p className="text-sm text-destructive">{errors.city}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="state">State/Province *</Label>
-              <Input
-                id="state"
-                value={formData.address.state}
-                onChange={(e) => updateFormData('address.state', e.target.value)}
-                placeholder="Enter state or province"
-                className={errors.state ? 'border-destructive' : ''}
-              />
-              {errors.state && (
-                <p className="text-sm text-destructive">{errors.state}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="subcounty">Subcounty *</Label>
-              <Select
-                value={formData.address.subcounty}
-                onValueChange={(value) => {
-                  updateFormData('address.subcounty', value);
-                  updateFormData('wardId', undefined); // Reset ward when subcounty changes
-                }}
-              >
-                <SelectTrigger className={errors.subcounty ? 'border-destructive' : ''}>
-                  <SelectValue placeholder="Select subcounty" />
-                </SelectTrigger>
-                <SelectContent>
-                  {subcountiesLoading ? (
-                    <SelectItem value="loading" disabled>Loading...</SelectItem>
-                  ) : (
-                    subcounties.map((subcounty) => (
-                      <SelectItem key={subcounty._id} value={subcounty._id}>
-                        {subcounty.name}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-              {errors.subcounty && (
-                <p className="text-sm text-destructive">{errors.subcounty}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="ward">Ward</Label>
-              <Select
-                value={formData.wardId}
-                onValueChange={(value) => updateFormData('wardId', value)}
-                disabled={!formData.address.subcounty || wardsLoading}
-              >
-                <SelectTrigger className={errors.wardId ? 'border-destructive' : ''}>
-                  <SelectValue placeholder="Select ward" />
-                </SelectTrigger>
-                <SelectContent>
-                  {wardsLoading ? (
-                    <SelectItem value="loading" disabled>Loading...</SelectItem>
-                  ) : (
-                    wards.map((ward) => (
-                      <SelectItem key={ward._id} value={ward._id}>
-                        {ward.name}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-              {errors.wardId && (
-                <p className="text-sm text-destructive">{errors.wardId}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="postalCode">Postal Code *</Label>
-              <Input
-                id="postalCode"
-                value={formData.address.postalCode}
-                onChange={(e) => updateFormData('address.postalCode', e.target.value)}
-                placeholder="Enter postal code"
-                className={errors.postalCode ? 'border-destructive' : ''}
-              />
-              {errors.postalCode && (
-                <p className="text-sm text-destructive">{errors.postalCode}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="country">Country *</Label>
-              <Input
-                id="country"
-                value={formData.address.country}
-                onChange={(e) => updateFormData('address.country', e.target.value)}
-                placeholder="Enter country"
-                className={errors.country ? 'border-destructive' : ''}
-              />
-              {errors.country && (
-                <p className="text-sm text-destructive">{errors.country}</p>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Contact Information</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone *</Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={formData.contact.phone}
-                onChange={(e) => updateFormData('contact.phone', e.target.value)}
-                placeholder="Enter phone number"
-                className={errors.phone ? 'border-destructive' : ''}
-              />
-              {errors.phone && (
-                <p className="text-sm text-destructive">{errors.phone}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email">Email *</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.contact.email}
-                onChange={(e) => updateFormData('contact.email', e.target.value)}
-                placeholder="Enter email address"
-                className={errors.email ? 'border-destructive' : ''}
-              />
-              {errors.email && (
-                <p className="text-sm text-destructive">{errors.email}</p>
-              )}
-            </div>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-4">
-            <h4 className="font-medium">Manager Information (Optional)</h4>
-            
-            <div className="space-y-2">
-              <Label htmlFor="managerName">Manager Name</Label>
-              <Input
-                id="managerName"
-                value={formData.contact.managerName || ''}
-                onChange={(e) => updateFormData('contact.managerName', e.target.value)}
-                placeholder="Enter manager name"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="managerPhone">Manager Phone</Label>
-                <Input
-                  id="managerPhone"
-                  type="tel"
-                  value={formData.contact.managerPhone || ''}
-                  onChange={(e) => updateFormData('contact.managerPhone', e.target.value)}
-                  placeholder="Enter manager phone"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="managerEmail">Manager Email</Label>
-                <Input
-                  id="managerEmail"
-                  type="email"
-                  value={formData.contact.managerEmail || ''}
-                  onChange={(e) => updateFormData('contact.managerEmail', e.target.value)}
-                  placeholder="Enter manager email"
-                />
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
-
-const OperationsStep: React.FC<{
-  formData: BranchFormData;
-  updateFormData: (path: string, value: any) => void;
-  handleArrayToggle: (path: string, value: string) => void;
-  errors: Record<string, string>;
-}> = ({ formData, updateFormData, handleArrayToggle, errors }) => (
-  <div className="space-y-6">
-    <div>
-      <h3 className="text-lg font-semibold mb-4">Operations</h3>
-      <p className="text-sm text-muted-foreground mb-6">
-        Configure operational hours and capacity settings.
-      </p>
-    </div>
-
-    <Card>
-      <CardHeader>
-        <CardTitle>Operating Hours</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="openTime">Opening Time *</Label>
-            <Input
-              id="openTime"
-              type="time"
-              value={formData.operations.openTime}
-              onChange={(e) => updateFormData('operations.openTime', e.target.value)}
-              className={errors.openTime ? 'border-destructive' : ''}
-            />
-            {errors.openTime && (
-              <p className="text-sm text-destructive">{errors.openTime}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="closeTime">Closing Time *</Label>
-            <Input
-              id="closeTime"
-              type="time"
-              value={formData.operations.closeTime}
-              onChange={(e) => updateFormData('operations.closeTime', e.target.value)}
-              className={errors.closeTime ? 'border-destructive' : ''}
-            />
-            {errors.closeTime && (
-              <p className="text-sm text-destructive">{errors.closeTime}</p>
-            )}
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="timezone">Timezone *</Label>
-          <Select value={formData.operations.timezone} onValueChange={(value) => updateFormData('operations.timezone', value)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select timezone" />
-            </SelectTrigger>
-            <SelectContent>
-              {commonTimezones.map(tz => (
-                <SelectItem key={tz} value={tz}>{tz}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {errors.timezone && (
-            <p className="text-sm text-destructive">{errors.timezone}</p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Label>Operating Days *</Label>
-          <div className="grid grid-cols-2 gap-2">
-            {weekDays.map(day => (
-              <div key={day.id} className="flex items-center space-x-2">
-                <Checkbox
-                  id={day.id}
-                  checked={formData.operations.daysOpen.includes(day.id)}
-                  onCheckedChange={() => handleArrayToggle('operations.daysOpen', day.id)}
-                />
-                <Label htmlFor={day.id}>{day.label}</Label>
-              </div>
-            ))}
-          </div>
-          {errors.daysOpen && (
-            <p className="text-sm text-destructive">{errors.daysOpen}</p>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-
-    <Card>
-      <CardHeader>
-        <CardTitle>Capacity Settings</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="seatingCapacity">Seating Capacity</Label>
-            <Input
-              id="seatingCapacity"
-              type="number"
-              min="0"
-              value={formData.operations.seatingCapacity || ''}
-              onChange={(e) => updateFormData('operations.seatingCapacity', e.target.value ? parseInt(e.target.value) : undefined)}
-              placeholder="Enter seating capacity"
-            />
-            <p className="text-sm text-muted-foreground">
-              Maximum number of seated customers
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="deliveryRadius">Delivery Radius (km)</Label>
-            <Input
-              id="deliveryRadius"
-              type="number"
-              min="0"
-              step="0.1"
-              value={formData.operations.deliveryRadius || ''}
-              onChange={(e) => updateFormData('operations.deliveryRadius', e.target.value ? parseFloat(e.target.value) : undefined)}
-              placeholder="Enter delivery radius"
-            />
-            <p className="text-sm text-muted-foreground">
-              Maximum delivery distance from branch
-            </p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  </div>
-);
-
-const FinancialStep: React.FC<{
-  formData: BranchFormData;
-  updateFormData: (path: string, value: any) => void;
-  handleArrayToggle: (path: string, value: string) => void;
-  errors: Record<string, string>;
-}> = ({ formData, updateFormData, handleArrayToggle, errors }) => (
-  <div className="space-y-6">
-    <div>
-      <h3 className="text-lg font-semibold mb-4">Financial Settings</h3>
-      <p className="text-sm text-muted-foreground mb-6">
-        Configure currency, taxes, and payment methods.
-      </p>
-    </div>
-
-    <Card>
-      <CardHeader>
-        <CardTitle>Currency & Taxes</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="currency">Currency *</Label>
-            <Select value={formData.financial.currency} onValueChange={(value) => updateFormData('financial.currency', value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select currency" />
-              </SelectTrigger>
-              <SelectContent>
-                {currencies.map((c) => (
-                  <SelectItem key={c.code} value={c.code}>
-                    {c.code} — {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.currency && (
-              <p className="text-sm text-destructive">{errors.currency}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="taxRate">Tax Rate (%)</Label>
-            <Input
-              id="taxRate"
-              type="number"
-              min="0"
-              max="100"
-              step="0.01"
-              value={formData.financial.taxRate}
-              onChange={(e) => updateFormData('financial.taxRate', parseFloat(e.target.value) || 0)}
-              placeholder="Enter tax rate"
-              className={errors.taxRate ? 'border-destructive' : ''}
-            />
-            {errors.taxRate && (
-              <p className="text-sm text-destructive">{errors.taxRate}</p>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="serviceChargeRate">Service Charge Rate (%)</Label>
-            <Input
-              id="serviceChargeRate"
-              type="number"
-              min="0"
-              max="100"
-              step="0.01"
-              value={formData.financial.serviceChargeRate || ''}
-              onChange={(e) => updateFormData('financial.serviceChargeRate', e.target.value ? parseFloat(e.target.value) : undefined)}
-              placeholder="Enter service charge rate"
-            />
-            <p className="text-sm text-muted-foreground">
-              Additional service charge percentage
-            </p>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="tipEnabled"
-              checked={formData.financial.tipEnabled}
-              onCheckedChange={(checked) => updateFormData('financial.tipEnabled', checked)}
-            />
-            <Label htmlFor="tipEnabled">Enable Tips</Label>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-
-    <Card>
-      <CardHeader>
-        <CardTitle>Payment Methods</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-2">
-          {paymentMethods.map(method => (
-            <div key={method} className="flex items-center space-x-2">
-              <Checkbox
-                id={method}
-                checked={formData.financial.paymentMethods.includes(method)}
-                onCheckedChange={() => handleArrayToggle('financial.paymentMethods', method)}
-              />
-              <Label htmlFor={method} className="capitalize">
-                {method.replace('_', ' ')}
-              </Label>
-            </div>
-          ))}
-        </div>
-        {errors.paymentMethods && (
-          <p className="text-sm text-destructive">{errors.paymentMethods}</p>
-        )}
-      </CardContent>
-    </Card>
-  </div>
-);
-
-const AdditionalSettingsStep: React.FC<{
-  formData: BranchFormData;
-  updateFormData: (path: string, value: any) => void;
-  handleArrayToggle: (path: string, value: string) => void;
-  errors: Record<string, string>;
-}> = ({ formData, updateFormData, handleArrayToggle, errors }) => (
-  <div className="space-y-6">
-    <div>
-      <h3 className="text-lg font-semibold mb-4">Additional Settings</h3>
-      <p className="text-sm text-muted-foreground mb-6">
-        Configure inventory, staffing, and integration settings.
-      </p>
-    </div>
-
-    <Card>
-      <CardHeader>
-        <CardTitle>Inventory Management</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="trackInventory"
-              checked={formData.inventory.trackInventory}
-              onCheckedChange={(checked) => updateFormData('inventory.trackInventory', checked)}
-            />
-            <Label htmlFor="trackInventory">Track Inventory</Label>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="lowStockAlert"
-              checked={formData.inventory.lowStockAlertEnabled}
-              onCheckedChange={(checked) => updateFormData('inventory.lowStockAlertEnabled', checked)}
-            />
-            <Label htmlFor="lowStockAlert">Low Stock Alerts</Label>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="autoReorder"
-              checked={formData.inventory.autoReorderEnabled}
-              onCheckedChange={(checked) => updateFormData('inventory.autoReorderEnabled', checked)}
-            />
-            <Label htmlFor="autoReorder">Auto Reorder</Label>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-
-    <Card>
-      <CardHeader>
-        <CardTitle>Staffing</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="maxStaff">Maximum Staff *</Label>
-          <Input
-            id="maxStaff"
-            type="number"
-            min="1"
-            value={formData.staffing.maxStaff}
-            onChange={(e) => updateFormData('staffing.maxStaff', parseInt(e.target.value) || 1)}
-            placeholder="Enter maximum staff count"
-            className={errors.maxStaff ? 'border-destructive' : ''}
-          />
-          {errors.maxStaff && (
-            <p className="text-sm text-destructive">{errors.maxStaff}</p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Label>Staff Roles</Label>
-          <div className="grid grid-cols-2 gap-2">
-            {staffRoles.map(role => (
-              <div key={role} className="flex items-center space-x-2">
-                <Checkbox
-                  id={role}
-                  checked={formData.staffing.roles.includes(role)}
-                  onCheckedChange={() => handleArrayToggle('staffing.roles', role)}
-                />
-                <Label htmlFor={role} className="capitalize">
-                  {role.replace('_', ' ')}
-                </Label>
-              </div>
-            ))}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-
-    <Card>
-      <CardHeader>
-        <CardTitle>System Settings</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="orderPrefix">Order Prefix *</Label>
-          <Input
-            id="orderPrefix"
-            value={formData.settings.orderPrefix}
-            onChange={(e) => updateFormData('settings.orderPrefix', e.target.value)}
-            placeholder="Enter order prefix"
-            maxLength={5}
-            className={errors.orderPrefix ? 'border-destructive' : ''}
-          />
-          <p className="text-sm text-muted-foreground">
-            Prefix for order numbers (e.g., "BR" for orders like BR-001)
-          </p>
-          {errors.orderPrefix && (
-            <p className="text-sm text-destructive">{errors.orderPrefix}</p>
-          )}
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <Switch
-            id="onlineOrdering"
-            checked={formData.integrations.onlineOrderingEnabled}
-            onCheckedChange={(checked) => updateFormData('integrations.onlineOrderingEnabled', checked)}
-          />
-          <Label htmlFor="onlineOrdering">Enable Online Ordering</Label>
-        </div>
-      </CardContent>
-    </Card>
-  </div>
-);
-
 export default CreateBranchModal;
-ult CreateBranchModal;
