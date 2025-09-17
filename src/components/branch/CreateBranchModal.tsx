@@ -54,6 +54,8 @@ import { Branch, CreateBranchData } from '@/types/branch.types';
 
 // Hooks
 import { useTenant } from '@/contexts/TenantContext';
+import { useSubcounties } from '@/hooks/useSubcounties';
+import { useWards } from '@/hooks/useWards';
 
 interface CreateBranchModalProps {
   open: boolean;
@@ -134,6 +136,7 @@ const defaultFormData: BranchFormData = {
     state: '',
     postalCode: '',
     country: '',
+    subcounty: '',
   },
   contact: {
     phone: '',
@@ -422,6 +425,7 @@ export const CreateBranchModal: React.FC<CreateBranchModalProps> = ({
         name: formData.name,
         type: formData.type,
         parentBranchId: formData.parentBranchId,
+        wardId: formData.wardId,
         address: formData.address,
         contact: formData.contact,
         operations: formData.operations,
@@ -707,180 +711,246 @@ const BasicInformationStep: React.FC<{
   </div>
 );
 
+import { useSubcounties } from '@/hooks/useSubcounties';
+import { useWards } from '@/hooks/useWards';
+
 const LocationContactStep: React.FC<{
   formData: BranchFormData;
   updateFormData: (path: string, value: any) => void;
   errors: Record<string, string>;
-}> = ({ formData, updateFormData, errors }) => (
-  <div className="space-y-6">
-    <div>
-      <h3 className="text-lg font-semibold mb-4">Location & Contact</h3>
-      <p className="text-sm text-muted-foreground mb-6">
-        Enter the physical address and contact information for this branch.
-      </p>
-    </div>
+}> = ({ formData, updateFormData, errors }) => {
+  const { subcounties, loading: subcountiesLoading } = useSubcounties();
+  const { wards, loading: wardsLoading } = useWards(formData.address.subcounty);
 
-    <Card>
-      <CardHeader>
-        <CardTitle>Address Information</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="street">Street Address *</Label>
-          <Input
-            id="street"
-            value={formData.address.street}
-            onChange={(e) => updateFormData('address.street', e.target.value)}
-            placeholder="Enter street address"
-            className={errors.street ? 'border-destructive' : ''}
-          />
-          {errors.street && (
-            <p className="text-sm text-destructive">{errors.street}</p>
-          )}
-        </div>
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold mb-4">Location & Contact</h3>
+        <p className="text-sm text-muted-foreground mb-6">
+          Enter the physical address and contact information for this branch.
+        </p>
+      </div>
 
-        <div className="grid grid-cols-2 gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Address Information</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="city">City *</Label>
+            <Label htmlFor="street">Street Address *</Label>
             <Input
-              id="city"
-              value={formData.address.city}
-              onChange={(e) => updateFormData('address.city', e.target.value)}
-              placeholder="Enter city"
-              className={errors.city ? 'border-destructive' : ''}
+              id="street"
+              value={formData.address.street}
+              onChange={(e) => updateFormData('address.street', e.target.value)}
+              placeholder="Enter street address"
+              className={errors.street ? 'border-destructive' : ''}
             />
-            {errors.city && (
-              <p className="text-sm text-destructive">{errors.city}</p>
+            {errors.street && (
+              <p className="text-sm text-destructive">{errors.street}</p>
             )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="state">State/Province *</Label>
-            <Input
-              id="state"
-              value={formData.address.state}
-              onChange={(e) => updateFormData('address.state', e.target.value)}
-              placeholder="Enter state or province"
-              className={errors.state ? 'border-destructive' : ''}
-            />
-            {errors.state && (
-              <p className="text-sm text-destructive">{errors.state}</p>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="postalCode">Postal Code *</Label>
-            <Input
-              id="postalCode"
-              value={formData.address.postalCode}
-              onChange={(e) => updateFormData('address.postalCode', e.target.value)}
-              placeholder="Enter postal code"
-              className={errors.postalCode ? 'border-destructive' : ''}
-            />
-            {errors.postalCode && (
-              <p className="text-sm text-destructive">{errors.postalCode}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="country">Country *</Label>
-            <Input
-              id="country"
-              value={formData.address.country}
-              onChange={(e) => updateFormData('address.country', e.target.value)}
-              placeholder="Enter country"
-              className={errors.country ? 'border-destructive' : ''}
-            />
-            {errors.country && (
-              <p className="text-sm text-destructive">{errors.country}</p>
-            )}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-
-    <Card>
-      <CardHeader>
-        <CardTitle>Contact Information</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="phone">Phone *</Label>
-            <Input
-              id="phone"
-              type="tel"
-              value={formData.contact.phone}
-              onChange={(e) => updateFormData('contact.phone', e.target.value)}
-              placeholder="Enter phone number"
-              className={errors.phone ? 'border-destructive' : ''}
-            />
-            {errors.phone && (
-              <p className="text-sm text-destructive">{errors.phone}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="email">Email *</Label>
-            <Input
-              id="email"
-              type="email"
-              value={formData.contact.email}
-              onChange={(e) => updateFormData('contact.email', e.target.value)}
-              placeholder="Enter email address"
-              className={errors.email ? 'border-destructive' : ''}
-            />
-            {errors.email && (
-              <p className="text-sm text-destructive">{errors.email}</p>
-            )}
-          </div>
-        </div>
-
-        <Separator />
-
-        <div className="space-y-4">
-          <h4 className="font-medium">Manager Information (Optional)</h4>
-          
-          <div className="space-y-2">
-            <Label htmlFor="managerName">Manager Name</Label>
-            <Input
-              id="managerName"
-              value={formData.contact.managerName || ''}
-              onChange={(e) => updateFormData('contact.managerName', e.target.value)}
-              placeholder="Enter manager name"
-            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="managerPhone">Manager Phone</Label>
+              <Label htmlFor="city">City *</Label>
               <Input
-                id="managerPhone"
-                type="tel"
-                value={formData.contact.managerPhone || ''}
-                onChange={(e) => updateFormData('contact.managerPhone', e.target.value)}
-                placeholder="Enter manager phone"
+                id="city"
+                value={formData.address.city}
+                onChange={(e) => updateFormData('address.city', e.target.value)}
+                placeholder="Enter city"
+                className={errors.city ? 'border-destructive' : ''}
               />
+              {errors.city && (
+                <p className="text-sm text-destructive">{errors.city}</p>
+              )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="managerEmail">Manager Email</Label>
+              <Label htmlFor="state">State/Province *</Label>
               <Input
-                id="managerEmail"
-                type="email"
-                value={formData.contact.managerEmail || ''}
-                onChange={(e) => updateFormData('contact.managerEmail', e.target.value)}
-                placeholder="Enter manager email"
+                id="state"
+                value={formData.address.state}
+                onChange={(e) => updateFormData('address.state', e.target.value)}
+                placeholder="Enter state or province"
+                className={errors.state ? 'border-destructive' : ''}
               />
+              {errors.state && (
+                <p className="text-sm text-destructive">{errors.state}</p>
+              )}
             </div>
           </div>
-        </div>
-      </CardContent>
-    </Card>
-  </div>
-);
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="subcounty">Subcounty *</Label>
+              <Select
+                value={formData.address.subcounty}
+                onValueChange={(value) => {
+                  updateFormData('address.subcounty', value);
+                  updateFormData('wardId', undefined); // Reset ward when subcounty changes
+                }}
+              >
+                <SelectTrigger className={errors.subcounty ? 'border-destructive' : ''}>
+                  <SelectValue placeholder="Select subcounty" />
+                </SelectTrigger>
+                <SelectContent>
+                  {subcountiesLoading ? (
+                    <SelectItem value="loading" disabled>Loading...</SelectItem>
+                  ) : (
+                    subcounties.map((subcounty) => (
+                      <SelectItem key={subcounty._id} value={subcounty._id}>
+                        {subcounty.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              {errors.subcounty && (
+                <p className="text-sm text-destructive">{errors.subcounty}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="ward">Ward</Label>
+              <Select
+                value={formData.wardId}
+                onValueChange={(value) => updateFormData('wardId', value)}
+                disabled={!formData.address.subcounty || wardsLoading}
+              >
+                <SelectTrigger className={errors.wardId ? 'border-destructive' : ''}>
+                  <SelectValue placeholder="Select ward" />
+                </SelectTrigger>
+                <SelectContent>
+                  {wardsLoading ? (
+                    <SelectItem value="loading" disabled>Loading...</SelectItem>
+                  ) : (
+                    wards.map((ward) => (
+                      <SelectItem key={ward._id} value={ward._id}>
+                        {ward.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              {errors.wardId && (
+                <p className="text-sm text-destructive">{errors.wardId}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="postalCode">Postal Code *</Label>
+              <Input
+                id="postalCode"
+                value={formData.address.postalCode}
+                onChange={(e) => updateFormData('address.postalCode', e.target.value)}
+                placeholder="Enter postal code"
+                className={errors.postalCode ? 'border-destructive' : ''}
+              />
+              {errors.postalCode && (
+                <p className="text-sm text-destructive">{errors.postalCode}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="country">Country *</Label>
+              <Input
+                id="country"
+                value={formData.address.country}
+                onChange={(e) => updateFormData('address.country', e.target.value)}
+                placeholder="Enter country"
+                className={errors.country ? 'border-destructive' : ''}
+              />
+              {errors.country && (
+                <p className="text-sm text-destructive">{errors.country}</p>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Contact Information</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone *</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={formData.contact.phone}
+                onChange={(e) => updateFormData('contact.phone', e.target.value)}
+                placeholder="Enter phone number"
+                className={errors.phone ? 'border-destructive' : ''}
+              />
+              {errors.phone && (
+                <p className="text-sm text-destructive">{errors.phone}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email">Email *</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.contact.email}
+                onChange={(e) => updateFormData('contact.email', e.target.value)}
+                placeholder="Enter email address"
+                className={errors.email ? 'border-destructive' : ''}
+              />
+              {errors.email && (
+                <p className="text-sm text-destructive">{errors.email}</p>
+              )}
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-4">
+            <h4 className="font-medium">Manager Information (Optional)</h4>
+            
+            <div className="space-y-2">
+              <Label htmlFor="managerName">Manager Name</Label>
+              <Input
+                id="managerName"
+                value={formData.contact.managerName || ''}
+                onChange={(e) => updateFormData('contact.managerName', e.target.value)}
+                placeholder="Enter manager name"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="managerPhone">Manager Phone</Label>
+                <Input
+                  id="managerPhone"
+                  type="tel"
+                  value={formData.contact.managerPhone || ''}
+                  onChange={(e) => updateFormData('contact.managerPhone', e.target.value)}
+                  placeholder="Enter manager phone"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="managerEmail">Manager Email</Label>
+                <Input
+                  id="managerEmail"
+                  type="email"
+                  value={formData.contact.managerEmail || ''}
+                  onChange={(e) => updateFormData('contact.managerEmail', e.target.value)}
+                  placeholder="Enter manager email"
+                />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
 
 const OperationsStep: React.FC<{
   formData: BranchFormData;
@@ -1254,3 +1324,4 @@ const AdditionalSettingsStep: React.FC<{
 );
 
 export default CreateBranchModal;
+ult CreateBranchModal;

@@ -20,6 +20,8 @@ import tenantRoutes from './tenant.routes';
 import shiftRoutes from './shift.routes';
 import paymentGatewayRoutes, { callbackRouter } from './payment-gateway.routes';
 import userRoutes from './user.routes';
+import subcountyRoutes from './subcounty.routes';
+import wardRoutes from './ward.routes';
 
 const router = Router();
 
@@ -45,5 +47,7 @@ router.use('/email', emailRoutes);
 router.use('/reports', reportRoutes);
 router.use('/scheduler', schedulerRoutes);
 router.use('/analytics/real-time', realTimeAnalyticsRoutes);
+router.use('/subcounties', subcountyRoutes);
+router.use('/wards', wardRoutes);
 
 export default router;

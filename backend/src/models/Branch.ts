@@ -7,6 +7,7 @@ export interface IBranch extends Document {
   code: string;
   type: 'main' | 'branch' | 'franchise';
   status: 'active' | 'inactive' | 'suspended';
+  ward: mongoose.Types.ObjectId;
   
   // Location Information
   address: {
@@ -15,6 +16,7 @@ export interface IBranch extends Document {
     state: string;
     postalCode: string;
     country: string;
+    subcounty: string;
     coordinates?: {
       latitude: number;
       longitude: number;
@@ -440,6 +442,10 @@ branchSchema.methods.getChildBranches = async function() {
 branchSchema.virtual('fullPath').get(async function() {
   const hierarchy = await (this as any).getHierarchy();
   const path = hierarchy.map((b: any) => b.name).join(' > ');
+  return path ? `${path} > ${this.name}` : this.name;
+});
+
+export const Branch = mongoose.model<IBranch>('Branch', branchSchema);rchy.map((b: any) => b.name).join(' > ');
   return path ? `${path} > ${this.name}` : this.name;
 });
 
