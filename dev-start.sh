@@ -1,13 +1,17 @@
 #!/bin/bash
+echo "🚀 Starting ZedUno Development Environment..."
 
-echo "Starting ZedUno Development Environment..."
+# Start backend
+echo "[BACKEND] Starting backend..."
+cd backend
+npm run dev &
+BACKEND_PID=$!
+cd ..
 
-# Create logs directory
-mkdir -p backend/logs
+# Start frontend
+echo "[FRONTEND] Starting frontend..."
+npm run dev:frontend &
+FRONTEND_PID=$!
 
-# Start backend and frontend concurrently
-npx concurrently \
-    --names "BACKEND,FRONTEND" \
-    --prefix-colors "green,blue" \
-    "cd backend && npm run dev" \
-    "npm run dev"
+# Wait for both to exit
+wait $BACKEND_PID $FRONTEND_PID
