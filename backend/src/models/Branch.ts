@@ -8,7 +8,7 @@ export interface IBranch extends Document {
   type: 'main' | 'branch' | 'franchise';
   status: 'active' | 'inactive' | 'suspended';
   ward: mongoose.Types.ObjectId;
-  
+
   // Location Information
   address: {
     street: string;
@@ -22,7 +22,7 @@ export interface IBranch extends Document {
       longitude: number;
     };
   };
-  
+
   // Contact Information
   contact: {
     phone: string;
@@ -31,7 +31,7 @@ export interface IBranch extends Document {
     managerPhone?: string;
     managerEmail?: string;
   };
-  
+
   // Operating Information
   operations: {
     openTime: string;
@@ -42,7 +42,7 @@ export interface IBranch extends Document {
     seatingCapacity?: number;
     deliveryRadius?: number;
   };
-  
+
   // Financial Configuration
   financial: {
     currency: string;
@@ -57,7 +57,7 @@ export interface IBranch extends Document {
       routingNumber?: string;
     };
   };
-  
+
   // Inventory Configuration
   inventory: {
     trackInventory: boolean;
@@ -65,7 +65,7 @@ export interface IBranch extends Document {
     autoReorderEnabled: boolean;
     warehouseId?: mongoose.Types.ObjectId;
   };
-  
+
   // Menu Configuration
   menuConfig: {
     inheritFromParent: boolean;
@@ -73,7 +73,7 @@ export interface IBranch extends Document {
     customPricing: boolean;
     availableCategories?: mongoose.Types.ObjectId[];
   };
-  
+
   // Staff Configuration
   staffing: {
     maxStaff: number;
@@ -81,7 +81,7 @@ export interface IBranch extends Document {
     roles: string[];
     shiftPattern?: string;
   };
-  
+
   // Performance Metrics
   metrics: {
     avgOrderValue: number;
@@ -90,7 +90,7 @@ export interface IBranch extends Document {
     rating?: number;
     lastUpdated: Date;
   };
-  
+
   // Integration Settings
   integrations: {
     posSystemId?: string;
@@ -98,7 +98,7 @@ export interface IBranch extends Document {
     kitchenDisplayId?: string;
     onlineOrderingEnabled: boolean;
   };
-  
+
   // Branch Specific Settings
   settings: {
     orderPrefix: string;
@@ -108,7 +108,7 @@ export interface IBranch extends Document {
     logoUrl?: string;
     theme?: string;
   };
-  
+
   isActive: boolean;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
@@ -368,22 +368,22 @@ branchSchema.index({ parentBranchId: 1 });
 // Pre-save hook to generate branch code if not provided
 branchSchema.pre('save', async function (next) {
   console.log('Pre-save hook triggered - Branch:', this.name, 'Code:', this.code, 'TenantId:', this.tenantId);
-  
+
   // Always generate code if not provided
   if (!this.code && this.name && this.tenantId) {
     console.log('Generating code for branch:', this.name);
     try {
       const tenant = await mongoose.model('Tenant').findById(this.tenantId);
       console.log('Found tenant:', tenant?.name, 'Slug:', tenant?.slug);
-      
+
       if (!tenant) {
         console.error('Tenant not found for ID:', this.tenantId);
         return next(new Error('Tenant not found'));
       }
-      
+
       const branchCount = await mongoose.model('Branch').countDocuments({ tenantId: this.tenantId });
       console.log('Current branch count for tenant:', branchCount);
-      
+
       const tenantSlug = tenant?.slug || 'TENANT';
       this.code = `${tenantSlug.toUpperCase()}-BR${String(branchCount + 1).padStart(3, '0')}`;
       console.log('Generated branch code:', this.code);
@@ -392,25 +392,25 @@ branchSchema.pre('save', async function (next) {
       return next(error);
     }
   }
-  
+
   // Ensure code is present before proceeding
   if (!this.code) {
     console.error('Branch code is still missing after generation attempt');
     return next(new Error('Branch code could not be generated'));
   }
-  
+
   // Initialize settings if not present
   if (!this.settings) {
     console.log('Settings object not found, creating default');
     this.settings = { orderPrefix: '', orderNumberSequence: 1 };
   }
-  
+
   // Set orderPrefix based on code
   if (!this.settings.orderPrefix) {
     this.settings.orderPrefix = this.code;
     console.log('Set orderPrefix to:', this.settings.orderPrefix);
   }
-  
+
   console.log('Pre-save hook completed - Code:', this.code, 'OrderPrefix:', this.settings.orderPrefix);
   next();
 });
@@ -419,22 +419,22 @@ branchSchema.pre('save', async function (next) {
 branchSchema.methods.getHierarchy = async function() {
   const hierarchy = [];
   let currentBranch = this;
-  
+
   while (currentBranch.parentBranchId) {
     const parent = await mongoose.model('Branch').findById(currentBranch.parentBranchId);
     if (!parent) break;
     hierarchy.unshift(parent);
     currentBranch = parent;
   }
-  
+
   return hierarchy;
 };
 
 // Method to get all child branches
 branchSchema.methods.getChildBranches = async function() {
-  return await mongoose.model('Branch').find({ 
+  return await mongoose.model('Branch').find({
     parentBranchId: this._id,
-    isActive: true 
+    isActive: true
   });
 };
 
@@ -442,10 +442,6 @@ branchSchema.methods.getChildBranches = async function() {
 branchSchema.virtual('fullPath').get(async function() {
   const hierarchy = await (this as any).getHierarchy();
   const path = hierarchy.map((b: any) => b.name).join(' > ');
-  return path ? `${path} > ${this.name}` : this.name;
-});
-
-export const Branch = mongoose.model<IBranch>('Branch', branchSchema);rchy.map((b: any) => b.name).join(' > ');
   return path ? `${path} > ${this.name}` : this.name;
 });
 

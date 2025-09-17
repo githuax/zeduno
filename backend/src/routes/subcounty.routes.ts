@@ -1,10 +1,10 @@
 import express from 'express';
 import * as subcountyController from '../controllers/subcounty.controller';
-import { protect } from '../middleware/auth';
+import { authenticate } from '../middleware/auth';
 
 const router = express.Router();
 
-router.use(protect);
+router.use(authenticate);
 
 router.route('/')
   .get(subcountyController.getSubcounties)

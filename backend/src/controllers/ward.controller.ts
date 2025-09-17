@@ -52,7 +52,7 @@ export const deleteWard = async (req: Request, res: Response) => {
     if (!ward) {
       return res.status(404).json({ success: false, error: 'Ward not found' });
     }
-    await ward.remove();
+    await ward.deleteOne();
     res.status(200).json({ success: true, data: {} });
   } catch (error) {
     res.status(500).json({ success: false, error: 'Server Error' });

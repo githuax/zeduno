@@ -52,7 +52,7 @@ export const deleteSubcounty = async (req: Request, res: Response) => {
     if (!subcounty) {
       return res.status(404).json({ success: false, error: 'Subcounty not found' });
     }
-    await subcounty.remove();
+    await subcounty.deleteOne();
     res.status(200).json({ success: true, data: {} });
   } catch (error) {
     res.status(500).json({ success: false, error: 'Server Error' });
