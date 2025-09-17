@@ -24,7 +24,7 @@ const BranchCard: React.FC<BranchCardProps> = ({
   onSelect, 
   onHover 
 }) => {
-  const location = `${branch.address?.city || 'Unknown'}, ${branch.address?.state || branch.address?.country || ''}`.trim().replace(/,$/, '');
+  const location = `${branch.address?.city || 'Unknown'}, ${branch.address?.subcounty || ''}, ${branch.ward?.name || ''}`.trim().replace(/,$/, '');
   
   return (
     <div
@@ -169,7 +169,7 @@ const BranchSwitcher: React.FC<BranchSwitcherProps> = ({
       // Apply search filter
       if (searchTerm) {
         const term = searchTerm.toLowerCase();
-        const location = `${branch.address?.city || ''} ${branch.address?.state || ''} ${branch.address?.country || ''}`.toLowerCase();
+        const location = `${branch.address?.city || ''} ${branch.address?.state || ''} ${branch.address?.country || ''} ${branch.address?.subcounty || ''} ${branch.ward?.name || ''}`.toLowerCase();
         return (
           branch.name.toLowerCase().includes(term) ||
           location.includes(term) ||
@@ -381,6 +381,7 @@ const BranchSwitcher: React.FC<BranchSwitcherProps> = ({
                   <div className="text-gray-900 text-sm">
                     <p>{hoveredBranch.address?.street}</p>
                     <p>{hoveredBranch.address?.city}, {hoveredBranch.address?.state} {hoveredBranch.address?.postalCode}</p>
+                    <p>{hoveredBranch.address?.subcounty}, {hoveredBranch.ward?.name}</p>
                     <p>{hoveredBranch.address?.country}</p>
                   </div>
                 </div>

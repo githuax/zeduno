@@ -72,7 +72,15 @@ export class BranchService {
       query.isActive = true;
     }
 
-    return await Branch.find(query).sort({ createdAt: -1 });
+    return await Branch.find(query)
+      .populate({
+        path: 'ward',
+        populate: {
+          path: 'subcounty',
+          model: 'Subcounty'
+        }
+      })
+      .sort({ createdAt: -1 });
   }
 
   /**
@@ -87,7 +95,14 @@ export class BranchService {
       query.tenantId = tenantId;
     }
 
-    return await Branch.findOne(query);
+    return await Branch.findOne(query)
+      .populate({
+        path: 'ward',
+        populate: {
+          path: 'subcounty',
+          model: 'Subcounty'
+        }
+      });
   }
 
   /**
