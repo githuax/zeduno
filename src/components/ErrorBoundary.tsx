@@ -10,13 +10,14 @@ interface Props {
 
 interface State {
   hasError: boolean;
-  error?: Error;
+  error: Error | null;
   errorInfo?: ErrorInfo;
 }
 
 class ErrorBoundary extends Component<Props, State> {
   public state: State = {
-    hasError: false
+    hasError: false,
+    error: null
   };
 
   public static getDerivedStateFromError(error: Error): State {
@@ -25,7 +26,7 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Error boundary caught an error:', error, errorInfo);
+    console.error('ErrorBoundary caught an error:', error, errorInfo);
     this.setState({
       error,
       errorInfo
@@ -33,7 +34,11 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   private handleRetry = () => {
-    this.setState({ hasError: false, error: undefined, errorInfo: undefined });
+    this.setState({ hasError: false, error: null, errorInfo: undefined });
+  };
+
+  private handleRefresh = () => {
+    window.location.reload();
   };
 
   public render() {
@@ -43,15 +48,15 @@ class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
           <Card className="w-full max-w-lg">
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-destructive" />
-                <CardTitle>Something went wrong</CardTitle>
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-4 h-12 w-12 text-red-500">
+                <AlertTriangle className="h-full w-full" />
               </div>
+              <CardTitle className="text-xl">Something went wrong</CardTitle>
               <CardDescription>
-                An error occurred while loading this page. Please try refreshing or contact support if the issue persists.
+                We encountered an unexpected error. This might be due to a temporary issue.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -61,12 +66,22 @@ class ErrorBoundary extends Component<Props, State> {
                   <p className="text-muted-foreground">{this.state.error.message}</p>
                 </div>
               )}
+              <div className="text-sm text-gray-600 bg-gray-100 p-3 rounded-md font-mono">
+                {this.state.error?.message || 'An unknown error occurred'}
+              </div>
               <div className="flex gap-2">
-                <Button onClick={this.handleRetry} variant="default" className="flex-1">
-                  <RefreshCw className="h-4 w-4 mr-2" />
+                <Button
+                  onClick={this.handleRetry}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
                   Try Again
                 </Button>
-                <Button onClick={() => window.location.reload()} variant="outline" className="flex-1">
+                <Button
+                  onClick={this.handleRefresh}
+                  className="flex-1"
+                >
                   Refresh Page
                 </Button>
               </div>
