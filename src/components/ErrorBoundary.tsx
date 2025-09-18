@@ -11,6 +11,7 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
+  errorInfo?: ErrorInfo;
 }
 
 class ErrorBoundary extends Component<Props, State> {
@@ -20,15 +21,20 @@ class ErrorBoundary extends Component<Props, State> {
   };
 
   public static getDerivedStateFromError(error: Error): State {
+    // Update state so the next render will show the fallback UI.
     return { hasError: true, error };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
+    this.setState({
+      error,
+      errorInfo
+    });
   }
 
   private handleRetry = () => {
-    this.setState({ hasError: false, error: null });
+    this.setState({ hasError: false, error: null, errorInfo: undefined });
   };
 
   private handleRefresh = () => {
@@ -43,7 +49,7 @@ class ErrorBoundary extends Component<Props, State> {
 
       return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-md">
+          <Card className="w-full max-w-lg">
             <CardHeader className="text-center">
               <div className="mx-auto mb-4 h-12 w-12 text-red-500">
                 <AlertTriangle className="h-full w-full" />
@@ -54,6 +60,12 @@ class ErrorBoundary extends Component<Props, State> {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {process.env.NODE_ENV === 'development' && this.state.error && (
+                <div className="bg-muted p-3 rounded-md text-sm">
+                  <p className="font-medium mb-2">Error Details:</p>
+                  <p className="text-muted-foreground">{this.state.error.message}</p>
+                </div>
+              )}
               <div className="text-sm text-gray-600 bg-gray-100 p-3 rounded-md font-mono">
                 {this.state.error?.message || 'An unknown error occurred'}
               </div>

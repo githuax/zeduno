@@ -75,19 +75,19 @@ const queryClient = new QueryClient();
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
-    <BrowserRouter
-      future={{
-        v7_startTransition: true,
-        v7_relativeSplatPath: true
-      }}
-    >
-      <AuthProvider>
-        <TenantProvider>
-          <CartProvider>
-            <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <Routes>
+      <BrowserRouter
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true
+        }}
+      >
+        <AuthProvider>
+          <TenantProvider>
+            <CartProvider>
+              <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <Routes>
             {/* Public Routes - No Suspense needed */}
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<Login />} />
@@ -270,11 +270,11 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-            </TooltipProvider>
-          </CartProvider>
-        </TenantProvider>
-      </AuthProvider>
-    </BrowserRouter>
+              </TooltipProvider>
+            </CartProvider>
+          </TenantProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </QueryClientProvider>
   </ErrorBoundary>
 );
