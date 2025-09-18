@@ -11,6 +11,7 @@ import { CartProvider } from "@/contexts/CartContext";
 import { TenantProvider } from "@/contexts/TenantContext";
 
 import ProtectedRoute from "./components/ProtectedRoute";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { AnalyticsLoading } from "./components/loading/AnalyticsLoading";
 import { InventoryLoading } from "./components/loading/InventoryLoading";
 
@@ -72,20 +73,21 @@ const LazyRoute = ({ children, fallback }: { children: React.ReactNode; fallback
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <BrowserRouter
-      future={{
-        v7_startTransition: true,
-        v7_relativeSplatPath: true
-      }}
-    >
-      <AuthProvider>
-        <TenantProvider>
-          <CartProvider>
-            <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <Routes>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true
+        }}
+      >
+        <AuthProvider>
+          <TenantProvider>
+            <CartProvider>
+              <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <Routes>
             {/* Public Routes - No Suspense needed */}
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<Login />} />
@@ -229,7 +231,9 @@ const App = () => (
             } />
             <Route path="/superadmin/tenants" element={
               <ProtectedRoute allowedRoles={['superadmin']}>
-                <TenantManagement />
+                <LazyRoute fallback={<PageLoadingSpinner />}>
+                  <TenantManagement />
+                </LazyRoute>
               </ProtectedRoute>
             } />
             <Route path="/superadmin/users" element={
@@ -266,12 +270,13 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-            </TooltipProvider>
-          </CartProvider>
-        </TenantProvider>
-      </AuthProvider>
-    </BrowserRouter>
-  </QueryClientProvider>
+              </TooltipProvider>
+            </CartProvider>
+          </TenantProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
