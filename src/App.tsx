@@ -11,6 +11,7 @@ import { CartProvider } from "@/contexts/CartContext";
 import { TenantProvider } from "@/contexts/TenantContext";
 
 import ProtectedRoute from "./components/ProtectedRoute";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { AnalyticsLoading } from "./components/loading/AnalyticsLoading";
 import { InventoryLoading } from "./components/loading/InventoryLoading";
 
@@ -72,7 +73,8 @@ const LazyRoute = ({ children, fallback }: { children: React.ReactNode; fallback
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
     <BrowserRouter
       future={{
         v7_startTransition: true,
@@ -229,7 +231,9 @@ const App = () => (
             } />
             <Route path="/superadmin/tenants" element={
               <ProtectedRoute allowedRoles={['superadmin']}>
-                <TenantManagement />
+                <LazyRoute fallback={<PageLoadingSpinner />}>
+                  <TenantManagement />
+                </LazyRoute>
               </ProtectedRoute>
             } />
             <Route path="/superadmin/users" element={
@@ -271,7 +275,8 @@ const App = () => (
         </TenantProvider>
       </AuthProvider>
     </BrowserRouter>
-  </QueryClientProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
